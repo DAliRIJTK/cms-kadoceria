@@ -2,6 +2,41 @@
 
 @section('content')
 
+@if($errors->has('publication'))
+    <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
+        <div class="flex items-start gap-3">
+            <span class="text-2xl">⚠️</span>
+            <div>
+                <h3 class="font-semibold text-red-900 mb-1">Publikasi Tidak Tersedia</h3>
+                <p class="text-red-800 text-sm">{{ $errors->first('publication') }}</p>
+            </div>
+        </div>
+    </div>
+@endif
+
+@if($errors->has('delete'))
+    <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
+        <div class="flex items-start gap-3">
+            <span class="text-2xl">❌</span>
+            <div>
+                <h3 class="font-semibold text-red-900 mb-1">Gagal Menghapus Buku</h3>
+                <p class="text-red-800 text-sm">{{ $errors->first('delete') }}</p>
+            </div>
+        </div>
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="mb-6 p-4 rounded-lg bg-green-50 border border-green-200">
+        <div class="flex items-start gap-3">
+            <span class="text-2xl">✅</span>
+            <div>
+                <p class="text-green-800 text-sm font-medium">{{ session('success') }}</p>
+            </div>
+        </div>
+    </div>
+@endif
+
 <div class="mb-8">
     <a href="/books" class="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4 inline-block">← Kembali ke Daftar Buku</a>
     
@@ -60,13 +95,34 @@
         <a href="/pages-management?book_id={{ $book->id }}" class="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors font-medium">
             📄 Kelola Halaman
         </a>
-        <form method="POST" action="{{ url('/books/' . $book->id . '/status') }}" class="inline" onsubmit="return confirm('Ubah status publikasi?');">
+        <form method="POST" action="{{ url('/books/' . $book->id . '/status') }}" class="inline" id="statusForm" onsubmit="return handleStatusChange(event);">
             @csrf
             @method('PATCH')
+            <input type="hidden" name="status" value="{{ $book->status === 'published' ? 'draft' : 'published' }}" id="statusInput">
+            <input type="hidden" name="confirm_unpublish" value="no" id="confirmUnpublish">
             <button type="submit" class="px-4 py-2 {{ $book->status === 'published' ? 'bg-orange-50 text-orange-600 hover:bg-orange-100' : 'bg-green-50 text-green-600 hover:bg-green-100' }} rounded-lg transition-colors font-medium">
                 {{ $book->status === 'published' ? '📋 Ubah ke Draft' : '✅ Publikasikan' }}
             </button>
         </form>
+        <script>
+            function handleStatusChange(e) {
+                e.preventDefault();
+                const form = e.target;
+                const statusInput = document.getElementById('statusInput');
+                const confirmUnpublish = document.getElementById('confirmUnpublish');
+                const currentStatus = '{{ $book->status }}';
+                
+                if (currentStatus === 'published' && statusInput.value === 'draft') {
+                    if (confirm('⚠️ PERINGATAN: Anda akan menarik buku ini dari peredaran.\n\nApakah Anda yakin ingin melanjutkan?')) {
+                        confirmUnpublish.value = 'yes';
+                        form.submit();
+                    }
+                    return false;
+                } else {
+                    return confirm('Ubah status publikasi?');
+                }
+            }
+        </script>
     </div>
 </div>
 

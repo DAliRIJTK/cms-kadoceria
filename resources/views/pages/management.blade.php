@@ -8,8 +8,8 @@
 </div>
 
 <form method="GET" action="/pages-management" class="bg-white rounded-lg shadow-sm p-4 mb-8 border border-gray-200">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="md:col-span-2">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="md:col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-2">Cari Halaman</label>
             <input 
                 type="text" 
@@ -20,7 +20,7 @@
             >
         </div>
 
-                <div>
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Buku</label>
             <select name="book_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                 <option value="">Semua Buku</option>
@@ -32,7 +32,7 @@
             </select>
         </div>
 
-                <div>
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                 <option value="">Semua Status</option>
@@ -40,9 +40,21 @@
                 <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Published</option>
             </select>
         </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan</label>
+            <select name="sort" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                <option value="">Default (Buku & Halaman)</option>
+                <option value="page_asc" {{ request('sort') == 'page_asc' ? 'selected' : '' }}>Halaman Asc</option>
+                <option value="page_desc" {{ request('sort') == 'page_desc' ? 'selected' : '' }}>Halaman Desc</option>
+                <option value="date_newest" {{ request('sort') == 'date_newest' ? 'selected' : '' }}>Terbaru</option>
+                <option value="date_oldest" {{ request('sort') == 'date_oldest' ? 'selected' : '' }}>Terlama</option>
+                <option value="book_asc" {{ request('sort') == 'book_asc' ? 'selected' : '' }}>Buku (A-Z)</option>
+            </select>
+        </div>
     </div>
 
-        <div class="flex gap-2 mt-4">
+    <div class="flex gap-2 mt-4">
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium">
             Cari
         </button>

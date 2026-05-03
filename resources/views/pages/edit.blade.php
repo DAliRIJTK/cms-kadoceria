@@ -363,19 +363,42 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch(`/pages/${pageId}`, {
             method: 'PATCH',
             headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
             },
             body: formData
         })
-        .then(r => r.json())
+        .then(async response => {
+            const contentType = response.headers.get('content-type');
+            
+            if (!contentType || !contentType.includes('application/json')) {
+                // Response is not JSON (likely error page)
+                const text = await response.text();
+                console.error('Response is not JSON:', text.substring(0, 200));
+                throw new Error('Server mengembalikan response yang tidak valid (bukan JSON). Silakan cek console untuk detail error.');
+            }
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || `Error ${response.status}: ${response.statusText}`);
+            }
+            
+            return data;
+        })
         .then(data => {
             if (data.success) {
-                alert('✅ Semua perubahan disimpan!');
+                alert('✅ Semua perubahan disimpan!\n\n' + data.message);
+                // Reload page to reflect changes
+                setTimeout(() => location.reload(), 500);
             } else {
                 alert('❌ Gagal menyimpan: ' + (data.message || 'Kesalahan tidak diketahui'));
             }
         })
-        .catch(e => alert('❌ Error: ' + e.message));
+        .catch(error => {
+            console.error('Save error:', error);
+            alert('❌ Error: ' + error.message);
+        });
     }
 
 });

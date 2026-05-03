@@ -18,6 +18,22 @@
     </div>
 @endif
 
+@if ($errors->any())
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <div class="flex gap-3">
+            <span class="text-2xl">⚠️</span>
+            <div>
+                <h3 class="font-semibold text-red-900 mb-2">Gagal Menambah Audio</h3>
+                <ul class="list-disc list-inside space-y-1">
+                    @foreach ($errors->all() as $error)
+                        <li class="text-red-800 text-sm">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    </div>
+@endif
+
 <div class="flex gap-4 mb-6 border-b border-gray-300">
     <button class="audio-tab px-4 py-2 font-medium text-blue-600 border-b-2 border-blue-600" data-type="all">
         📢 Semua Audio ({{ $page->audios->count() }})

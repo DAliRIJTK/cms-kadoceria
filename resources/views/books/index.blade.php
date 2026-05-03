@@ -13,9 +13,9 @@
         </a>
     </div>
 
-        <form method="GET" action="/books-search" class="bg-white rounded-lg shadow-sm p-4 space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="md:col-span-2">
+    <form method="GET" action="/books" class="bg-white rounded-lg shadow-sm p-4 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Cari Buku</label>
                 <input 
                     type="text" 
@@ -26,7 +26,7 @@
                 >
             </div>
 
-                        <div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                     <option value="">Semua Status</option>
@@ -34,9 +34,22 @@
                     <option value="published" {{ request('status') == 'published' ? 'selected' : '' }}>Published</option>
                 </select>
             </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan</label>
+                <select name="sort" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                    <option value="">Default</option>
+                    <option value="title_asc" {{ request('sort') == 'title_asc' ? 'selected' : '' }}>Judul (A-Z)</option>
+                    <option value="title_desc" {{ request('sort') == 'title_desc' ? 'selected' : '' }}>Judul (Z-A)</option>
+                    <option value="date_newest" {{ request('sort') == 'date_newest' ? 'selected' : '' }}>Terbaru</option>
+                    <option value="date_oldest" {{ request('sort') == 'date_oldest' ? 'selected' : '' }}>Terlama</option>
+                    <option value="status_draft" {{ request('sort') == 'status_draft' ? 'selected' : '' }}>Draft Terlebih Dahulu</option>
+                    <option value="status_published" {{ request('sort') == 'status_published' ? 'selected' : '' }}>Published Terlebih Dahulu</option>
+                </select>
+            </div>
         </div>
 
-                <div class="flex gap-2">
+        <div class="flex gap-2">
             <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium">
                 Cari
             </button>
@@ -58,7 +71,13 @@
     </div>
 @else
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div class="mb-4">
+        <p class="text-sm text-gray-600">
+            Menampilkan {{ $books->firstItem() }} hingga {{ $books->lastItem() }} dari {{ $books->total() }} buku
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         @foreach($books as $book)
             <a href="{{ url('/books/' . $book->id) }}" class="group">
                 <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -109,6 +128,12 @@
             </a>
         @endforeach
     </div>
+
+    @if($books->hasPages())
+        <div class="flex justify-center">
+            {{ $books->links('pagination::tailwind') }}
+        </div>
+    @endif
 
 @endif
 

@@ -35,6 +35,11 @@
                 ⏱ <span>Kelola Halaman</span>
             </a>
 
+            <a href="/audio-management"
+                class="flex items-center gap-3 p-3 rounded-xl {{ request()->is('audio-management*') ? 'bg-white text-blue-900 shadow' : 'hover:bg-blue-800' }} font-medium transition">
+                🔊 <span>Kelola Audio</span>
+            </a>
+
         </nav>
 
         <!-- LOGOUT -->

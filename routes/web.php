@@ -21,6 +21,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Pages Management
     Route::get('/pages-management', [PageController::class, 'management'])->name('pages.management');
+    Route::get('/audio-management', [PageController::class, 'audioManagementList'])->name('audio.management');
     Route::get('/pages/{page}', [PageController::class, 'show'])->name('pages.show');
     Route::get('/pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
     Route::patch('/pages/{page}', [PageController::class, 'update'])->name('pages.update');
@@ -43,5 +44,8 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+Route::get('/api/books', [BookController::class, 'apiBooks']);
+Route::get('/api/books/{id}', [BookController::class, 'apiBookDetail']);
 
 require __DIR__.'/auth.php';
