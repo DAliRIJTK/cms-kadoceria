@@ -2,407 +2,617 @@
 
 @section('content')
 
-<div class="mb-8">
-    <a href="{{ url('/books/' . $page->book_id) }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4 inline-block">← Kembali</a>
-    <h1 class="text-3xl font-bold text-gray-800">✏️ Edit Halaman {{ $page->page_number }}</h1>
-    <p class="text-gray-500 mt-2">Kelola anotasi dan audio pada halaman ini</p>
+<style>
+    .panel-card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .section-header {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        padding-bottom: 12px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .box-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        transition: box-shadow .15s;
+    }
+    .box-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .audio-block {
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+    }
+    .audio-block.indo { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .audio-block.sunda { background: #f5f3ff; border: 1px solid #ddd6fe; }
+    .audio-block.backsound { background: #fff7ed; border: 1px solid #fed7aa; }
+    .audio-block-title { font-size: .75rem; font-weight: 600; margin-bottom: 6px; }
+    .audio-block.indo .audio-block-title { color: #1e40af; }
+    .audio-block.sunda .audio-block-title { color: #6d28d9; }
+    .audio-block.backsound .audio-block-title { color: #c2410c; }
+    .btn-upload-indo { background: #1e3a8a; }
+    .btn-upload-indo:hover { background: #1e40af; }
+    .btn-upload-sunda { background: #7c3aed; }
+    .btn-upload-sunda:hover { background: #6d28d9; }
+    .btn-upload-backsound { background: #d97706; }
+    .btn-upload-backsound:hover { background: #b45309; }
+    .btn-upload-base {
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-size: .75rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background .15s;
+    }
+    .btn-delete {
+        background: #dc2626;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: .75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .15s;
+    }
+    .btn-delete:hover { background: #b91c1c; }
+    .file-input-row { display: flex; gap: 6px; align-items: center; }
+    .file-input-row input[type="file"] {
+        flex: 1;
+        font-size: .75rem;
+        padding: 5px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: #fff;
+        color: #374151;
+    }
+    .existing-audio-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #fff;
+        border-radius: 6px;
+        padding: 6px 8px;
+        margin-bottom: 6px;
+    }
+    .existing-audio-row audio { flex: 1; height: 28px; }
+    #canvasWrapper {
+        position: relative;
+        border: 2px solid #cbd5e1;
+        border-radius: 10px;
+        overflow: auto;
+        background: #f1f5f9;
+        max-height: 520px;
+    }
+    #overlay {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        cursor: crosshair;
+        background: transparent;
+    }
+    .pending-form {
+        background: #fefce8;
+        border: 2px solid #fde047;
+        border-radius: 10px;
+        padding: 16px;
+        margin-top: 12px;
+        display: none;
+    }
+    .pending-form input, .pending-form textarea {
+        width: 100%;
+        border: 1px solid #fde047;
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: .85rem;
+        outline: none;
+        transition: box-shadow .15s;
+    }
+    .pending-form input:focus, .pending-form textarea:focus {
+        box-shadow: 0 0 0 2px #fbbf24;
+    }
+    .badge-new {
+        display: inline-block;
+        background: #fef9c3;
+        color: #92400e;
+        border-radius: 4px;
+        font-size: .7rem;
+        font-weight: 600;
+        padding: 1px 7px;
+        margin-left: 6px;
+    }
+    .right-panel { display: flex; flex-direction: column; gap: 16px; }
+    .save-btn {
+        background: #16a34a;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 22px;
+        font-size: .9rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background .15s, transform .1s;
+        box-shadow: 0 2px 8px rgba(22,163,74,.25);
+    }
+    .save-btn:hover { background: #15803d; transform: translateY(-1px); }
+    .save-btn:disabled { background: #86efac; cursor: not-allowed; transform: none; box-shadow: none; }
+</style>
+
+<!-- HEADER -->
+<div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+    <div>
+        <a href="{{ url('/books/' . $page->book_id) }}" class="text-blue-900 hover:text-blue-800 text-sm font-medium">← Kembali ke Daftar Halaman</a>
+        <h1 class="text-3xl font-bold text-gray-900 mt-1">Halaman {{ $page->page_number }}</h1>
+        <p class="text-gray-500 text-sm mt-0.5">Kelola anotasi dan audio halaman</p>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+        @if(isset($page->book->title))
+            <span class="px-4 py-2 bg-blue-100 text-blue-900 rounded-full font-semibold text-sm border border-blue-200">
+                {{ $page->book->title }}
+            </span>
+        @endif
+        <button onclick="saveAll()" id="mainSaveBtn" class="save-btn" disabled>
+            💾 Simpan Perubahan
+        </button>
+    </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- ALERTS -->
+@if (session('success'))
+    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-5 flex gap-3">
+        <span class="text-xl">✅</span>
+        <p class="text-green-800 font-medium">{{ session('success') }}</p>
+    </div>
+@endif
 
-        <div class="lg:col-span-2">
-        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200">📄 Editor Halaman</h2>
-            
-            <div id="canvasWrapper"
-                class="relative border-2 border-gray-300 rounded-lg overflow-auto bg-gray-50"
-                style="max-height: 600px;">
+@if ($errors->any())
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-5 flex gap-3">
+        <span class="text-xl">⚠️</span>
+        <div>
+            <h3 class="font-semibold text-red-900 mb-1">Terjadi Kesalahan</h3>
+            <ul class="list-disc list-inside space-y-1">
+                @foreach ($errors->all() as $error)
+                    <li class="text-red-800 text-sm">{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    </div>
+@endif
 
-                <img
-                    id="pageImage"
-                    src="{{ asset('storage/' . $page->image_url) }}"
-                    class="w-full block select-none pointer-events-none"
-                    draggable="false"
-                    alt="Halaman {{ $page->page_number }}"
-                >
+<!-- MAIN 2-COLUMN LAYOUT -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                <div id="overlay"
-                    class="absolute top-0 left-0 w-full h-full cursor-crosshair bg-transparent">
-                </div>
+    <!-- ===== LEFT COLUMN: Canvas ===== -->
+    <div class="panel-card p-5">
+        <p class="section-header">Area Interaktif</p>
+        <p class="text-xs text-gray-500 mb-3">Klik dan drag di halaman untuk membuat area interaktif lalu isi label dan audio</p>
 
+        <div id="canvasWrapper">
+            <img
+                id="pageImage"
+                src="{{ asset('storage/' . $page->image_url) }}"
+                class="w-full block select-none pointer-events-none"
+                draggable="false"
+                alt="Halaman {{ $page->page_number }}"
+            >
+            <div id="overlay"></div>
+        </div>
+
+        <!-- Pending Box Form -->
+        <div id="newBoxForm" class="pending-form">
+            <p class="text-sm font-bold text-yellow-900 mb-3">➕ Area Interaktif Baru Terdeteksi</p>
+            <div class="mb-3">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Label <span class="text-red-500">*</span></label>
+                <input type="text" id="boxLabel" placeholder="Contoh: Mata, Telinga, Nama Karakter...">
             </div>
-
-            <p class="text-xs text-gray-600 mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-            </p>
+            <div class="mb-3">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Deskripsi (Opsional)</label>
+                <textarea id="boxDesc" rows="2" placeholder="Keterangan tambahan..." style="resize:none;"></textarea>
+            </div>
+            <div class="flex gap-2 mt-2">
+                <button onclick="confirmNewBox()" class="flex-1 py-2 rounded-lg text-white text-sm font-semibold transition" style="background:#1e3a8a;">✅ Tambahkan Area</button>
+                <button onclick="cancelNewBox()" class="flex-1 py-2 rounded-lg text-white text-sm font-semibold transition" style="background:#6b7280;">❌ Batal</button>
+            </div>
         </div>
     </div>
 
-        <div class="space-y-6">
-        
-                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-3 border-b border-gray-200">📝 Anotasi ({{ $page->boundingBoxes->count() }})</h3>
+    <!-- ===== RIGHT COLUMN ===== -->
+    <div class="right-panel">
 
-                        <div class="space-y-3 mb-4">
-                <input type="text" id="annotationLabel"
-                    placeholder="Label anotasi..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
-                <textarea id="annotationText"
-                    placeholder="Deskripsi anotasi (opsional)..."
-                    rows="2"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"></textarea>
-                <button onclick="addAnnotation()"
-                    class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg transition-colors font-medium">
-                    + Buat Anotasi Baru
-                </button>
+        <!-- AREA INTERAKTIF LIST -->
+        <div class="panel-card p-5">
+            <div class="flex items-center justify-between mb-1 pb-3 border-b border-gray-100">
+                <p class="section-header mb-0 pb-0 border-0">Area Interaktif (<span id="boxCount">{{ count($page->boundingBoxes) }}</span>)</p>
             </div>
-
-                        <div id="annotationList" class="space-y-2 max-h-64 overflow-y-auto">
+            <div id="boxesList" class="mt-3">
                 @if($page->boundingBoxes->isEmpty())
-                    <p class="text-xs text-gray-500 text-center py-4">Belum ada anotasi</p>
-                @else
-                    @foreach($page->boundingBoxes as $box)
-                        <div class="p-2 bg-orange-50 border border-orange-200 rounded-lg text-xs">
-                            <p class="font-semibold text-orange-900">{{ $box->label ?? 'Anotasi ' . $loop->iteration }}</p>
-                            <p class="text-orange-700">Pos: ({{ $box->x }}, {{ $box->y }})</p>
-                        </div>
-                    @endforeach
+                    <p class="text-center text-gray-400 py-8 text-sm">Belum ada area interaktif.<br>Buat dengan drag di halaman kiri!</p>
                 @endif
             </div>
         </div>
 
-                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-800 mb-3 pb-3 border-b border-gray-200">🔊 Audio Halaman ({{ $page->audios->count() }})</h3>
+        <!-- AUDIO HALAMAN -->
+        <div class="panel-card p-5">
+            <p class="section-header">Audio Halaman</p>
 
-            <div class="space-y-3 mb-4 text-sm">
-                <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                    <p class="font-semibold text-purple-900 mb-1">🎤 Narasi</p>
-                    <p class="text-purple-700 text-xs mb-2">{{ $page->audios()->where('type', 'narration')->count() }} file</p>
-                </div>
-                <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <p class="font-semibold text-blue-900 mb-1">🎵 Backsound</p>
-                    <p class="text-blue-700 text-xs mb-2">{{ $page->audios()->where('type', 'backsound')->count() }} file</p>
-                </div>
-                <div class="bg-green-50 p-3 rounded-lg border border-green-200">
-                    <p class="font-semibold text-green-900 mb-1">🎯 Audio Objek</p>
-                    <p class="text-green-700 text-xs mb-2">{{ $page->audios()->where('type', 'object')->count() }} file</p>
-                </div>
+            <!-- NARASI INDONESIA -->
+            @php $narasiIndo = $page->audios->where('type', 'narration')->whereNull('bounding_box_id')->first(); @endphp
+            <div class="audio-block indo mb-3">
+                <p class="audio-block-title">🇮🇩 Narasi - Bahasa Indonesia</p>
+                @if($narasiIndo)
+                    <div class="existing-audio-row mb-2">
+                        <audio controls><source src="{{ asset('storage/' . $narasiIndo->file_url) }}" type="audio/mpeg"></audio>
+                        <form method="POST" action="{{ url('/audio/' . $narasiIndo->id) }}" style="margin:0;" onsubmit="return confirm('Hapus audio ini?');">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn-delete">🗑️ Hapus</button>
+                        </form>
+                    </div>
+                @endif
+                <form action="{{ url('/pages/' . $page->id . '/audio') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="type" value="narration">
+                    <div class="file-input-row">
+                        <input type="file" name="audio_file" accept="audio/*">
+                        <button type="submit" class="btn-upload-base btn-upload-indo">Unggah</button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A</p>
+                </form>
             </div>
 
-            <a href="{{ url('/pages/' . $page->id . '/audio') }}" class="w-full block text-center bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors font-medium text-sm">
-                ⚙️ Kelola Audio
-            </a>
+            <!-- NARASI SUNDA -->
+            @php $narasiSunda = $page->audios->where('type', 'narration_sunda')->whereNull('bounding_box_id')->first(); @endphp
+            <div class="audio-block sunda mb-3">
+                <p class="audio-block-title">🇮🇩 Narasi - Bahasa Sunda</p>
+                @if($narasiSunda)
+                    <div class="existing-audio-row mb-2">
+                        <audio controls><source src="{{ asset('storage/' . $narasiSunda->file_url) }}" type="audio/mpeg"></audio>
+                        <form method="POST" action="{{ url('/audio/' . $narasiSunda->id) }}" style="margin:0;" onsubmit="return confirm('Hapus audio ini?');">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn-delete">🗑️ Hapus</button>
+                        </form>
+                    </div>
+                @endif
+                <form action="{{ url('/pages/' . $page->id . '/audio') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="type" value="narration_sunda">
+                    <div class="file-input-row">
+                        <input type="file" name="audio_file" accept="audio/*">
+                        <button type="submit" class="btn-upload-base btn-upload-sunda">Unggah</button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A</p>
+                </form>
+            </div>
+
+            <!-- BACKSOUND -->
+            @php $backsound = $page->audios->where('type', 'backsound')->whereNull('bounding_box_id')->first(); @endphp
+            <div class="audio-block backsound">
+                <p class="audio-block-title">🎵 Backsound Halaman</p>
+                @if($backsound)
+                    <div class="existing-audio-row mb-2">
+                        <audio controls><source src="{{ asset('storage/' . $backsound->file_url) }}" type="audio/mpeg"></audio>
+                        <form method="POST" action="{{ url('/audio/' . $backsound->id) }}" style="margin:0;" onsubmit="return confirm('Hapus audio ini?');">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn-delete">🗑️ Hapus</button>
+                        </form>
+                    </div>
+                @endif
+                <form action="{{ url('/pages/' . $page->id . '/audio') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="type" value="backsound">
+                    <div class="file-input-row">
+                        <input type="file" name="audio_file" accept="audio/*">
+                        <button type="submit" class="btn-upload-base btn-upload-backsound">Unggah</button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A</p>
+                </form>
+            </div>
         </div>
 
-        <button onclick="saveAll()"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg transition-colors font-semibold shadow-md">
-            💾 Simpan Perubahan Anotasi
-        </button>
-    </div>
-
-</div>
+    </div><!-- /right-panel -->
+</div><!-- /grid -->
 
 @endsection
 
 @push('scripts')
-
 <script>
-
 document.addEventListener('DOMContentLoaded', function () {
 
-    let overlay = document.getElementById('overlay');
-    let wrapper = document.getElementById('canvasWrapper');
-    let annotationList = document.getElementById('annotationList');
-    let audioList = document.getElementById('audioList');
+    let overlay     = document.getElementById('overlay');
+    let wrapper     = document.getElementById('canvasWrapper');
+    let boxesList   = document.getElementById('boxesList');
+    let newBoxForm  = document.getElementById('newBoxForm');
 
-    let annotations = [];
-    let audioItems = [];
-    let currentBox = null;
+    let boxes       = [];
+    let currentBox  = null;
     let startX, startY;
-    let isDrawing = false;
-    let activeType = 'annotation'; // 'annotation' or 'audio'
+    let isDrawing   = false;
+    let pendingBox  = null;
 
     document.addEventListener('dragstart', e => e.preventDefault());
 
-    // ================= DRAW (FR-12 - Position annotation/audio) =================
+    // ========== LOAD EXISTING BOXES ==========
+    function loadExistingBoxes() {
+        const existingBoxes  = @json($page->boundingBoxes);
+        const existingAudios = @json($page->audios);
+
+        boxes = existingBoxes.map(box => ({
+            id          : box.id,
+            label       : box.label,
+            description : box.description || '',
+            x           : box.x,
+            y           : box.y,
+            width       : box.width,
+            height      : box.height,
+            isNew       : false,
+            audios      : existingAudios.filter(a => a.bounding_box_id === box.id)
+        }));
+        renderBoxesList();
+        renderOverlayBoxes();
+    }
+
+    // ========== RENDER OVERLAY MARKERS ON CANVAS ==========
+    function renderOverlayBoxes() {
+        // Remove old markers (keep only the drawing-div)
+        overlay.querySelectorAll('.existing-marker').forEach(el => el.remove());
+
+        boxes.forEach(box => {
+            const marker = document.createElement('div');
+            marker.className = 'existing-marker';
+            marker.style.cssText = `
+                position:absolute;
+                left:${box.x}px; top:${box.y}px;
+                width:${box.width}px; height:${box.height}px;
+                border:2px solid #ef4444;
+                background:rgba(239,68,68,0.08);
+                border-radius:3px;
+                pointer-events:none;
+                z-index:5;
+            `;
+            overlay.appendChild(marker);
+        });
+    }
+
+    // ========== DRAW NEW AREA ==========
     overlay.addEventListener('mousedown', function(e) {
+        if (e.target !== overlay) return;
         const rect = wrapper.getBoundingClientRect();
-        startX = e.clientX - rect.left;
-        startY = e.clientY - rect.top;
+        startX = e.clientX - rect.left + wrapper.scrollLeft;
+        startY = e.clientY - rect.top  + wrapper.scrollTop;
         isDrawing = true;
 
         currentBox = document.createElement('div');
-        currentBox.style.position = 'absolute';
-        currentBox.style.border = activeType === 'annotation' ? '2px dashed #ff9800' : '2px dashed #4caf50';
-        currentBox.style.backgroundColor = activeType === 'annotation' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(76, 175, 80, 0.1)';
-        currentBox.style.left = startX + 'px';
-        currentBox.style.top = startY + 'px';
-        currentBox.style.width = '0px';
-        currentBox.style.height = '0px';
-        currentBox.style.pointerEvents = 'none';
-
+        currentBox.style.cssText = `
+            position:absolute;
+            border:2px dashed #1e3a8a;
+            background:rgba(30,58,138,0.1);
+            left:${startX}px; top:${startY}px;
+            width:0; height:0;
+            pointer-events:none;
+            z-index:10;
+            border-radius:4px;
+        `;
         overlay.appendChild(currentBox);
     });
 
     overlay.addEventListener('mousemove', function(e) {
         if (!isDrawing) return;
-        const rect = wrapper.getBoundingClientRect();
-        const currentX = e.clientX - rect.left;
-        const currentY = e.clientY - rect.top;
-        const width = currentX - startX;
-        const height = currentY - startY;
+        const rect    = wrapper.getBoundingClientRect();
+        const currentX = e.clientX - rect.left + wrapper.scrollLeft;
+        const currentY = e.clientY - rect.top  + wrapper.scrollTop;
+        const w = currentX - startX;
+        const h = currentY - startY;
 
-        currentBox.style.width = Math.abs(width) + 'px';
-        currentBox.style.height = Math.abs(height) + 'px';
-        currentBox.style.left = (width < 0 ? currentX : startX) + 'px';
-        currentBox.style.top = (height < 0 ? currentY : startY) + 'px';
+        currentBox.style.width  = Math.abs(w) + 'px';
+        currentBox.style.height = Math.abs(h) + 'px';
+        currentBox.style.left   = (w < 0 ? currentX : startX) + 'px';
+        currentBox.style.top    = (h < 0 ? currentY : startY) + 'px';
     });
 
     overlay.addEventListener('mouseup', () => {
-        if (isDrawing && activeType === 'annotation') {
-            saveAnnotationPosition();
-        } else if (isDrawing && activeType === 'audio') {
-            saveAudioPosition();
-        }
+        if (isDrawing) saveAreaPosition();
         isDrawing = false;
     });
 
-    overlay.addEventListener('mouseleave', () => isDrawing = false);
+    overlay.addEventListener('mouseleave', () => { isDrawing = false; });
 
-    // ================= ANNOTATION FUNCTIONS (FR-11, FR-12, FR-13, FR-14) =================
-    window.addAnnotation = function() {
-        const label = document.getElementById('annotationLabel').value;
-        const text = document.getElementById('annotationText').value;
+    // ========== SAVE AREA POSITION ==========
+    function saveAreaPosition() {
+        if (currentBox && currentBox.offsetWidth > 10 && currentBox.offsetHeight > 10) {
+            pendingBox = {
+                label       : '',
+                description : '',
+                x           : parseFloat(currentBox.style.left),
+                y           : parseFloat(currentBox.style.top),
+                width       : currentBox.offsetWidth,
+                height      : currentBox.offsetHeight,
+                id          : 'new_' + Date.now()
+            };
+            showBoxForm();
+        } else {
+            if (currentBox && currentBox.parentNode) currentBox.remove();
+        }
+    }
 
-        if (!label || !text) {
-            alert('Mohon isi label dan teks anotasi');
+    function showBoxForm() {
+        document.getElementById('boxLabel').value = '';
+        document.getElementById('boxDesc').value  = '';
+        newBoxForm.style.display = 'block';
+        document.getElementById('boxLabel').focus();
+        newBoxForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    window.confirmNewBox = function() {
+        const label = document.getElementById('boxLabel').value.trim();
+        if (!label) { alert('Label harus diisi!'); return; }
+
+        if (pendingBox) {
+            pendingBox.label       = label;
+            pendingBox.description = document.getElementById('boxDesc').value.trim();
+            pendingBox.isNew       = true;
+            pendingBox.audios      = [];
+            boxes.push(pendingBox);
+            pendingBox = null;
+
+            renderBoxesList();
+            renderOverlayBoxes();
+            newBoxForm.style.display = 'none';
+        }
+    };
+
+    window.cancelNewBox = function() {
+        if (currentBox && currentBox.parentNode) currentBox.remove();
+        pendingBox = null;
+        newBoxForm.style.display = 'none';
+    };
+
+    window.deleteBox = function(id) {
+        if (confirm('Hapus area ini?')) {
+            boxes = boxes.filter(b => String(b.id) !== String(id));
+            renderBoxesList();
+            renderOverlayBoxes();
+        }
+    };
+
+    // ========== RENDER BOX LIST ==========
+    function renderBoxesList() {
+        boxesList.innerHTML = '';
+        const pageId    = {{ $page->id }};
+        const csrfToken = '{{ csrf_token() }}';
+
+        document.getElementById('boxCount').textContent = boxes.length;
+
+        const saveBtn     = document.getElementById('mainSaveBtn');
+        const newBoxCount = boxes.filter(b => b.isNew).length;
+        saveBtn.disabled  = newBoxCount === 0;
+
+        if (boxes.length === 0) {
+            boxesList.innerHTML = '<p class="text-center text-gray-400 py-8 text-sm">Belum ada area interaktif.<br>Buat dengan drag di halaman kiri!</p>';
             return;
         }
 
-        activeType = 'annotation';
-        alert('Silakan klik dan drag pada halaman untuk menentukan posisi anotasi');
-        
-        annotations.push({
-            label,
-            text,
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            id: Date.now()
-        });
+        boxes.forEach(box => {
+            const audioObjIndo  = box.audios ? box.audios.find(a => a.type === 'narration_object')       : null;
+            const audioObjSunda = box.audios ? box.audios.find(a => a.type === 'narration_sunda_object') : null;
 
-        document.getElementById('annotationLabel').value = '';
-        document.getElementById('annotationText').value = '';
-    }
-
-    function saveAnnotationPosition() {
-        if (currentBox && annotations.length > 0) {
-            const rect = currentBox.getBoundingClientRect();
-            const parentRect = wrapper.getBoundingClientRect();
-            const lastAnnotation = annotations[annotations.length - 1];
-            
-            lastAnnotation.x = rect.left - parentRect.left;
-            lastAnnotation.y = rect.top - parentRect.top;
-            lastAnnotation.width = rect.width;
-            lastAnnotation.height = rect.height;
-
-            currentBox.remove();
-            renderAnnotationList();
-        }
-    }
-
-    function renderAnnotationList() {
-        annotationList.innerHTML = '';
-        
-        if (annotations.length === 0) {
-            annotationList.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">Belum ada anotasi</p>';
-            return;
-        }
-
-        annotations.forEach((ann, index) => {
-            const item = document.createElement('div');
-            item.className = 'p-3 bg-orange-50 border border-orange-200 rounded-lg';
-            item.innerHTML = `
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-orange-900 text-sm truncate">${ann.label}</p>
-                        <p class="text-xs text-orange-700 line-clamp-2">${ann.text}</p>
-                        <p class="text-xs text-orange-600 mt-1">Posisi: (${Math.round(ann.x)}, ${Math.round(ann.y)})</p>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="editAnnotation(${index})" class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">✏️ Edit</button>
-                    <button onclick="deleteAnnotation(${index})" class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition">🗑️ Hapus</button>
-                </div>
-            `;
-            annotationList.appendChild(item);
-        });
-    }
-
-    window.editAnnotation = function(index) {
-        alert('Edit functionality akan diimplementasikan');
-    }
-
-    window.deleteAnnotation = function(index) {
-        if (confirm('Hapus anotasi ini?')) {
-            annotations.splice(index, 1);
-            renderAnnotationList();
-        }
-    }
-
-    // ================= AUDIO FUNCTIONS (FR-15, FR-16, FR-17, FR-18) =================
-    window.addAudio = function() {
-        const label = document.getElementById('audioLabel').value;
-        const file = document.getElementById('audioFile').files[0];
-
-        if (!label || !file) {
-            alert('Mohon isi label dan pilih file audio');
-            return;
-        }
-
-        activeType = 'audio';
-        alert('Silakan klik dan drag pada halaman untuk menentukan posisi audio');
-        
-        audioItems.push({
-            label,
-            file,
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            id: Date.now()
-        });
-
-        document.getElementById('audioLabel').value = '';
-        document.getElementById('audioFile').value = '';
-    }
-
-    function saveAudioPosition() {
-        if (currentBox && audioItems.length > 0) {
-            const rect = currentBox.getBoundingClientRect();
-            const parentRect = wrapper.getBoundingClientRect();
-            const lastAudio = audioItems[audioItems.length - 1];
-            
-            lastAudio.x = rect.left - parentRect.left;
-            lastAudio.y = rect.top - parentRect.top;
-            lastAudio.width = rect.width;
-            lastAudio.height = rect.height;
-
-            currentBox.remove();
-            renderAudioList();
-        }
-    }
-
-    function renderAudioList() {
-        audioList.innerHTML = '';
-        
-        if (audioItems.length === 0) {
-            audioList.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">Belum ada audio</p>';
-            return;
-        }
-
-        audioItems.forEach((audio, index) => {
-            const item = document.createElement('div');
-            item.className = 'p-3 bg-green-50 border border-green-200 rounded-lg';
-            item.innerHTML = `
-                <div class="flex items-start justify-between mb-2">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-green-900 text-sm truncate">${audio.label}</p>
-                        <p class="text-xs text-green-700">${audio.file.name}</p>
-                        <p class="text-xs text-green-600 mt-1">Posisi: (${Math.round(audio.x)}, ${Math.round(audio.y)})</p>
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="editAudio(${index})" class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">✏️ Edit</button>
-                    <button onclick="deleteAudio(${index})" class="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition">🗑️ Hapus</button>
+            const indoAudioHTML = `
+                <div class="audio-block indo">
+                    <p class="audio-block-title">🇮🇩 Audio Objek - Bahasa Indonesia</p>
+                    ${audioObjIndo ? `
+                        <div class="existing-audio-row">
+                            <audio controls><source src="/storage/${audioObjIndo.file_url}" type="audio/mpeg"></audio>
+                            <form action="/audio/${audioObjIndo.id}" method="POST" style="margin:0;" onsubmit="return confirm('Hapus?')">
+                                <input type="hidden" name="_token" value="${csrfToken}">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="btn-delete">🗑️ Hapus</button>
+                            </form>
+                        </div>
+                    ` : ''}
+                    <form action="/pages/${pageId}/audio" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="${csrfToken}">
+                        <input type="hidden" name="type" value="narration_object">
+                        <input type="hidden" name="box_id" value="${box.id}">
+                        <div class="file-input-row">
+                            <input type="file" name="audio_file" accept="audio/*" ${audioObjIndo ? 'disabled' : 'required'}>
+                            <button type="submit" class="btn-upload-base btn-upload-indo" ${audioObjIndo ? 'disabled' : ''}>Unggah</button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Max 10MB - Suara saat objek dipilih</p>
+                    </form>
                 </div>
             `;
-            audioList.appendChild(item);
+
+            const sundaAudioHTML = `
+                <div class="audio-block sunda">
+                    <p class="audio-block-title">🇮🇩 Audio Objek - Bahasa Sunda</p>
+                    ${audioObjSunda ? `
+                        <div class="existing-audio-row">
+                            <audio controls><source src="/storage/${audioObjSunda.file_url}" type="audio/mpeg"></audio>
+                            <form action="/audio/${audioObjSunda.id}" method="POST" style="margin:0;" onsubmit="return confirm('Hapus?')">
+                                <input type="hidden" name="_token" value="${csrfToken}">
+                                <input type="hidden" name="_method" value="DELETE">
+                                <button type="submit" class="btn-delete">🗑️ Hapus</button>
+                            </form>
+                        </div>
+                    ` : ''}
+                    <form action="/pages/${pageId}/audio" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="${csrfToken}">
+                        <input type="hidden" name="type" value="narration_sunda_object">
+                        <input type="hidden" name="box_id" value="${box.id}">
+                        <div class="file-input-row">
+                            <input type="file" name="audio_file" accept="audio/*" ${audioObjSunda ? 'disabled' : 'required'}>
+                            <button type="submit" class="btn-upload-base btn-upload-sunda" ${audioObjSunda ? 'disabled' : ''}>Unggah</button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Max 10MB - Suara saat objek dipilih</p>
+                    </form>
+                </div>
+            `;
+
+            const item = document.createElement('div');
+            item.className = 'box-item';
+            item.innerHTML = `
+                <div class="flex items-start justify-between mb-2">
+                    <div>
+                        <span class="font-bold text-gray-900 text-sm">${box.label}</span>
+                        ${box.isNew ? '<span class="badge-new">Baru</span>' : ''}
+                        ${box.description ? `<p class="text-xs text-gray-500 mt-0.5">${box.description}</p>` : ''}
+                        <p class="text-xs text-gray-400 mt-1">📍 Posisi: (${Math.round(box.x)}, ${Math.round(box.y)}) – Ukuran: ${Math.round(box.width)}×${Math.round(box.height)}px</p>
+                    </div>
+                    <button onclick="deleteBox('${box.id}')" class="btn-delete" style="flex-shrink:0; margin-left:8px; padding:6px 10px;">🗑️</button>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    ${indoAudioHTML}
+                    ${sundaAudioHTML}
+                </div>
+            `;
+            boxesList.appendChild(item);
         });
     }
 
-    window.editAudio = function(index) {
-        alert('Edit audio functionality akan diimplementasikan');
-    }
-
-    window.deleteAudio = function(index) {
-        if (confirm('Hapus audio ini?')) {
-            audioItems.splice(index, 1);
-            renderAudioList();
-        }
-    }
-
-    // ================= SAVE ALL (FR-20) =================
+    // ========== SAVE ALL NEW BOXES ==========
     window.saveAll = function() {
-        const pageId = {{ $page->id }};
+        const newBoxes = boxes.filter(b => b.isNew);
+        if (newBoxes.length === 0) { alert('Tidak ada area baru untuk disimpan'); return; }
+
         const formData = new FormData();
-        formData.append('page_id', pageId);
-        formData.append('_token', '{{ csrf_token() }}');
         formData.append('_method', 'PATCH');
+        formData.append('_token', '{{ csrf_token() }}');
 
-        // Add annotations
-        annotations.forEach((ann, index) => {
-            formData.append(`annotations[${index}][label]`, ann.label);
-            formData.append(`annotations[${index}][text]`, ann.text);
-            formData.append(`annotations[${index}][x]`, ann.x);
-            formData.append(`annotations[${index}][y]`, ann.y);
-            formData.append(`annotations[${index}][width]`, ann.width);
-            formData.append(`annotations[${index}][height]`, ann.height);
+        newBoxes.forEach((box, index) => {
+            formData.append(`annotations[${index}][label]`,       box.label);
+            formData.append(`annotations[${index}][description]`, box.description || '');
+            formData.append(`annotations[${index}][x]`,           Math.round(box.x));
+            formData.append(`annotations[${index}][y]`,           Math.round(box.y));
+            formData.append(`annotations[${index}][width]`,       Math.round(box.width));
+            formData.append(`annotations[${index}][height]`,      Math.round(box.height));
         });
 
-        // Add audio
-        audioItems.forEach((audio, index) => {
-            formData.append(`audio[${index}][label]`, audio.label);
-            formData.append(`audio[${index}][file]`, audio.file);
-            formData.append(`audio[${index}][x]`, audio.x);
-            formData.append(`audio[${index}][y]`, audio.y);
-            formData.append(`audio[${index}][width]`, audio.width);
-            formData.append(`audio[${index}][height]`, audio.height);
-        });
+        fetch(`/pages/{{ $page->id }}`, { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Area berhasil disimpan!');
+                    setTimeout(() => location.reload(), 300);
+                } else {
+                    alert('❌ Gagal: ' + (data.message || 'Error'));
+                }
+            })
+            .catch(err => { console.error(err); alert('❌ Error: ' + err.message); });
+    };
 
-        fetch(`/pages/${pageId}`, {
-            method: 'PATCH',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json'
-            },
-            body: formData
-        })
-        .then(async response => {
-            const contentType = response.headers.get('content-type');
-            
-            if (!contentType || !contentType.includes('application/json')) {
-                // Response is not JSON (likely error page)
-                const text = await response.text();
-                console.error('Response is not JSON:', text.substring(0, 200));
-                throw new Error('Server mengembalikan response yang tidak valid (bukan JSON). Silakan cek console untuk detail error.');
-            }
-            
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.message || `Error ${response.status}: ${response.statusText}`);
-            }
-            
-            return data;
-        })
-        .then(data => {
-            if (data.success) {
-                alert('✅ Semua perubahan disimpan!\n\n' + data.message);
-                // Reload page to reflect changes
-                setTimeout(() => location.reload(), 500);
-            } else {
-                alert('❌ Gagal menyimpan: ' + (data.message || 'Kesalahan tidak diketahui'));
-            }
-        })
-        .catch(error => {
-            console.error('Save error:', error);
-            alert('❌ Error: ' + error.message);
-        });
-    }
-
+    loadExistingBoxes();
 });
-
 </script>
-
 @endpush

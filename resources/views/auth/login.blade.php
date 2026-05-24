@@ -23,7 +23,7 @@
     </div>
 
     <!-- RIGHT SIDE -->
-    <div class="w-1/2 bg-teal-700 flex items-center justify-center">
+    <div class="w-1/2 bg-blue-900 flex items-center justify-center">
 
         <div class="w-2/3 text-white">
 
@@ -67,7 +67,7 @@
                         type="email" 
                         name="email"
                         value="{{ old('email') }}"
-                        class="w-full p-3 rounded-lg text-black mt-1 focus:outline-none focus:ring-2 focus:ring-pink-300 {{ $errors->has('email') ? 'ring-2 ring-red-400' : '' }}"
+                        class="w-full p-3 rounded-lg text-black mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300 {{ $errors->has('email') ? 'ring-2 ring-red-400' : '' }}"
                         placeholder="user@gmail.com"
                         required
                         autofocus
@@ -81,7 +81,7 @@
                     <input 
                         type="password" 
                         name="password"
-                        class="w-full p-3 rounded-lg text-black mt-1 focus:outline-none focus:ring-2 focus:ring-pink-300 {{ $errors->has('password') ? 'ring-2 ring-red-400' : '' }}"
+                        class="w-full p-3 rounded-lg text-black mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300 {{ $errors->has('password') ? 'ring-2 ring-red-400' : '' }}"
                         placeholder="••••••••"
                         required
                     >
@@ -100,7 +100,7 @@
                 </div>
 
                 <!-- Button -->
-                <button type="submit" class="w-full py-3 rounded-lg bg-pink-600 hover:bg-pink-700 font-semibold transition-colors">
+                <button type="submit" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition-colors">
                     🔓 Masuk
                 </button>
 
