@@ -1,9 +1,10 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\BookController;
+use App\Http\Controllers\BukuController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PageController;
+use App\Http\Controllers\HalamanController;
+use App\Http\Controllers\AudioLatarController;
 
 Route::get('/', function () {
     return redirect('/login');
@@ -11,40 +12,40 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
 
-    Route::get('/dashboard', function () {
-        return redirect('/books');
-    })->name('dashboard');
+    Route::get('/dashboard', [BukuController::class, 'dashboard'])->name('dashboard');
 
-    Route::resource('books', BookController::class);
-    Route::get('/books-search', [BookController::class, 'search'])->name('books.search');
-    Route::patch('/books/{book}/status', [BookController::class, 'updateStatus'])->name('books.updateStatus');
+    Route::resource('buku', BukuController::class);
+    Route::get('/buku-search', [BukuController::class, 'search'])->name('buku.search');
+    Route::patch('/buku/{buku}/status', [BukuController::class, 'updateStatus'])->name('buku.updateStatus');
 
-    // Pages Management
-    Route::get('/pages-management', [PageController::class, 'management'])->name('pages.management');
-    Route::get('/pages/{page}', [PageController::class, 'show'])->name('pages.show');
-    Route::get('/pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
-    Route::patch('/pages/{page}', [PageController::class, 'update'])->name('pages.update');
-    Route::delete('/pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
+    // Halaman Management
+    Route::get('/halaman-management', [HalamanController::class, 'management'])->name('halaman.management');
+    Route::get('/halaman/{halaman}', [HalamanController::class, 'show'])->name('halaman.show');
+    Route::get('/halaman/{halaman}/edit', [HalamanController::class, 'edit'])->name('halaman.edit');
+    Route::patch('/halaman/{halaman}', [HalamanController::class, 'update'])->name('halaman.update');
+    Route::delete('/halaman/{halaman}', [HalamanController::class, 'destroy'])->name('halaman.destroy');
     
-    // Page Audio Management
-    Route::get('/pages/{page}/audio', [PageController::class, 'audioManagement'])->name('pages.audio');
-    Route::post('/pages/{page}/audio', [PageController::class, 'storeAudio'])->name('pages.storeAudio');
-    Route::delete('/audio/{audio}', [PageController::class, 'deleteAudio'])->name('audio.delete');
+    // Halaman Narasi Management
+    Route::post('/halaman/{halaman}/narasi', [HalamanController::class, 'storeNarasi'])->name('halaman.storeNarasi');
+    Route::delete('/halaman/{halaman}/narasi', [HalamanController::class, 'deleteNarasi'])->name('halaman.deleteNarasi');
     
-    // Bounding Box (Annotations)
-    Route::post('/bounding-boxes', [PageController::class, 'storeBoundingBox']);
-    Route::patch('/bounding-boxes/{box}', [PageController::class, 'updateBoundingBox']);
-    Route::delete('/bounding-boxes/{box}', [PageController::class, 'deleteBoundingBox']);
+    // Area Interaktif (Annotations)
+    Route::post('/area-interaktif', [HalamanController::class, 'storeAreaInteraktif'])->name('halaman.storeAreaInteraktif');
+    Route::patch('/area-interaktif/{area}', [HalamanController::class, 'updateAreaInteraktif'])->name('halaman.updateAreaInteraktif');
+    Route::delete('/area-interaktif/{area}', [HalamanController::class, 'deleteAreaInteraktif'])->name('halaman.deleteAreaInteraktif');
+    Route::post('/area-interaktif/{area}/audio', [HalamanController::class, 'storeAreaAudio'])->name('halaman.storeAreaAudio');
 
-    Route::post('/pages/narration', [PageController::class, 'storeNarration']);
-    Route::post('/pages/backsound', [PageController::class, 'storeBacksound']);
+    // Audio Latar
+    Route::get('/audio-latar', [AudioLatarController::class, 'index'])->name('audio-latar.index');
+    Route::post('/audio-latar', [AudioLatarController::class, 'store'])->name('audio-latar.store');
+    Route::delete('/audio-latar/{audioLatar}', [AudioLatarController::class, 'delete'])->name('audio-latar.delete');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::get('/api/books', [BookController::class, 'apiBooks']);
-Route::get('/api/books/{id}', [BookController::class, 'apiBookDetail']);
+Route::get('/api/buku', [BukuController::class, 'apiBooks']);
+Route::get('/api/buku/{id}', [BukuController::class, 'apiBookDetail']);
 
 require __DIR__.'/auth.php';

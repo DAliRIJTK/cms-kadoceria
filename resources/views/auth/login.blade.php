@@ -11,7 +11,7 @@
     <!-- LEFT SIDE -->
     <div class="w-1/2 flex flex-col items-center justify-center bg-white">
 
-        <img src="/logo.png" class="w-40 mb-6">
+        <img src="../../assets/logo-balai.png" class="w-40 mb-6">
 
         <h2 class="text-xl text-gray-700">
             Sistem Manajemen Konten Buku Dwibahasa
