@@ -12,12 +12,24 @@ class AreaInteraktif extends Model
 
     protected $fillable = [
         'id_halaman',
+        'label',
         'x',
         'y',
         'lebar_area',
         'panjang_area',
+        'x_pct',
+        'y_pct',
+        'w_pct',
+        'h_pct',
         'audio_indo',
-        'audio_sunda'
+        'audio_sunda',
+    ];
+
+    protected $casts = [
+        'x_pct' => 'float',
+        'y_pct' => 'float',
+        'w_pct' => 'float',
+        'h_pct' => 'float',
     ];
 
     public function halaman()

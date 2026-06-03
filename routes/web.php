@@ -24,11 +24,16 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/halaman/{halaman}/edit', [HalamanController::class, 'edit'])->name('halaman.edit');
     Route::patch('/halaman/{halaman}', [HalamanController::class, 'update'])->name('halaman.update');
     Route::delete('/halaman/{halaman}', [HalamanController::class, 'destroy'])->name('halaman.destroy');
-    
-    // Halaman Narasi Management
+    Route::post('/halaman-reorder', [HalamanController::class, 'reorder'])->name('halaman.reorder');
+
+    // Halaman Narasi
     Route::post('/halaman/{halaman}/narasi', [HalamanController::class, 'storeNarasi'])->name('halaman.storeNarasi');
     Route::delete('/halaman/{halaman}/narasi', [HalamanController::class, 'deleteNarasi'])->name('halaman.deleteNarasi');
-    
+
+    // Halaman Backsound (AudioLatar)
+    Route::patch('/halaman/{halaman}/backsound', [HalamanController::class, 'setBacksound'])->name('halaman.setBacksound');
+    Route::patch('/halaman/{halaman}/backsound/remove', [HalamanController::class, 'removeBacksound'])->name('halaman.removeBacksound');
+
     // Area Interaktif (Annotations)
     Route::post('/area-interaktif', [HalamanController::class, 'storeAreaInteraktif'])->name('halaman.storeAreaInteraktif');
     Route::patch('/area-interaktif/{area}', [HalamanController::class, 'updateAreaInteraktif'])->name('halaman.updateAreaInteraktif');

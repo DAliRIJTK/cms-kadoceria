@@ -59,6 +59,7 @@
 </div>
 
 @stack('scripts')
+<x-modal-scripts />
 
 </body>
 </html>

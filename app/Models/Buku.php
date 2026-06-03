@@ -17,6 +17,7 @@ class Buku extends Model
         'penulis',
         'ilustrator',
         'path_cover',
+        'original_pdf_name',
         'status_publikasi',
         'deskripsi_idn',
         'deskripsi_sn',

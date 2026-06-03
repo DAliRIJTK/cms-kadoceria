@@ -6,9 +6,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Halaman;
 use App\Models\AreaInteraktif;
+use App\Models\AudioLatar;
 use App\Models\Buku;
 
-class HalamanController
+class HalamanController extends Controller
 {
     // ── Halaman Management (list) ────────────────────────────────────────────
 
@@ -35,12 +36,12 @@ class HalamanController
 
         if ($request->filled('sort')) {
             switch ($request->sort) {
-                case 'halaman_asc':   $query->orderBy('nomor_halaman', 'asc');  break;
-                case 'halaman_desc':  $query->orderBy('nomor_halaman', 'desc'); break;
-                case 'date_newest':   $query->orderBy('created_at', 'desc');    break;
-                case 'date_oldest':   $query->orderBy('created_at', 'asc');     break;
-                case 'buku_asc':      $query->orderBy('id_buku', 'asc');        break;
-                default:              $query->orderBy('id_buku', 'asc')->orderBy('nomor_halaman', 'asc');
+                case 'halaman_asc':  $query->orderBy('nomor_halaman', 'asc');  break;
+                case 'halaman_desc': $query->orderBy('nomor_halaman', 'desc'); break;
+                case 'date_newest':  $query->orderBy('created_at', 'desc');    break;
+                case 'date_oldest':  $query->orderBy('created_at', 'asc');     break;
+                case 'buku_asc':     $query->orderBy('id_buku', 'asc');        break;
+                default:             $query->orderBy('id_buku', 'asc')->orderBy('nomor_halaman', 'asc');
             }
         }
 
@@ -54,13 +55,14 @@ class HalamanController
 
     public function edit(Halaman $halaman)
     {
-        $halaman->load(['areaInteraktif', 'buku']);
-        return view('halaman.edit', compact('halaman'));
+        $halaman->load(['areaInteraktif', 'buku', 'audioLatar']);
+        $allAudioLatar = AudioLatar::orderBy('nama_audio')->get();
+        return view('halaman.edit', compact('halaman', 'allAudioLatar'));
     }
 
     public function show(Halaman $halaman)
     {
-        $halaman->load(['buku', 'areaInteraktif']);
+        $halaman->load(['buku', 'areaInteraktif', 'audioLatar']);
         return view('halaman.show', compact('halaman'));
     }
 
@@ -69,8 +71,8 @@ class HalamanController
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'id_buku'    => 'required|exists:buku,id_buku',
-            'path_gambar'=> 'required|image',
+            'id_buku'     => 'required|exists:buku,id_buku',
+            'path_gambar' => 'required|image',
         ]);
 
         $path     = $request->file('path_gambar')->store('buku/halaman', 'public');
@@ -78,19 +80,19 @@ class HalamanController
 
         Halaman::create([
             'id_buku'       => $validated['id_buku'],
-            'nomor_halaman' => $lastPage + 1,
+            'nomor_halaman' => ($lastPage ?? 0) + 1,
             'path_gambar'   => $path,
         ]);
 
         return back()->with('success', 'Halaman berhasil ditambahkan');
     }
 
-    // ── Update (reorder / save annotations) ─────────────────────────────────
+    // ── Update ───────────────────────────────────────────────────────────────
 
     public function update(Request $request, Halaman $halaman)
     {
         try {
-            if ($request->has('nomor_halaman') && !$request->has('annotations')) {
+            if ($request->has('nomor_halaman')) {
                 $validated     = $request->validate(['nomor_halaman' => 'nullable|integer|min:1']);
                 $oldPageNumber = $halaman->nomor_halaman;
                 $newPageNumber = $validated['nomor_halaman'];
@@ -111,8 +113,6 @@ class HalamanController
 
                     $halaman->update(['nomor_halaman' => $newPageNumber]);
                 }
-
-                return back()->with('success', 'Halaman berhasil diperbarui');
             }
 
             return back()->with('success', 'Halaman berhasil diperbarui');
@@ -168,25 +168,43 @@ class HalamanController
         return response()->json(['success' => true]);
     }
 
+    // ── Backsound: set (atur AudioLatar) ─────────────────────────────────────
+
+    public function setBacksound(Request $request, Halaman $halaman)
+    {
+        $validated = $request->validate([
+            'id_audio_latar' => 'required|exists:audio_latar,id_audio_latar',
+        ]);
+
+        $halaman->update(['id_audio_latar' => $validated['id_audio_latar']]);
+
+        return back()->with('success', 'Backsound halaman berhasil diatur');
+    }
+
+    // ── Backsound: remove (lepas relasi, set null) ────────────────────────────
+
+    public function removeBacksound(Halaman $halaman)
+    {
+        $halaman->update(['id_audio_latar' => null]);
+
+        return back()->with('success', 'Backsound halaman berhasil dihapus');
+    }
+
     // ── Area Interaktif: store ───────────────────────────────────────────────
-    // Called via AJAX from the drag-and-drop canvas (JSON body).
-    // Stores percentage-based coordinates so overlays are resolution-independent.
 
     public function storeAreaInteraktif(Request $request)
     {
         $validated = $request->validate([
-            'id_halaman'  => 'required|exists:halaman,id_halaman',
-            'label'       => 'nullable|string|max:255',
-            // Percentage-based (used for responsive rendering)
-            'x_pct'       => 'required|numeric|min:0|max:100',
-            'y_pct'       => 'required|numeric|min:0|max:100',
-            'w_pct'       => 'required|numeric|min:0|max:100',
-            'h_pct'       => 'required|numeric|min:0|max:100',
-            // Pixel-based at render time (informational / legacy)
-            'x'           => 'nullable|integer',
-            'y'           => 'nullable|integer',
-            'lebar_area'  => 'nullable|integer|min:1',
-            'panjang_area'=> 'nullable|integer|min:1',
+            'id_halaman'   => 'required|exists:halaman,id_halaman',
+            'label'        => 'nullable|string|max:255',
+            'x_pct'        => 'required|numeric|min:0|max:100',
+            'y_pct'        => 'required|numeric|min:0|max:100',
+            'w_pct'        => 'required|numeric|min:0|max:100',
+            'h_pct'        => 'required|numeric|min:0|max:100',
+            'x'            => 'nullable|integer',
+            'y'            => 'nullable|integer',
+            'lebar_area'   => 'nullable|integer|min:1',
+            'panjang_area' => 'nullable|integer|min:1',
         ]);
 
         try {
@@ -251,7 +269,6 @@ class HalamanController
     }
 
     // ── Area Interaktif: upload audio ────────────────────────────────────────
-    // Route: POST halaman/area/{area}/audio  (halaman.storeAreaAudio)
 
     public function storeAreaAudio(Request $request, AreaInteraktif $area)
     {
@@ -263,12 +280,11 @@ class HalamanController
         try {
             $field = 'audio_' . $validated['audio_type'];
 
-            // Delete old file if exists
             if ($area->$field && Storage::disk('public')->exists($area->$field)) {
                 Storage::disk('public')->delete($area->$field);
             }
 
-            $path      = $request->file('audio_file')->store('buku/audio', 'public');
+            $path       = $request->file('audio_file')->store('buku/audio', 'public');
             $area->$field = $path;
             $area->save();
 
@@ -280,12 +296,11 @@ class HalamanController
     }
 
     // ── Narasi Halaman: store ────────────────────────────────────────────────
-    // Handles indo, sunda, AND backsound types.
 
     public function storeNarasi(Request $request, Halaman $halaman)
     {
         $validated = $request->validate([
-            'narasi_type' => 'required|in:indo,sunda,backsound',
+            'narasi_type' => 'required|in:indo,sunda',
             'audio_file'  => 'required|file|mimes:mp3,wav,ogg,m4a|max:10240',
         ]);
 
@@ -294,7 +309,6 @@ class HalamanController
 
             switch ($validated['narasi_type']) {
                 case 'indo':
-                    // Delete old
                     if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
                         Storage::disk('public')->delete($halaman->narasi_indo);
                     }
@@ -308,14 +322,6 @@ class HalamanController
                     }
                     $halaman->narasi_sunda = $path;
                     $message = 'Narasi Sunda berhasil diunggah';
-                    break;
-
-                case 'backsound':
-                    if ($halaman->backsound && Storage::disk('public')->exists($halaman->backsound)) {
-                        Storage::disk('public')->delete($halaman->backsound);
-                    }
-                    $halaman->backsound = $path;
-                    $message = 'Backsound halaman berhasil diunggah';
                     break;
             }
 
@@ -334,9 +340,8 @@ class HalamanController
             $type = $request->input('narasi_type');
 
             $fieldMap = [
-                'indo'      => ['field' => 'narasi_indo',  'label' => 'Narasi Indonesia'],
-                'sunda'     => ['field' => 'narasi_sunda', 'label' => 'Narasi Sunda'],
-                'backsound' => ['field' => 'backsound',    'label' => 'Backsound'],
+                'indo'  => ['field' => 'narasi_indo',  'label' => 'Narasi Indonesia'],
+                'sunda' => ['field' => 'narasi_sunda', 'label' => 'Narasi Sunda'],
             ];
 
             if (!isset($fieldMap[$type])) {
