@@ -34,14 +34,13 @@ ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Membuat script start-container baris demi baris
 RUN echo "#!/bin/bash" > /usr/local/bin/start-container && \
     echo "php artisan config:clear" >> /usr/local/bin/start-container && \
     echo "php artisan cache:clear" >> /usr/local/bin/start-container && \
     echo "php artisan migrate --force" >> /usr/local/bin/start-container && \
+    echo "chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache" >> /usr/local/bin/start-container && \
     echo "apache2-foreground" >> /usr/local/bin/start-container
 
 RUN chmod +x /usr/local/bin/start-container
 
-# Menginstruksikan Docker untuk mengeksekusi script tersebut
 CMD ["start-container"]
