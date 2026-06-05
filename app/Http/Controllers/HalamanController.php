@@ -362,4 +362,13 @@ class HalamanController extends Controller
             return back()->withErrors(['delete' => 'Gagal menghapus: ' . $e->getMessage()]);
         }
     }
+
+    public function flipbook(Buku $buku)
+    {
+        $buku->load(['halaman' => function ($q) {
+            $q->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman');
+        }]);
+
+        return view('halaman.flipbook', compact('buku'));
+    }
 }

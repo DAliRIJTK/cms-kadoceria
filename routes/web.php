@@ -39,6 +39,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/area-interaktif/{area}', [HalamanController::class, 'updateAreaInteraktif'])->name('halaman.updateAreaInteraktif');
     Route::delete('/area-interaktif/{area}', [HalamanController::class, 'deleteAreaInteraktif'])->name('halaman.deleteAreaInteraktif');
     Route::post('/area-interaktif/{area}/audio', [HalamanController::class, 'storeAreaAudio'])->name('halaman.storeAreaAudio');
+    Route::get('/flipbook/{buku}', [HalamanController::class, 'flipbook'])->name('halaman.flipbook');
 
     // Audio Latar
     Route::get('/audio-latar', [AudioLatarController::class, 'index'])->name('audio-latar.index');
