@@ -52,5 +52,8 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('/api/buku', [BukuController::class, 'apiBooks']);
 Route::get('/api/buku/{id}', [BukuController::class, 'apiBookDetail']);
+Route::get('/api/get/dataInformasiBuku', [BukuController::class, 'apiDataInformasiBuku']);
+Route::get('/api/get/kontenBuku', [BukuController::class, 'apiKontenBuku']);
+Route::get('/api/get/detailBuku', [BukuController::class, 'apiDetailBuku']);
 
 require __DIR__.'/auth.php';
