@@ -29,6 +29,19 @@
     </div>
 </div>
 
+{{-- Error/Success Alerts --}}
+@if($errors->has('publication'))
+    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        {{ $errors->first('publication') }}
+    </div>
+@endif
+
+@if(session('success'))
+    <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+        {{ session('success') }}
+    </div>
+@endif
+
 {{-- Info Card + Cover --}}
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
     <div class="lg:col-span-3">
@@ -82,7 +95,7 @@
                 </a>
 
                 <form action="{{ route('buku.destroy', $buku->id_buku) }}" method="POST" class="inline"
-                      onsubmit="return confirm('Apakah Anda yakin ingin menghapus buku ini?');">
+                      onsubmit="return confirm('Apakah Anda yakin ingin menghapus buku ini? Tindakan ini tidak dapat dibatalkan.');">
                     @csrf
                     @method('DELETE')
                     <button type="submit"
@@ -92,16 +105,24 @@
                 </form>
 
                 @if($buku->status_publikasi === 'Draft')
+                    {{-- Tombol Publikasikan --}}
                     <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="inline"
-                          onsubmit="return confirm('Publikasikan buku ini?');">
+                          onsubmit="return confirm('Publikasikan buku ini? Buku akan dapat diunduh oleh pengguna aplikasi.');">
                         @csrf
                         @method('PATCH')
                         <input type="hidden" name="status_publikasi" value="Terbit">
                         <button type="submit"
                                 class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                            Publikasikan
+                            🚀 Publikasikan
                         </button>
                     </form>
+                @else
+                    {{-- Tombol Kembalikan ke Draft --}}
+                    <button
+                        onclick="document.getElementById('modal-unpublish').classList.remove('hidden')"
+                        class="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
+                        📋 Kembalikan ke Draft
+                    </button>
                 @endif
             </div>
         </div>
@@ -117,6 +138,25 @@
             <div class="w-full aspect-[3/4] bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
                 <span class="text-gray-400 text-sm">Tidak ada cover</span>
             </div>
+        @endif
+
+        {{-- Info ZIP bundle jika sudah terbit --}}
+        @if($buku->status_publikasi === 'Terbit' && !empty($buku->zip_bundle_path))
+            @php
+                $zipAbs  = storage_path('app/public/' . $buku->zip_bundle_path);
+                $zipSize = file_exists($zipAbs) ? round(filesize($zipAbs) / 1048576, 1) . ' MB' : null;
+            @endphp
+            @if($zipSize)
+                <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                    <p class="text-xs text-green-700 font-semibold">📦 Bundle tersedia</p>
+                    <p class="text-xs text-green-600 mt-0.5">{{ $zipSize }}</p>
+                    <a href="{{ asset('storage/' . $buku->zip_bundle_path) }}"
+                       class="mt-2 inline-block text-xs text-green-700 underline hover:text-green-900"
+                       target="_blank">
+                        Unduh ZIP
+                    </a>
+                </div>
+            @endif
         @endif
     </div>
 </div>
@@ -140,5 +180,48 @@
         </div>
     @endif
 </div>
+
+{{-- Modal Konfirmasi Kembalikan ke Draft --}}
+<div id="modal-unpublish" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onclick="event.stopPropagation()">
+        <div class="flex items-start gap-4 mb-5">
+            <div class="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-xl">
+                ⚠️
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-gray-900 mb-1">Kembalikan ke Draft?</h3>
+                <p class="text-sm text-gray-600">
+                    Buku <strong>{{ $buku->judul_idn }}</strong> akan disembunyikan dari aplikasi Flutter dan tidak bisa diunduh pengguna hingga dipublikasikan kembali.
+                </p>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button
+                onclick="document.getElementById('modal-unpublish').classList.add('hidden')"
+                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors">
+                Batal
+            </button>
+
+            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="inline">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status_publikasi" value="Draft">
+                <input type="hidden" name="confirm_unpublish" value="yes">
+                <button type="submit"
+                        class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
+                    Ya, Kembalikan ke Draft
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Tutup modal jika klik backdrop --}}
+<script>
+    document.getElementById('modal-unpublish').addEventListener('click', function (e) {
+        if (e.target === this) this.classList.add('hidden');
+    });
+</script>
 
 @endsection
