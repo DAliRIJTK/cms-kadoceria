@@ -5,15 +5,21 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Buku;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
+use App\Models\Halaman;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Spatie\PdfToImage\Pdf;
 
 class BukuController extends Controller
 {
-    public function index(Request $request)
+
+    public function index()
     {
-        $buku = Buku::orderBy('created_at', 'desc')->get();
+        $buku = Buku::withCount('halaman')
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+
         return view('dashboard', compact('buku'));
     }
 
@@ -24,172 +30,156 @@ class BukuController extends Controller
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'judul_idn'       => 'required|string|max:255',
-            'judul_sn'        => 'required|string|max:255',
-            'penulis'         => 'required|string|max:100',
-            'ilustrator'      => 'nullable|string|max:100',
-            'deskripsi_idn'   => 'nullable|string',
-            'deskripsi_sn'    => 'nullable|string',
-            'warna_primer'    => 'nullable|string|max:7',
-            'warna_sekunder'  => 'nullable|string|max:7',
-            'file_buku'       => 'required|file|mimes:pdf|max:51200', 
+        $request->validate([
+            'judul_idn'     => 'required|string|max:255',
+            'judul_sn'      => 'required|string|max:255',
+            'penulis'       => 'required|string|max:100',
+            'ilustrator'    => 'nullable|string|max:100',
+            'deskripsi_idn' => 'nullable|string',
+            'deskripsi_sn'  => 'nullable|string',
+            'file_buku'     => 'required|file|mimes:pdf|max:51200',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        return DB::transaction(function () use ($request) {
+            $file = $request->file('file_buku');
+            $folderName = Str::slug($request->judul_idn, '_');
+
+            $pdfPath = $file->storeAs("books/{$folderName}", "mentahan_{$folderName}.pdf", 'public');
+
+        $buku = Buku::create([
+            'id_pengelola'     => auth()->id(),
+            'judul_idn'        => $request->judul_idn,
+            'judul_sn'         => $request->judul_sn,
+            'penulis'          => $request->penulis,
+            'ilustrator'       => $request->ilustrator,
+            'deskripsi_idn'    => $request->deskripsi_idn,
+            'deskripsi_sn'     => $request->deskripsi_sn,
+            'nama_folder'      => $folderName,
+            'status_publikasi' => 'Draft',
+        ]);
+
+        $buku = Buku::findOrFail($request->id_buku);
+
+        if ($buku->status_publikasi === 'Published') {
+            return redirect()->route('dashboard')->with('error', 'Buku telah dipublikasikan. Ubah status menjadi Draft terlebih dahulu.');
+        }
+
+        $sudahAdaHalaman = Halaman::where('id_buku', $buku->id_buku)->exists();
+        if ($sudahAdaHalaman) {
+            return redirect()->route('buku.halaman.index', $buku->id_buku)->with('info', 'Buku ini sudah memiliki halaman hasil konversi.');
+        }
+
+        $relativePdfPath = "books/{$buku->nama_folder}/mentahan_{$buku->nama_folder}.pdf";
+        $absolutePdfPath = Storage::disk('public')->path($relativePdfPath);
+
+        if (!file_exists($absolutePdfPath)) {
+            return redirect()->route('dashboard')->with('error', 'Berkas mentahan PDF tidak ditemukan di sistem penyimpanan.');
         }
 
         try {
-            if ($request->hasFile('file_buku')) {
-                $file = $request->file('file_buku');
-                $folderName = Str::slug($request->judul_idn, '_');
-                
-                $pdfPath = $file->storeAs("books/{$folderName}", "mentahan_{$folderName}.pdf", 'public');
+            $pdf = new Pdf($absolutePdfPath);
+            $jumlahHalaman = $pdf->pageCount();
+            $storageDir = 'buku_' . $buku->id_buku;
+
+            if (!Storage::disk('public')->exists($storageDir)) {
+                Storage::disk('public')->makeDirectory($storageDir);
             }
 
-            $buku = Buku::create([
-                'id_pengelola'     => $request->user()->id_pengelola ?? 1,
-                'judul_idn'        => $request->judul_idn,
-                'judul_sn'         => $request->judul_sn,
-                'nama_folder'      => $folderName ?? null,
-                'penulis'          => $request->penulis,
-                'ilustrator'       => $request->ilustrator,
-                'deskripsi_idn'    => $request->deskripsi_idn,
-                'deskripsi_sn'     => $request->deskripsi_sn,
-                'warna_primer'     => $request->warna_primer,
-                'warna_sekunder'   => $request->warna_sekunder,
-                'status_publikasi' => 'Draft'
-            ]);
+            for ($i = 1; $i <= $jumlahHalaman; $i++) {
+                $namaFileGambar = 'halaman_' . $i . '.webp';
+                $relativeImagePath = $storageDir . '/' . $namaFileGambar;
+                $absoluteImagePath = Storage::disk('public')->path($relativeImagePath);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Buku berhasil ditambahkan dan proses konversi halaman dimulai.',
-                'data' => $buku
-            ], 201);
+                $pdf->selectPage($i)
+                    ->format(\Spatie\PdfToImage\Enums\OutputFormat::Webp)
+                    ->save($absoluteImagePath);
+
+                list($width, $height) = getimagesize($absoluteImagePath);
+
+                Halaman::create([
+                    'id_buku'         => $buku->id_buku,
+                    'nomor_halaman'   => $i,
+                    'path_gambar'     => $relativeImagePath,
+                    'panjang_halaman' => $height,
+                    'lebar_halaman'   => $width,
+                ]);
+            }
+
+            return redirect()->route('buku.halaman.index', $buku->id_buku)
+                             ->with('success', 'PDF Berhasil dikonversi menjadi ' . $jumlahHalaman . ' halaman gambar digital!');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Gagal memproses berkas buku cerita digital: ' . $e->getMessage()
-            ], 500);
+            return redirect()->route('dashboard')->with('error', 'Gagal mengekstrak halaman PDF otomatis: ' . $e->getMessage());
         }
+
+        });
     }
 
-    public function show($id)
+    public function show($id_buku)
     {
-        $buku = Buku::find($id);
+        $buku = Buku::withCount(['halaman', 'halaman as halaman_lengkap' => function($query) {
+            $query->whereNotNull('narasi_indo')
+                  ->whereNotNull('narasi_sunda')
+                  ->whereNotNull('id_audio_latar');
+        }])->findOrFail($id_buku);
 
-        if (!$buku) {
-            return response()->json(['message' => 'Buku tidak ditemukan'], 404);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Detail Informasi Buku',
-            'data' => $buku
-        ], 200);
+        return view('buku.show', compact('buku'));
     }
 
-    public function update(Request $request, $id)
-    {
-        $buku = Buku::find($id);
-
-        if (!$buku) {
-            return response()->json(['message' => 'Buku tidak ditemukan'], 404);
-        }
-
-        if ($buku->status_publikasi === 'Published') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Gagal memperbarui data. Buku yang telah dipublikasi harus ditarik (diubah ke Draft) terlebih dahulu.'
-            ], 422);
-        }
-
-        $buku->update($request->all());
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Informasi buku berhasil diperbarui',
-            'data' => $buku
-        ], 200);
-    }
-
-    public function destroy($id)
-    {
-        $buku = Buku::find($id);
-
-        if (!$buku) {
-            return response()->json(['message' => 'Buku tidak ditemukan'], 404);
-        }
-
-        $buku->delete();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Buku berhasil dihapus dari sistem'
-        ], 200);
-    }
-
-    public function preview($id)
-    {
-
-        $buku = Buku::with([
-            'halaman' => function($query) {
-                $query->orderBy('nomor_halaman', 'asc');
-            },
-            'halaman.audioLatar', 
-            'halaman.areaInteraktif'
-        ])->find($id);
-
-        if (!$buku) {
-            return response()->json(['message' => 'Buku tidak ditemukan'], 404);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Data pratinjau flipbook interaktif berhasil dimuat',
-            'data' => $buku
-        ], 200);
-    }
-
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, $id_buku)
     {
         $request->validate([
             'status_publikasi' => 'required|in:Draft,Published'
         ]);
 
-        $buku = Buku::with('halaman')->find($id);
-        
-        if (!$buku) {
-            return response()->json(['message' => 'Buku tidak ditemukan'], 404);
-        }
+        $buku = Buku::findOrFail($id_buku);
 
         if ($request->status_publikasi === 'Published') {
-            
-            if ($buku->halaman->isEmpty()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Gagal mempublikasikan buku. Setiap buku minimal harus memiliki 1 halaman sebagai cover buku.'
-                ], 422);
-            }
+            $adaHalamanBelumLengkap = Halaman::where('id_buku', $id_buku)
+                ->where(function($query) {
+                    $query->whereNull('narasi_indo')
+                          ->orWhereNull('narasi_sunda')
+                          ->orWhereNull('id_audio_latar');
+                })->exists();
 
-            foreach ($buku->halaman as $hal) {
-                if (empty($hal->narasi_indo) || empty($hal->narasi_sunda) || is_null($hal->id_audio_latar)) {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => "Gagal mempublikasikan buku. Halaman nomor {$hal->nomor_halaman} belum memenuhi standar minimum syarat publikasi (Wajib memiliki audio narasi dua bahasa dan audio latar)."
-                    ], 422);
-                }
+            if ($adaHalamanBelumLengkap) {
+                return back()->with('error', 'Gagal mempublikasikan. Pastikan semua halaman sudah dilengkapi file narasi dan audio latarnya.');
             }
         }
 
         $buku->update(['status_publikasi' => $request->status_publikasi]);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Status publikasi berhasil diubah menjadi ' . $request->status_publikasi,
-            'data' => $buku
-        ], 200);
+        return back()->with('success', 'Status publikasi berhasil diubah menjadi ' . $request->status_publikasi);
+    }
+
+    public function preview($id_buku)
+    {
+        $buku = Buku::with([
+            'halaman' => fn($q) => $q->orderBy('nomor_halaman'),
+            'halaman.audioLatar',
+            'halaman.areaInteraktif'
+        ])->findOrFail($id_buku);
+
+        return view('buku.preview', compact('buku'));
+    }
+
+    public function destroy($id_buku)
+    {
+        $buku = Buku::findOrFail($id_buku);
+
+        try {
+
+            if ($buku->nama_folder) {
+                Storage::disk('public')->deleteDirectory("books/{$buku->nama_folder}");
+            }
+
+            Storage::disk('public')->deleteDirectory("buku_{$buku->id_buku}");
+
+            $buku->delete();
+
+            return redirect()->route('dashboard')->with('success', 'Buku beserta seluruh aset file di dalamnya berhasil dihapus bersih.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal menghapus buku: ' . $e->getMessage());
+        }
     }
 }

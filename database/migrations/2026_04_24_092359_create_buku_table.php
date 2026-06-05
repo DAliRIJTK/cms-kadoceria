@@ -12,9 +12,10 @@ return new class extends Migration {
             $table->unsignedBigInteger('id_pengelola');
             $table->string('judul_idn', 255)->nullable();
             $table->string('judul_sn', 255)->nullable();
+            $table->string('nama_folder', 255)->nullable();
             $table->string('penulis', 100)->nullable();
             $table->string('ilustrator', 100)->nullable();
-            $table->string('path_cover', 255)->nullable();  // Penyesuaian dari "coverImagePath" di JSON
+            $table->string('path_cover', 255)->nullable();
             $table->string('status_publikasi', 50)->default('Draft'); // Mengakomodasi BR-02, BR-16, FR-23
             $table->text('deskripsi_idn')->nullable();
             $table->text('deskripsi_sn')->nullable();

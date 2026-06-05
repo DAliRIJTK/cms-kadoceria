@@ -38,4 +38,11 @@ class Halaman extends Model
     {
         return $this->hasMany(AreaInteraktif::class, 'id_halaman', 'id_halaman');
     }
+
+    public function isMultimediaComplete()
+    {
+        return !empty($this->narasi_indo) && 
+            !empty($this->narasi_sunda) && 
+            !is_null($this->id_audio_latar);
+    }
 }

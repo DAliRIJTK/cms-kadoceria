@@ -11,12 +11,17 @@ use Illuminate\Support\Facades\Validator;
 
 class AreaInteraktifController extends Controller
 {
-
+    /**
+     * Mengambil semua area interaktif pada satu halaman
+     */
     public function index($id_halaman)
     {
         $halaman = Halaman::find($id_halaman);
         if (!$halaman) {
-            return response()->json(['message' => 'Halaman tidak ditemukan'], 404);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Halaman tidak ditemukan'
+            ], 404);
         }
 
         $area = AreaInteraktif::where('id_halaman', $id_halaman)->get();
@@ -28,17 +33,23 @@ class AreaInteraktifController extends Controller
         ], 200);
     }
 
+    /**
+     * Menyimpan Area Interaktif Baru
+     */
     public function store(Request $request, $id_halaman)
     {
         $halaman = Halaman::with('buku')->find($id_halaman);
         if (!$halaman) {
-            return response()->json(['message' => 'Halaman tidak ditemukan'], 404);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Halaman tidak ditemukan'
+            ], 404);
         }
 
         if ($halaman->buku->status_publikasi === 'Published') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal menambah data. Buku terkait telah dipublikasikan, silakan tarik kembali ke Draft (BR-16).'
+                'message' => 'Gagal menambah data. Buku terkait telah dipublikasikan, silakan tarik kembali ke Draft.'
             ], 422);
         }
 
@@ -47,14 +58,19 @@ class AreaInteraktifController extends Controller
             'y'            => 'required|integer|min:0',
             'lebar_area'   => 'required|integer|min:1',
             'panjang_area' => 'required|integer|min:1',
-            'audio_indo'   => 'required|file|mimes:m4a,wav,mp3,mpga|max:1024', 
-            'audio_sunda'  => 'required|file|mimes:m4a,wav,mp3,mpga|max:1024',
+            'audio_indo'   => 'required|file|mimes:m4a,wav,mp3,mpga|max:2048', 
+            'audio_sunda'  => 'required|file|mimes:m4a,wav,mp3,mpga|max:2048',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
+        // Validasi Resolusi Kanvas Koordinat
         $maxW = $halaman->lebar_halaman ?? 2000; 
         $maxH = $halaman->panjang_halaman ?? 2000;
 
@@ -95,18 +111,24 @@ class AreaInteraktifController extends Controller
         }
     }
 
+    /**
+     * Memperbarui Data Area Interaktif
+     */
     public function update(Request $request, $id_area)
     {
         $area = AreaInteraktif::with('halaman.buku')->find($id_area);
 
         if (!$area) {
-            return response()->json(['message' => 'Area interaktif tidak ditemukan'], 404);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Area interaktif tidak ditemukan'
+            ], 404);
         }
 
         if ($area->halaman->buku->status_publikasi === 'Published') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal memperbarui data. Buku terkait telah dipublikasikan, silakan tarik kembali ke Draft (BR-16).'
+                'message' => 'Gagal memperbarui data. Buku terkait telah dipublikasikan, silakan tarik kembali ke Draft.'
             ], 422);
         }
 
@@ -115,12 +137,16 @@ class AreaInteraktifController extends Controller
             'y'            => 'nullable|integer|min:0',
             'lebar_area'   => 'nullable|integer|min:1',
             'panjang_area' => 'nullable|integer|min:1',
-            'audio_indo'   => 'nullable|file|mimes:m4a,wav,mp3,mpga|max:1024',
-            'audio_sunda'  => 'nullable|file|mimes:m4a,wav,mp3,mpga|max:1024',
+            'audio_indo'   => 'nullable|file|mimes:m4a,wav,mp3,mpga|max:2048',
+            'audio_sunda'  => 'nullable|file|mimes:m4a,wav,mp3,mpga|max:2048',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         $finalX = $request->has('x') ? $request->x : $area->x;
@@ -177,13 +203,16 @@ class AreaInteraktifController extends Controller
         $area = AreaInteraktif::with('halaman.buku')->find($id_area);
 
         if (!$area) {
-            return response()->json(['message' => 'Area interaktif tidak ditemukan'], 404);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Area interaktif tidak ditemukan'
+            ], 404);
         }
 
         if ($area->halaman->buku->status_publikasi === 'Published') {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Gagal menghapus data. Buku terkait telah dipublikasikan, silakan tarik kembali ke Draft (BR-16).'
+                'message' => 'Gagal menghapus data. Buku terkait telah dipublikasikan, silakan tarik kembali ke Draft.'
             ], 422);
         }
 
@@ -192,9 +221,6 @@ class AreaInteraktifController extends Controller
                 Storage::disk('public')->delete($area->audio_indo);
             }
 
-            if ($area->audio_sunda && Storage::disk('public')->exists($area->audio_sunda)) {
-                Storage::disk('public')->delete($area->audio_sunda);
-            }
             if ($area->audio_sunda && Storage::disk('public')->exists($area->audio_sunda)) {
                 Storage::disk('public')->delete($area->audio_sunda);
             }

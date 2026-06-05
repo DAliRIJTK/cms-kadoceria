@@ -13,7 +13,7 @@ class Pengelola extends Authenticatable
     protected $table = 'pengelola';
     protected $primaryKey = 'id_pengelola';
     
-    protected $fillable = ['nama_pengelola', 'username', 'password'];
+    protected $fillable = ['username', 'password'];
     protected $hidden = ['password'];
 
     public function buku()

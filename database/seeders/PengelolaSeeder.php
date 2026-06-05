@@ -11,7 +11,6 @@ class PengelolaSeeder extends Seeder
     public function run(): void
     {
         Pengelola::create([
-            'nama_pengelola' => 'Ali',
             'username' => 'admin',
             'password' => Hash::make('admin123') 
         ]);

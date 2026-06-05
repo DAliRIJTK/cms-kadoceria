@@ -9,7 +9,6 @@ return new class extends Migration {
     {
         Schema::create('pengelola', function (Blueprint $table) {
             $table->id('id_pengelola');
-            $table->string('nama_pengelola', 100);
             $table->string('username', 100)->unique();
             $table->string('password');
             $table->timestamps();
