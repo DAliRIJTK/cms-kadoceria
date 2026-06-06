@@ -37,8 +37,8 @@ return new class extends Migration
             $table->string('status_publikasi', 50)->default('Draft');
             $table->text('deskripsi_idn')->nullable();
             $table->text('deskripsi_sn')->nullable();
-            $table->string('warna_primer', 7)->nullable();
-            $table->string('warna_sekunder', 7)->nullable();
+            $table->string('warna_primer', 20)->nullable();
+            $table->string('warna_sekunder', 20)->nullable();
             $table->timestamps();
 
             $table->foreign('id_pengelola')
