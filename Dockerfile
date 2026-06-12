@@ -1,7 +1,15 @@
-# Menggunakan image dasar PHP 8.2 yang sudah dilengkapi Apache web server
-FROM php:8.4-apache
+# STAGE 1: Frontend Build (Node.js)
+FROM node:20 AS frontend
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Menginstal modul-modul sistem Linux yang dibutuhkan oleh Laravel dan PostgreSQL
+# STAGE 2: Backend Setup (PHP 8.3 Apache)
+FROM php:8.3-apache
+
+# 1. Instal dependensi sistem Linux, PostgreSQL, Ghostscript, dan MagickWand
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
@@ -9,31 +17,43 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libpq-dev \
-    && docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd
+    ghostscript \
+    libmagickwand-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Mengaktifkan fitur mod_rewrite pada Apache agar URL Laravel berjalan mulus
+# 2. Instal ekstensi PHP native
+RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd
+
+# 3. Instal dan aktifkan ekstensi Imagick via PECL
+RUN pecl install imagick \
+    && docker-php-ext-enable imagick
+
+# 4. FIX KRITIKAL: Ubah policy ImageMagick agar diizinkan membaca & menulis PDF
+RUN sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true
+
+# Aktifkan mod_rewrite Apache
 RUN a2enmod rewrite
-
-# Menentukan folder kerja di dalam container
 WORKDIR /var/www/html
 
-# Menyalin seluruh file dari repositori GitHub-mu ke dalam container
+# Salin seluruh source code
 COPY . .
 
-# Mengambil program Composer (Package manager untuk PHP)
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Salin hasil build Vite dari Stage 1
+COPY --from=frontend /app/public/build ./public/build
 
-# Menjalankan instalasi dependensi Laravel
+# Instal dependensi Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-# Memberikan hak akses agar Laravel bisa menulis ke folder storage dan cache
+# Atur perizinan (Hak akses mutlak diperlukan Imagick untuk menulis .webp ke /storage)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Mengubah pengaturan Apache agar langsung membaca folder /public milik Laravel
+# Atur Document Root Apache ke /public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+# Skrip entrypoint container
 RUN echo "#!/bin/bash" > /usr/local/bin/start-container && \
     echo "php artisan config:clear" >> /usr/local/bin/start-container && \
     echo "php artisan cache:clear" >> /usr/local/bin/start-container && \
@@ -42,5 +62,4 @@ RUN echo "#!/bin/bash" > /usr/local/bin/start-container && \
     echo "apache2-foreground" >> /usr/local/bin/start-container
 
 RUN chmod +x /usr/local/bin/start-container
-
 CMD ["start-container"]
