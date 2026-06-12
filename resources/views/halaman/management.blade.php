@@ -8,7 +8,6 @@
     </a>
 </div>
 
-{{-- Header --}}
 <div class="mb-8">
     <h1 class="text-3xl font-bold text-gray-900">Kelola Halaman</h1>
     <p class="text-gray-500 mt-1">Kelola semua halaman dari buku cerita dwibahasa</p>
@@ -25,7 +24,6 @@
         </a>
     </div>
 @else
-    {{-- Toast notifikasi reorder --}}
     <div id="reorderToast" class="hidden fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all"></div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -46,16 +44,23 @@
 
                 <tbody id="sortableBody" class="divide-y divide-gray-100">
                     @foreach($halaman as $page)
-                        <tr class="hover:bg-gray-50 transition-colors sortable-row"
-                            data-id="{{ $page->id_halaman }}">
+                        @php
+                            $audioAreaIndo  = $page->areaInteraktif->whereNotNull('audio_indo')->count();
+                            $audioAreaSunda = $page->areaInteraktif->whereNotNull('audio_sunda')->count();
+                            $audioCount = ($page->narasi_indo    ? 1 : 0)
+                                        + ($page->narasi_sunda   ? 1 : 0)
+                                        + ($page->id_audio_latar ? 1 : 0)
+                                        + $audioAreaIndo
+                                        + $audioAreaSunda;
+                            $anotasiCount = $page->areaInteraktif->count();
+                        @endphp
+
+                        <tr class="hover:bg-gray-50 transition-colors sortable-row" data-id="{{ $page->id_halaman }}">
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    {{-- Drag handle --}}
                                     <span class="drag-handle text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none text-lg leading-none" title="Seret untuk mengubah urutan">⠿</span>
-                                    <div>
-                                        <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
-                                    </div>
+                                    <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
                                 </div>
                             </td>
 
@@ -82,24 +87,29 @@
                                 @endif
                             </td>
 
-                            {{-- Anotasi --}}
                             <td class="px-4 py-4 whitespace-nowrap">
-                                @php $anotasiCount = $page->areaInteraktif()->count(); @endphp
                                 <span class="inline-flex items-center justify-center w-8 h-7 rounded-full text-xs font-bold
                                     {{ $anotasiCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-orange-50 text-orange-400' }}">
                                     {{ $anotasiCount }}
                                 </span>
                             </td>
 
-                            {{-- Audio: narasi_indo + narasi_sunda + backsound (id_audio_latar) --}}
                             <td class="px-4 py-4 whitespace-nowrap">
                                 @php
-                                    $audioCount = ($page->narasi_indo ? 1 : 0)
-                                               + ($page->narasi_sunda ? 1 : 0)
-                                               + ($page->id_audio_latar ? 1 : 0);
+                                    $tooltipParts = [
+                                        'Narasi ID: '    . ($page->narasi_indo    ? '✓' : '✗'),
+                                        'Narasi Sunda: ' . ($page->narasi_sunda   ? '✓' : '✗'),
+                                        'Backsound: '    . ($page->id_audio_latar ? '✓' : '✗'),
+                                        'Audio Area ID: '    . $audioAreaIndo,
+                                        'Audio Area Sunda: ' . $audioAreaSunda,
+                                    ];
+                                    $tooltip = implode(' | ', $tooltipParts);
                                 @endphp
-                                <span class="inline-flex items-center justify-center w-8 h-7 rounded-full text-xs font-bold
-                                    {{ $audioCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-orange-50 text-orange-400' }}">
+                                <span
+                                    class="inline-flex items-center justify-center w-8 h-7 rounded-full text-xs font-bold cursor-default
+                                        {{ $audioCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-blue-50 text-blue-400' }}"
+                                    title="{{ $tooltip }}"
+                                >
                                     {{ $audioCount }}
                                 </span>
                             </td>
@@ -161,7 +171,6 @@
 </div>
 
 <script>
-// ── Image modal ───────────────────────────────────────────────────────────────
 function showImageModal(src, title) {
     document.getElementById('imageModalImage').src = src;
     document.getElementById('imageModalTitle').textContent = title;
@@ -175,7 +184,6 @@ function closeImageModal() {
     modal.classList.remove('flex');
 }
 
-// ── Drag-and-drop reorder ─────────────────────────────────────────────────────
 (function () {
     const tbody = document.getElementById('sortableBody');
     if (!tbody) return;
@@ -183,17 +191,13 @@ function closeImageModal() {
     let dragRow = null;
     let placeholder = null;
 
-    // Hanya aktifkan drag dari handle
     tbody.addEventListener('mousedown', function (e) {
         const handle = e.target.closest('.drag-handle');
         if (!handle) return;
-
         dragRow = handle.closest('tr');
         if (!dragRow) return;
-
         e.preventDefault();
 
-        // Buat placeholder transparan setinggi baris asli
         placeholder = document.createElement('tr');
         placeholder.style.height = dragRow.offsetHeight + 'px';
         placeholder.style.background = '#eff6ff';
@@ -203,7 +207,6 @@ function closeImageModal() {
         td.colSpan = dragRow.cells.length;
         placeholder.appendChild(td);
 
-        // Style baris yang di-drag
         dragRow.style.opacity = '0.5';
         dragRow.style.background = '#f0f9ff';
         dragRow.classList.add('pointer-events-none');
@@ -214,64 +217,41 @@ function closeImageModal() {
 
     function onMouseMove(e) {
         if (!dragRow) return;
-
-        // Cari baris target berdasarkan posisi kursor
         const rows = [...tbody.querySelectorAll('tr.sortable-row:not(.pointer-events-none)')];
         let targetRow = null;
-
         for (const row of rows) {
             const rect = row.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            if (e.clientY < midY) {
-                targetRow = row;
-                break;
-            }
+            if (e.clientY < rect.top + rect.height / 2) { targetRow = row; break; }
         }
-
-        // Insert placeholder
         if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
-        if (targetRow) {
-            tbody.insertBefore(placeholder, targetRow);
-        } else {
-            tbody.appendChild(placeholder);
-        }
+        targetRow ? tbody.insertBefore(placeholder, targetRow) : tbody.appendChild(placeholder);
     }
 
     function onMouseUp() {
         if (!dragRow) return;
-
-        // Insert dragRow di posisi placeholder
         if (placeholder.parentNode) {
             tbody.insertBefore(dragRow, placeholder);
             placeholder.parentNode.removeChild(placeholder);
         }
-
-        // Reset style
         dragRow.style.opacity = '';
         dragRow.style.background = '';
         dragRow.classList.remove('pointer-events-none');
 
-        // Update nomor halaman label di UI
         const rows = [...tbody.querySelectorAll('tr.sortable-row')];
-        rows.forEach((row, index) => {
+        rows.forEach((row, i) => {
             const label = row.querySelector('.page-number-label');
-            if (label) label.textContent = 'Halaman ' + (index + 1);
+            if (label) label.textContent = 'Halaman ' + (i + 1);
         });
 
-        // Kirim urutan baru ke server
-        const ids = rows.map(row => row.dataset.id);
-        saveOrder(ids);
-
+        saveOrder(rows.map(r => r.dataset.id));
         dragRow = null;
         placeholder = null;
-
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
     }
 
     function saveOrder(ids) {
         showToast('Menyimpan urutan...', 'info');
-
         fetch('{{ route('halaman.reorder') }}', {
             method: 'POST',
             headers: {
@@ -282,34 +262,23 @@ function closeImageModal() {
             body: JSON.stringify({ halaman: ids }),
         })
         .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showToast('✓ Urutan halaman berhasil disimpan', 'success');
-            } else {
-                showToast('✗ Gagal menyimpan urutan', 'error');
-            }
-        })
+        .then(data => showToast(data.success ? '✓ Urutan berhasil disimpan' : '✗ Gagal menyimpan', data.success ? 'success' : 'error'))
         .catch(() => showToast('✗ Gagal menyimpan urutan', 'error'));
     }
 
     function showToast(msg, type) {
         const toast = document.getElementById('reorderToast');
         if (!toast) return;
-
         const styles = {
             info:    'bg-blue-50 text-blue-700 border border-blue-200',
             success: 'bg-green-50 text-green-700 border border-green-200',
             error:   'bg-red-50 text-red-700 border border-red-200',
         };
-
         toast.className = 'fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ' + (styles[type] || styles.info);
         toast.textContent = msg;
         toast.classList.remove('hidden');
-
         clearTimeout(toast._timeout);
-        if (type !== 'info') {
-            toast._timeout = setTimeout(() => toast.classList.add('hidden'), 3000);
-        }
+        if (type !== 'info') toast._timeout = setTimeout(() => toast.classList.add('hidden'), 3000);
     }
 })();
 </script>

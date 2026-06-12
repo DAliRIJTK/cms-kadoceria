@@ -22,7 +22,8 @@ class Buku extends Model
         'deskripsi_idn',
         'deskripsi_sn',
         'warna_primer',
-        'warna_sekunder'
+        'warna_sekunder',
+        'zip_bundle_path',
     ];
 
     public function pengelola()
