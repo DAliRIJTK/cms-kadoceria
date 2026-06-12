@@ -9,11 +9,13 @@ RUN npm run build
 # STAGE 2: Backend Setup (PHP 8.3 Apache)
 FROM php:8.3-apache
 
-# 1. Instal dependensi sistem Linux, PostgreSQL, Ghostscript, dan MagickWand
+# 1. Instal dependensi sistem Linux (TAMBAHAN: git dan libzip-dev)
 RUN apt-get update && apt-get install -y \
+    git \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
+    libzip-dev \
     zip \
     unzip \
     libpq-dev \
@@ -21,8 +23,8 @@ RUN apt-get update && apt-get install -y \
     libmagickwand-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Instal ekstensi PHP native
-RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd
+# 2. Instal ekstensi PHP native (TAMBAHAN: zip)
+RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip
 
 # 3. Instal dan aktifkan ekstensi Imagick via PECL
 RUN pecl install imagick \
@@ -41,9 +43,10 @@ COPY . .
 # Salin hasil build Vite dari Stage 1
 COPY --from=frontend /app/public/build ./public/build
 
-# Instal dependensi Composer
+# Instal dependensi Composer (PERBAIKAN: Tambah flag khusus CI/CD)
+ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Atur perizinan (Hak akses mutlak diperlukan Imagick untuk menulis .webp ke /storage)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
@@ -55,6 +58,7 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 
 # Skrip entrypoint container
 RUN echo "#!/bin/bash" > /usr/local/bin/start-container && \
+    echo "php artisan package:discover --ansi" >> /usr/local/bin/start-container && \
     echo "php artisan config:clear" >> /usr/local/bin/start-container && \
     echo "php artisan cache:clear" >> /usr/local/bin/start-container && \
     echo "php artisan migrate --force" >> /usr/local/bin/start-container && \
