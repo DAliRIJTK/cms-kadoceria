@@ -69,10 +69,24 @@ class BukuController extends Controller
             'pdf_file.mimes' => 'File harus berformat PDF.',
         ]);
 
-        $duplicateTitle = Buku::whereRaw('LOWER(judul_idn) = ?', [strtolower($request->judul_idn)])->exists();
+        $judulIdn = $request->judul_idn;
+        $judulSn  = $request->judul_sn;
+
+        $duplicateTitle = Buku::where(function ($q) use ($judulIdn) {
+                $q->whereRaw('LOWER(judul_idn) = ?', [strtolower($judulIdn)])
+                ->orWhereRaw('LOWER(judul_sn) = ?', [strtolower($judulIdn)]);
+            })
+            ->when($judulSn, function ($query) use ($judulSn) {
+                $query->orWhere(function ($q) use ($judulSn) {
+                    $q->whereRaw('LOWER(judul_idn) = ?', [strtolower($judulSn)])
+                    ->orWhereRaw('LOWER(judul_sn) = ?', [strtolower($judulSn)]);
+                });
+            })
+            ->exists();
+
         if ($duplicateTitle) {
             return back()->withInput()
-                ->withErrors(['duplicate_title' => 'Judul buku sudah ada. Silakan gunakan judul yang berbeda.']);
+                ->withErrors(['duplicate_title' => 'Judul buku (Bahasa Indonesia/Sunda) sudah digunakan pada buku lain. Silakan gunakan judul yang berbeda.']);
         }
 
         $uploadedFileName = $request->file('pdf_file')->getClientOriginalName();

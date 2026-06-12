@@ -269,8 +269,15 @@
                     border:none; cursor:pointer;">SU</button>
             </div>
 
+            {{-- Page slider --}}
+            <input type="range" id="fb-slider" min="0" max="{{ $halamanSorted->count() - 1 }}" value="0" step="1"
+                style="
+                    flex:1; max-width:240px; height:4px; border-radius:4px;
+                    accent-color: var(--fb-primary); cursor:pointer; margin: 0 4px;
+                ">
+
             {{-- Page counter --}}
-            <span id="fb-counter" style="font-size:12px; color:rgba(255,255,255,0.65); min-width:70px; text-align:center;"></span>
+            <span id="fb-counter" style="font-size:12px; color:rgba(255,255,255,0.65); min-width:70px; text-align:center; flex-shrink:0;"></span>
 
             {{-- Narasi button --}}
             <button id="fb-btn-narasi" onclick="fbPlayNarasi()" style="
@@ -433,6 +440,7 @@
         const audioBar   = document.getElementById('fb-audio-bar');
         const audioLabel = document.getElementById('fb-audio-label');
         const stage      = document.getElementById('fb-stage');
+        const slider     = document.getElementById('fb-slider');
 
         /* ── Size ── */
         function fbSize() {
@@ -451,8 +459,8 @@
             pageImg.src = page ? page.img : '';
             fbRenderAreas(page);
 
-            // ✅ Tampilkan nomor halaman sebenarnya, bukan index
             counter.textContent = `${page ? page.nomor : fbIdx + 1} / ${TOTAL}`;
+            slider.value = fbIdx;
 
             const hasNarasi = page && (page.narasi_id || page.narasi_su);
             btnNarasi.style.display = hasNarasi ? 'inline-flex' : 'none';
@@ -589,6 +597,28 @@
                 if (active) el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
             });
         }
+
+        /* ── Slider ── */
+        slider.addEventListener('input', e => {
+            const idx = parseInt(e.target.value, 10);
+            if (idx === fbIdx) return;
+            fbStopAudio(false);
+            fbIdx = idx;
+            fbRender();
+        });
+
+        /* ── Scroll wheel navigation ── */
+        let fbWheelLock = false;
+        stage.addEventListener('wheel', e => {
+            e.preventDefault();
+            if (fbWheelLock) return;
+            const dir = e.deltaY > 0 ? 1 : -1;
+            const newIdx = fbIdx + dir;
+            if (newIdx < 0 || newIdx >= TOTAL) return;
+            fbWheelLock = true;
+            fbGoPage(dir);
+            setTimeout(() => fbWheelLock = false, 350);
+        }, { passive: false });
 
         /* ── Touch swipe ── */
         let fbTouchX = 0;

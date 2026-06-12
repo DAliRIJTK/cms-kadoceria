@@ -11,7 +11,7 @@
     <!-- LEFT SIDE -->
     <div class="w-1/2 flex flex-col items-center justify-center bg-white">
 
-        <img src="../../assets/logo-balai.png" class="w-40 mb-6">
+        <img src="{{ asset('assets/logobalai.png') }}" class="w-40 mb-6" alt="Logo Balai Bahasa">
 
         <h2 class="text-xl text-gray-700">
             Sistem Manajemen Konten Buku Dwibahasa

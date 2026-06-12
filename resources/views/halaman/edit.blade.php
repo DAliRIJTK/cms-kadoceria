@@ -424,13 +424,14 @@ function updateFileName(input) {
         })
         .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                appendAreaCard(data.area);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                currentRect = null;
-                hideLabelInput();
-                updateCount(1);
-            } else {
+        if (data.success) {
+            appendAreaCard(data.area);
+            appendAreaOverlay(data.area, label);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            currentRect = null;
+            hideLabelInput();
+            updateCount(1);
+        } else {
                 alert('Gagal menyimpan: ' + (data.message || 'Unknown error'));
             }
         })
@@ -513,6 +514,19 @@ function updateFileName(input) {
         </div>`;
     }
 
+    function appendAreaOverlay(area, label) {
+        const wrapper = document.getElementById('imageWrapper');
+        const div = document.createElement('div');
+        div.className = 'absolute border-2 border-red-500 bg-red-500/10 pointer-events-none area-overlay';
+        div.dataset.id = area.id_area;
+        div.style.left   = (area.x_pct ?? 0) + '%';
+        div.style.top    = (area.y_pct ?? 0) + '%';
+        div.style.width  = (area.w_pct ?? 0) + '%';
+        div.style.height = (area.h_pct ?? 0) + '%';
+        div.innerHTML = `<span class="absolute -top-5 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap max-w-[120px] truncate">${label}</span>`;
+        wrapper.appendChild(div);
+    }
+
     document.querySelectorAll('.btn-delete-area').forEach(btn => {
         btn.addEventListener('click', handleDeleteArea);
     });
@@ -530,10 +544,11 @@ function updateFileName(input) {
         })
         .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                document.getElementById('area-card-' + aId)?.remove();
-                updateCount(-1);
-            } else {
+        if (data.success) {
+            document.getElementById('area-card-' + aId)?.remove();
+            document.querySelector('.area-overlay[data-id="' + aId + '"]')?.remove();
+            updateCount(-1);
+        } else {
                 alert('Gagal menghapus: ' + (data.message || 'Unknown'));
             }
         })
