@@ -43,16 +43,14 @@ COPY . .
 # Salin hasil build Vite dari Stage 1
 COPY --from=frontend /app/public/build ./public/build
 
-# Instal dependensi Composer (PERBAIKAN: Tambah flag khusus CI/CD)
 ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install
 
-# Atur perizinan (Hak akses mutlak diperlukan Imagick untuk menulis .webp ke /storage)
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
+
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Atur Document Root Apache ke /public
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
