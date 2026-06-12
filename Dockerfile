@@ -46,7 +46,7 @@ COPY --from=frontend /app/public/build ./public/build
 # Instal dependensi Composer (PERBAIKAN: Tambah flag khusus CI/CD)
 ENV COMPOSER_ALLOW_SUPERUSER=1
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install
 
 # Atur perizinan (Hak akses mutlak diperlukan Imagick untuk menulis .webp ke /storage)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
