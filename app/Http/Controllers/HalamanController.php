@@ -57,7 +57,19 @@ class HalamanController extends Controller
     {
         $halaman->load(['areaInteraktif', 'buku', 'audioLatar']);
         $allAudioLatar = AudioLatar::orderBy('nama_audio')->get();
-        return view('halaman.edit', compact('halaman', 'allAudioLatar'));
+
+        // [FIX #5] Cari halaman sebelumnya dan sesudahnya dalam buku yang sama
+        $prevHalaman = Halaman::where('id_buku', $halaman->id_buku)
+            ->where('nomor_halaman', '<', $halaman->nomor_halaman)
+            ->orderBy('nomor_halaman', 'desc')
+            ->first();
+
+        $nextHalaman = Halaman::where('id_buku', $halaman->id_buku)
+            ->where('nomor_halaman', '>', $halaman->nomor_halaman)
+            ->orderBy('nomor_halaman', 'asc')
+            ->first();
+
+        return view('halaman.edit', compact('halaman', 'allAudioLatar', 'prevHalaman', 'nextHalaman'));
     }
 
     public function show(Halaman $halaman)
@@ -280,6 +292,7 @@ class HalamanController extends Controller
         try {
             $field = 'audio_' . $validated['audio_type'];
 
+            // [FIX #3] Hapus file lama jika ada sebelum menyimpan yang baru
             if ($area->$field && Storage::disk('public')->exists($area->$field)) {
                 Storage::disk('public')->delete($area->$field);
             }
@@ -309,19 +322,21 @@ class HalamanController extends Controller
 
             switch ($validated['narasi_type']) {
                 case 'indo':
+                    // [FIX #3] Hapus file lama sebelum menyimpan baru
                     if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
                         Storage::disk('public')->delete($halaman->narasi_indo);
                     }
                     $halaman->narasi_indo = $path;
-                    $message = 'Narasi Indonesia berhasil diunggah';
+                    $message = 'Narasi Indonesia berhasil diperbarui';
                     break;
 
                 case 'sunda':
+                    // [FIX #3] Hapus file lama sebelum menyimpan baru
                     if ($halaman->narasi_sunda && Storage::disk('public')->exists($halaman->narasi_sunda)) {
                         Storage::disk('public')->delete($halaman->narasi_sunda);
                     }
                     $halaman->narasi_sunda = $path;
-                    $message = 'Narasi Sunda berhasil diunggah';
+                    $message = 'Narasi Sunda berhasil diperbarui';
                     break;
             }
 

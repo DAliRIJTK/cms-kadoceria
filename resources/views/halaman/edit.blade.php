@@ -37,14 +37,22 @@
 <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
     <div class="flex flex-wrap items-center gap-3">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman }} - Buku "{{ $halaman->buku->judul_idn }}"</h1>
+            {{-- Judul buku sekarang ditampilkan sebagai button/badge --}}
+            <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 mb-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition-colors">
+                📖 {{ $halaman->buku->judul_idn }}
+            </a>
+            <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman }}</h1>
             <p class="text-gray-500 mt-0.5 text-sm">Kelola anotasi dan audio halaman</p>
         </div>
     </div>
-    <button id="saveAreaBtn" type="button"
-            class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm">
-        💾 Simpan Area Baru
-    </button>
+
+    <div class="flex items-center gap-2 flex-wrap">
+        <button id="saveAreaBtn" type="button"
+                class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm">
+            💾 Simpan Area Baru
+        </button>
+    </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -79,6 +87,35 @@
                     <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center rounded-lg">
                         <span class="text-3xl font-bold text-gray-400">{{ $halaman->nomor_halaman }}</span>
                     </div>
+                @endif
+            </div>
+
+            {{-- [DIPINDAH] Navigasi halaman sebelumnya / berikutnya, sekarang di bawah gambar --}}
+            <div class="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-gray-100">
+                @if(isset($prevHalaman) && $prevHalaman)
+                    <a href="{{ route('halaman.edit', $prevHalaman->id_halaman) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
+                       title="Halaman {{ $prevHalaman->nomor_halaman }}">
+                        ‹ Hal. {{ $prevHalaman->nomor_halaman }}
+                    </a>
+                @else
+                    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed">
+                        ‹ Sebelumnya
+                    </span>
+                @endif
+
+                <span class="text-xs font-medium text-gray-400">Halaman {{ $halaman->nomor_halaman }}</span>
+
+                @if(isset($nextHalaman) && $nextHalaman)
+                    <a href="{{ route('halaman.edit', $nextHalaman->id_halaman) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
+                       title="Halaman {{ $nextHalaman->nomor_halaman }}">
+                        Hal. {{ $nextHalaman->nomor_halaman }} ›
+                    </a>
+                @else
+                    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed">
+                        Berikutnya ›
+                    </span>
                 @endif
             </div>
         </div>
@@ -132,8 +169,12 @@
                 <div class="border-l-4 border-blue-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Narasi - Bahasa Indonesia</p>
                     @if($halaman->narasi_indo)
-                        <audio controls class="w-full h-8 mb-2"
-                               src="{{ asset('storage/' . $halaman->narasi_indo) }}"></audio>
+                        <div class="mb-2 flex items-center gap-2">
+                            <audio controls class="flex-1 h-8"
+                                   src="{{ asset('storage/' . $halaman->narasi_indo) }}"></audio>
+                        </div>
+                        {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
+                        <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
                     @endif
                     <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
                           method="POST" enctype="multipart/form-data">
@@ -141,7 +182,7 @@
                         <input type="hidden" name="narasi_type" value="indo">
                         <div class="flex gap-2">
                             <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                                Pilih File
+                                {{ $halaman->narasi_indo ? 'Ganti File' : 'Pilih File' }}
                                 <input type="file" name="audio_file" accept=".wav,.m4a,.mp3,.ogg,audio/*"
                                        required class="hidden" onchange="updateFileName(this)">
                             </label>
@@ -172,8 +213,12 @@
                 <div class="border-l-4 border-purple-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Narasi - Bahasa Sunda</p>
                     @if($halaman->narasi_sunda)
-                        <audio controls class="w-full h-8 mb-2"
-                               src="{{ asset('storage/' . $halaman->narasi_sunda) }}"></audio>
+                        <div class="mb-2 flex items-center gap-2">
+                            <audio controls class="flex-1 h-8"
+                                   src="{{ asset('storage/' . $halaman->narasi_sunda) }}"></audio>
+                        </div>
+                        {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
+                        <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
                     @endif
                     <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
                           method="POST" enctype="multipart/form-data">
@@ -181,7 +226,7 @@
                         <input type="hidden" name="narasi_type" value="sunda">
                         <div class="flex gap-2">
                             <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                                Pilih File
+                                {{ $halaman->narasi_sunda ? 'Ganti File' : 'Pilih File' }}
                                 <input type="file" name="audio_file" accept=".wav,.m4a,.mp3,.ogg,audio/*"
                                        required class="hidden" onchange="updateFileName(this)">
                             </label>

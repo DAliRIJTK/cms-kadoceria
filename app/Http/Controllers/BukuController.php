@@ -159,13 +159,40 @@ class BukuController extends Controller
                 ->withErrors(['error' => 'Gagal memproses PDF: ' . $e->getMessage()]);
         }
 
-        return redirect('/buku')->with('success', 'Buku berhasil ditambahkan & diproses!');
+        // [FIX #1] Redirect ke halaman show/informasi buku, bukan ke daftar buku
+        return redirect()->route('buku.show', $buku->id_buku)
+            ->with('success', 'Buku berhasil ditambahkan & diproses!');
     }
 
     public function show(Buku $buku)
     {
         $buku->load('halaman');
+
+        // [FIX #2] Jika cover tidak ada atau file fisiknya hilang, fallback ke halaman pertama
+        $this->fixCoverIfMissing($buku);
+
         return view('buku.show', compact('buku'));
+    }
+
+    /**
+     * [FIX #2] Perbaiki cover jika path_cover kosong atau file tidak ditemukan.
+     * Ambil dari halaman dengan nomor_halaman terkecil (index teratas).
+     */
+    private function fixCoverIfMissing(Buku $buku): void
+    {
+        $needsFix = empty($buku->path_cover)
+            || !Storage::disk('public')->exists($buku->path_cover);
+
+        if (!$needsFix) return;
+
+        $firstPage = $buku->halaman()
+            ->orderBy('nomor_halaman', 'asc')
+            ->first();
+
+        if ($firstPage && $firstPage->path_gambar && Storage::disk('public')->exists($firstPage->path_gambar)) {
+            $buku->path_cover = $firstPage->path_gambar;
+            $buku->save();
+        }
     }
 
     public function edit(Buku $buku)
@@ -391,24 +418,22 @@ class BukuController extends Controller
                     'y'             => (int)   $area->y,
                     'width'         => (int)   $area->lebar_area,
                     'height'        => (int)   $area->panjang_area,
-                    'audioObjectId' => $audioObjIdRelPath,   // null jika tidak ada
-                    'audioObjectSd' => $audioObjSuRelPath,   // null jika tidak ada
+                    'audioObjectId' => $audioObjIdRelPath,
+                    'audioObjectSd' => $audioObjSuRelPath,
                 ];
             }
 
-            // ── Susun data halaman sesuai spesifikasi Flutter ──────────────
             $pagesData[] = [
                 'image'              => $pageRelPath,
-                'backsound'          => $backsoundRelPath,   // null jika tidak ada
+                'backsound'          => $backsoundRelPath,
                 'widthImage'         => (int) ($page->lebar_halaman  ?? 0),
                 'heightImage'        => (int) ($page->panjang_halaman ?? 0),
-                'narationId'         => $narasiIdRelPath,    // null jika tidak ada
-                'narationSd'         => $narasiSuRelPath,    // null jika tidak ada
-                'interactiveObjects' => $interactiveObjects, // [] jika tidak ada
+                'narationId'         => $narasiIdRelPath,
+                'narationSd'         => $narasiSuRelPath,
+                'interactiveObjects' => $interactiveObjects,
             ];
         }
 
-        // ── Susun data.json sesuai spesifikasi Flutter (legacy bundle) ────
         $dataJson = [
             'id'           => (string) $buku->id_buku,
             'title_id'     => $buku->judul_idn,
@@ -625,13 +650,6 @@ class BukuController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /**
-     * Konversi string "R,G,B" yang tersimpan di DB ke format HEX "#RRGGBB".
-     * Jika nilai kosong atau tidak valid, kembalikan $default.
-     *
-     * Contoh: "99,102,241" → "#6366F1"
-     *         "#FF5733"    → "#FF5733"  (sudah HEX, dikembalikan apa adanya)
-     */
     private function rgbToHex(?string $value, string $default = '#FFFFFF'): string
     {
         if (!$value) return $default;

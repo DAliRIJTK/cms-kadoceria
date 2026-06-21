@@ -126,10 +126,23 @@
         </div>
     </div>
 
-    {{-- Cover --}}
+    {{-- [FIX #2] Cover — fallback ke halaman pertama jika cover tidak ada --}}
     <div class="lg:col-span-1">
-        @if($buku->path_cover && file_exists(storage_path('app/public/' . $buku->path_cover)))
-            <img src="{{ asset('storage/' . $buku->path_cover) }}"
+        @php
+            // Cari gambar cover yang valid: path_cover → halaman pertama
+            $coverUrl = null;
+            if ($buku->path_cover && file_exists(storage_path('app/public/' . $buku->path_cover))) {
+                $coverUrl = asset('storage/' . $buku->path_cover);
+            } else {
+                $firstPage = $buku->halaman->sortBy('nomor_halaman')->first();
+                if ($firstPage && $firstPage->path_gambar && file_exists(storage_path('app/public/' . $firstPage->path_gambar))) {
+                    $coverUrl = asset('storage/' . $firstPage->path_gambar);
+                }
+            }
+        @endphp
+
+        @if($coverUrl)
+            <img src="{{ $coverUrl }}"
                  alt="{{ $buku->judul_idn }}"
                  class="w-full rounded-xl shadow-md border border-gray-200 object-cover">
         @else
@@ -190,7 +203,7 @@
         $primaryHex   = $getHexColor($buku->warna_primer, '#6366F1');
         $secondaryHex = $getHexColor($buku->warna_sekunder, '#8B5CF6');
 
-        // ✅ FIX: Urutkan berdasarkan nomor_halaman ascending
+        // Urutkan berdasarkan nomor_halaman ascending
         $halamanSorted = $buku->halaman->sortBy('nomor_halaman')->values();
 
         $pagesData = $halamanSorted->map(function($page) {
@@ -279,14 +292,40 @@
             {{-- Page counter --}}
             <span id="fb-counter" style="font-size:12px; color:rgba(255,255,255,0.65); min-width:70px; text-align:center; flex-shrink:0;"></span>
 
-            {{-- Narasi button --}}
-            <button id="fb-btn-narasi" onclick="fbPlayNarasi()" style="
-                display:none;
-                background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);
-                color:#fff; padding:5px 12px; border-radius:7px;
-                font-size:12px; font-weight:600; cursor:pointer;">
-                🔊 Narasi
-            </button>
+            {{-- [FIX #4] Narasi button group: SU→ID otomatis, atau pilih per bahasa --}}
+            <div id="fb-narasi-group" style="display:none; align-items:center; gap:5px;">
+                {{-- Tombol play Sunda lalu sambung Indo --}}
+                <button id="fb-btn-narasi-both" onclick="fbPlayNarasiBoth()" title="Play Sunda → Indo" style="
+                    background:linear-gradient(90deg,#7c3aed,#2563eb);
+                    border:1px solid rgba(255,255,255,0.2);
+                    color:#fff; padding:5px 10px; border-radius:7px;
+                    font-size:11px; font-weight:700; cursor:pointer;
+                    white-space:nowrap;">
+                    🔊 SU→ID
+                </button>
+                {{-- Tombol play Sunda saja --}}
+                <button id="fb-btn-narasi-su" onclick="fbPlayNarasi('su')" title="Play Narasi Sunda" style="
+                    background:rgba(124,58,237,0.5); border:1px solid rgba(255,255,255,0.2);
+                    color:#fff; padding:5px 10px; border-radius:7px;
+                    font-size:11px; font-weight:700; cursor:pointer;">
+                    🔊 SU
+                </button>
+                {{-- Tombol play Indo saja --}}
+                <button id="fb-btn-narasi-id" onclick="fbPlayNarasi('id')" title="Play Narasi Indonesia" style="
+                    background:rgba(37,99,235,0.5); border:1px solid rgba(255,255,255,0.2);
+                    color:#fff; padding:5px 10px; border-radius:7px;
+                    font-size:11px; font-weight:700; cursor:pointer;">
+                    🔊 ID
+                </button>
+                {{-- Tombol stop --}}
+                <button id="fb-btn-stop-narasi" onclick="fbStopAudio(false)" title="Stop" style="
+                    display:none;
+                    background:rgba(220,38,38,0.6); border:1px solid rgba(255,255,255,0.2);
+                    color:#fff; padding:5px 9px; border-radius:7px;
+                    font-size:11px; font-weight:700; cursor:pointer;">
+                    ■
+                </button>
+            </div>
         </div>
 
         {{-- Stage --}}
@@ -346,7 +385,7 @@
             </div>
         </div>
 
-        {{-- Thumbnail strip — ✅ gunakan $halamanSorted --}}
+        {{-- Thumbnail strip --}}
         <div id="fb-thumb-strip" style="
             background:rgba(0,0,0,0.45);
             display:flex; gap:5px; padding:7px 14px;
@@ -388,6 +427,9 @@
         .fb-thumb:hover { transform: scale(1.1); }
         .fb-thumb.fb-active { border-color: var(--fb-primary) !important; }
 
+        #fb-narasi-group button:hover { filter: brightness(1.2); }
+        #fb-btn-narasi-both.fb-playing-both { background: linear-gradient(90deg,#6d28d9,#1d4ed8) !important; box-shadow: 0 0 8px rgba(124,58,237,0.6); }
+
         .fb-area-box {
             position:absolute; border:2px solid rgba(255,200,0,.7);
             background:rgba(255,200,0,.08); border-radius:4px;
@@ -427,20 +469,26 @@
         let fbActiveAudio = null;
         let fbBacksound   = null;
         let fbAnimating   = false;
+        // [FIX #4] State untuk SU→ID chain
+        let fbNarasiChain = false;
 
-        const shell      = document.getElementById('fb-shell');
-        const loading    = document.getElementById('fb-loading');
-        const pageCard   = document.getElementById('fb-page-card');
-        const pageImg    = document.getElementById('fb-page-img');
-        const areasEl    = document.getElementById('fb-areas');
-        const counter    = document.getElementById('fb-counter');
-        const btnPrev    = document.getElementById('fb-btn-prev');
-        const btnNext    = document.getElementById('fb-btn-next');
-        const btnNarasi  = document.getElementById('fb-btn-narasi');
-        const audioBar   = document.getElementById('fb-audio-bar');
-        const audioLabel = document.getElementById('fb-audio-label');
-        const stage      = document.getElementById('fb-stage');
-        const slider     = document.getElementById('fb-slider');
+        const shell         = document.getElementById('fb-shell');
+        const loading       = document.getElementById('fb-loading');
+        const pageCard      = document.getElementById('fb-page-card');
+        const pageImg       = document.getElementById('fb-page-img');
+        const areasEl       = document.getElementById('fb-areas');
+        const counter       = document.getElementById('fb-counter');
+        const btnPrev       = document.getElementById('fb-btn-prev');
+        const btnNext       = document.getElementById('fb-btn-next');
+        const narasiGroup   = document.getElementById('fb-narasi-group');
+        const btnNarasiBoth = document.getElementById('fb-btn-narasi-both');
+        const btnNarasiSu   = document.getElementById('fb-btn-narasi-su');
+        const btnNarasiId   = document.getElementById('fb-btn-narasi-id');
+        const btnStopNarasi = document.getElementById('fb-btn-stop-narasi');
+        const audioBar      = document.getElementById('fb-audio-bar');
+        const audioLabel    = document.getElementById('fb-audio-label');
+        const stage         = document.getElementById('fb-stage');
+        const slider        = document.getElementById('fb-slider');
 
         /* ── Size ── */
         function fbSize() {
@@ -462,8 +510,17 @@
             counter.textContent = `${page ? page.nomor : fbIdx + 1} / ${TOTAL}`;
             slider.value = fbIdx;
 
-            const hasNarasi = page && (page.narasi_id || page.narasi_su);
-            btnNarasi.style.display = hasNarasi ? 'inline-flex' : 'none';
+            // [FIX #4] Tampilkan narasi group jika halaman punya narasi (id atau su)
+            const hasNarasiId = page && !!page.narasi_id;
+            const hasNarasiSu = page && !!page.narasi_su;
+            const hasAnyNarasi = hasNarasiId || hasNarasiSu;
+            narasiGroup.style.display = hasAnyNarasi ? 'flex' : 'none';
+
+            // Sembunyikan tombol yang tidak punya audio
+            btnNarasiBoth.style.display = (hasNarasiId && hasNarasiSu) ? 'inline-flex' : 'none';
+            btnNarasiSu.style.display   = hasNarasiSu ? 'inline-flex' : 'none';
+            btnNarasiId.style.display   = hasNarasiId ? 'inline-flex' : 'none';
+            btnStopNarasi.style.display = 'none';
 
             fbPlayBacksound(page);
             fbUpdateThumbs();
@@ -505,7 +562,7 @@
             });
         }
 
-        /* ── Audio ── */
+        /* ── Audio area ── */
         function fbPlayAreaAudio(src, label, areaId, boxEl) {
             if (!src) return;
             fbStopAudio(false);
@@ -524,10 +581,13 @@
         }
 
         window.fbStopAudio = function(stopBack = false) {
+            fbNarasiChain = false;
             if (fbActiveAudio) { fbActiveAudio.pause(); fbActiveAudio = null; }
             document.querySelectorAll('.fb-area-box.fb-playing').forEach(b => b.classList.remove('fb-playing'));
             audioBar.style.opacity = '0';
             audioBar.style.pointerEvents = 'none';
+            btnStopNarasi.style.display = 'none';
+            btnNarasiBoth.classList.remove('fb-playing-both');
             if (stopBack && fbBacksound) { fbBacksound.pause(); fbBacksound = null; }
         };
 
@@ -541,23 +601,81 @@
             }
         }
 
-        window.fbPlayNarasi = function() {
+        /* ── [FIX #4] Narasi: play per bahasa / SU→ID chain ── */
+
+        /**
+         * Play narasi per bahasa (id atau su).
+         * Dipakai oleh tombol SU dan ID individual.
+         */
+        window.fbPlayNarasi = function(lang) {
             const page = PAGES[fbIdx];
             if (!page) return;
-            const src = fbLang === 'id' ? page.narasi_id : page.narasi_su;
+            const src = lang === 'su' ? page.narasi_su : page.narasi_id;
             if (!src) return;
             fbStopAudio(false);
+            fbNarasiChain = false;
             fbActiveAudio = new Audio(src);
-            audioLabel.textContent = 'Narasi halaman ' + page.nomor;
+            const langLabel = lang === 'su' ? 'Sunda' : 'Indonesia';
+            audioLabel.textContent = `Narasi ${langLabel} - Hal. ${page.nomor}`;
             audioBar.style.opacity = '1';
             audioBar.style.pointerEvents = 'all';
-            btnNarasi.style.background = 'var(--fb-primary)';
+            btnStopNarasi.style.display = 'inline-flex';
             fbActiveAudio.play().catch(()=>{});
             fbActiveAudio.addEventListener('ended', () => {
                 audioBar.style.opacity = '0';
                 audioBar.style.pointerEvents = 'none';
-                btnNarasi.style.background = '';
+                btnStopNarasi.style.display = 'none';
                 fbActiveAudio = null;
+            });
+        };
+
+        /**
+         * [FIX #4] Play Sunda terlebih dahulu, kemudian otomatis lanjut ke Indo.
+         * Jika hanya satu yang tersedia, play yang ada.
+         */
+        window.fbPlayNarasiBoth = function() {
+            const page = PAGES[fbIdx];
+            if (!page) return;
+
+            fbStopAudio(false);
+
+            const srcSu = page.narasi_su;
+            const srcId = page.narasi_id;
+
+            if (!srcSu && !srcId) return;
+
+            // Jika hanya salah satu tersedia, langsung play yang ada
+            if (!srcSu) { fbPlayNarasi('id'); return; }
+            if (!srcId)  { fbPlayNarasi('su'); return; }
+
+            // Keduanya ada: chain SU → ID
+            fbNarasiChain = true;
+            btnNarasiBoth.classList.add('fb-playing-both');
+            btnStopNarasi.style.display = 'inline-flex';
+
+            fbActiveAudio = new Audio(srcSu);
+            audioLabel.textContent = `Narasi Sunda → Indonesia - Hal. ${page.nomor}`;
+            audioBar.style.opacity = '1';
+            audioBar.style.pointerEvents = 'all';
+            fbActiveAudio.play().catch(()=>{});
+
+            fbActiveAudio.addEventListener('ended', () => {
+                // Setelah Sunda selesai, lanjut ke Indo jika masih dalam chain dan belum dihentikan
+                if (!fbNarasiChain) return;
+
+                // Update label
+                audioLabel.textContent = `Narasi Indonesia - Hal. ${page.nomor}`;
+
+                fbActiveAudio = new Audio(srcId);
+                fbActiveAudio.play().catch(()=>{});
+                fbActiveAudio.addEventListener('ended', () => {
+                    fbNarasiChain = false;
+                    btnNarasiBoth.classList.remove('fb-playing-both');
+                    audioBar.style.opacity = '0';
+                    audioBar.style.pointerEvents = 'none';
+                    btnStopNarasi.style.display = 'none';
+                    fbActiveAudio = null;
+                });
             });
         };
 
