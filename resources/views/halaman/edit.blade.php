@@ -183,7 +183,7 @@
                         <div class="flex gap-2">
                             <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
                                 {{ $halaman->narasi_indo ? 'Ganti File' : 'Pilih File' }}
-                                <input type="file" name="audio_file" accept=".wav,.m4a,.mp3,.ogg,audio/*"
+                                <input type="file" name="audio_file" accept=".mp3,.m4a"
                                        required class="hidden" onchange="updateFileName(this)">
                             </label>
                             <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
@@ -205,7 +205,7 @@
                                 </form>
                             @endif
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
+                        <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                     </form>
                 </div>
 
@@ -227,7 +227,7 @@
                         <div class="flex gap-2">
                             <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
                                 {{ $halaman->narasi_sunda ? 'Ganti File' : 'Pilih File' }}
-                                <input type="file" name="audio_file" accept=".wav,.m4a,.mp3,.ogg,audio/*"
+                                <input type="file" name="audio_file" accept=".mp3,.m4a"
                                        required class="hidden" onchange="updateFileName(this)">
                             </label>
                             <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
@@ -249,7 +249,7 @@
                                 </form>
                             @endif
                         </div>
-                        <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
+                        <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                     </form>
                 </div>
 
@@ -533,12 +533,12 @@ function updateFileName(input) {
                     <input type="hidden" name="audio_type" value="indo">
                     <div class="flex gap-2">
                         <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                            Pilih File<input type="file" name="audio_file" accept=".wav,.m4a,.mp3,audio/*" class="hidden">
+                            Pilih File<input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
                         </label>
                         <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">Belum ada file dipilih</span>
                         <button type="submit" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">Unggah</button>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
+                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                 </form>
             </div>
             <div class="bg-purple-50 rounded-lg p-3 border border-purple-100">
@@ -548,12 +548,12 @@ function updateFileName(input) {
                     <input type="hidden" name="audio_type" value="sunda">
                     <div class="flex gap-2">
                         <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                            Pilih File<input type="file" name="audio_file" accept=".wav,.m4a,.mp3,audio/*" class="hidden">
+                            Pilih File<input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
                         </label>
                         <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">Belum ada file dipilih</span>
                         <button type="submit" class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">Unggah</button>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
+                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                 </form>
             </div>
         </div>`;

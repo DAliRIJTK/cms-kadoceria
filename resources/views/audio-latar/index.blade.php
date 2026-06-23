@@ -35,7 +35,7 @@
 
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">File Audio <span class="text-red-500">*</span></label>
-                <input type="file" name="path_file" accept="audio/*" required
+                <input type="file" name="path_file" accept=".mp3,.m4a" required
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
             </div>
 
@@ -44,7 +44,7 @@
             </button>
         </div>
 
-        <p class="text-xs text-gray-600">Format: MP3, WAV, OGG, M4A (Maksimal 10MB)</p>
+        <p class="text-xs text-gray-600">Format: MP3, M4A (Maksimal 1MB)</p>
     </form>
 </div>
 

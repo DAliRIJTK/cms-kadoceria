@@ -1,4 +1,3 @@
-{{-- resources/views/halaman/partials/area-item.blade.php --}}
 <div class="rounded-xl border border-gray-200 p-4" id="area-card-{{ $area->id_area }}">
     <div class="flex justify-between items-start mb-3">
         <div>
@@ -16,7 +15,6 @@
         </button>
     </div>
 
-    {{-- Audio Indo --}}
     <div class="bg-blue-50 rounded-lg p-3 mb-2 border border-blue-100">
         <p class="text-xs font-bold text-blue-800 mb-2">Audio Objek - Bahasa Indonesia</p>
         @if($area->audio_indo)
@@ -28,7 +26,7 @@
             <div class="flex gap-2">
                 <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
                     Pilih File
-                    <input type="file" name="audio_file" accept=".wav,.m4a,audio/*" class="hidden">
+                    <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
                 </label>
                 <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
                     Belum ada file dipilih
@@ -38,11 +36,10 @@
                     Unggah
                 </button>
             </div>
-            <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A • Suara saat objek dipilih</p>
+            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
         </form>
     </div>
 
-    {{-- Audio Sunda --}}
     <div class="bg-purple-50 rounded-lg p-3 border border-purple-100">
         <p class="text-xs font-bold text-purple-800 mb-2">Audio Objek - Bahasa Sunda</p>
         @if($area->audio_sunda)
@@ -54,7 +51,7 @@
             <div class="flex gap-2">
                 <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
                     Pilih File
-                    <input type="file" name="audio_file" accept=".wav,.m4a,audio/*" class="hidden">
+                    <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
                 </label>
                 <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
                     Belum ada file dipilih
@@ -64,7 +61,7 @@
                     Unggah
                 </button>
             </div>
-            <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A • Suara saat objek dipilih</p>
+            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
         </form>
     </div>
 </div>

@@ -168,16 +168,11 @@ class BukuController extends Controller
     {
         $buku->load('halaman');
 
-        // [FIX #2] Jika cover tidak ada atau file fisiknya hilang, fallback ke halaman pertama
         $this->fixCoverIfMissing($buku);
 
         return view('buku.show', compact('buku'));
     }
 
-    /**
-     * [FIX #2] Perbaiki cover jika path_cover kosong atau file tidak ditemukan.
-     * Ambil dari halaman dengan nomor_halaman terkecil (index teratas).
-     */
     private function fixCoverIfMissing(Buku $buku): void
     {
         $needsFix = empty($buku->path_cover)
@@ -197,11 +192,19 @@ class BukuController extends Controller
 
     public function edit(Buku $buku)
     {
+        if ($buku->status_publikasi === 'Terbit') {
+            return redirect()->route('buku.show', $buku->id_buku)
+                ->withErrors(['publication' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
+        }
         return view('buku.edit', compact('buku'));
     }
 
     public function update(Request $request, Buku $buku)
     {
+        if ($buku->status_publikasi === 'Terbit') {
+            return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
+        }
+
         $validated = $request->validate([
             'judul_idn'      => 'required|string|max:255',
             'judul_sn'       => 'nullable|string|max:255',
@@ -228,8 +231,30 @@ class BukuController extends Controller
 
         if ($newStatus === 'Terbit') {
             $errors = [];
-            if (empty($buku->judul_idn))          $errors[] = 'Judul buku harus diisi';
-            if ($buku->halaman()->count() === 0)   $errors[] = 'Buku harus memiliki minimal 1 halaman';
+            if (empty($buku->judul_idn)) {
+                $errors[] = 'Judul buku harus diisi';
+            }
+            if ($buku->halaman()->count() === 0) {
+                $errors[] = 'Buku harus memiliki minimal 1 halaman';
+            }
+
+            $halamanList = $buku->halaman()->with('areaInteraktif')->get();
+
+            foreach ($halamanList as $page) {
+                if (empty($page->narasi_indo)) {
+                    $errors[] = "Halaman {$page->nomor_halaman} tidak memiliki audio narasi Indonesia.";
+                }
+                if (empty($page->id_audio_latar)) {
+                    $errors[] = "Halaman {$page->nomor_halaman} tidak memiliki audio backsound.";
+                }
+
+                foreach ($page->areaInteraktif as $area) {
+                    if (empty($area->audio_indo)) {
+                        $errors[] = "Halaman {$page->nomor_halaman}: Area interaktif '{$area->label}' tidak memiliki file audio yang ditautkan.";
+                    }
+                }
+            }
+
             if (!empty($errors)) {
                 return back()->withErrors(['publication' => 'Buku belum dapat dipublikasikan. ' . implode(' | ', $errors)]);
             }
@@ -378,7 +403,6 @@ class BukuController extends Controller
                 }
             }
 
-            // — Narasi Sunda —
             $narasiSuRelPath = null;
             if ($page->narasi_sunda) {
                 $srcNarasiSu = storage_path('app/public/' . $page->narasi_sunda);
@@ -389,7 +413,6 @@ class BukuController extends Controller
                 }
             }
 
-            // — Area Interaktif —
             $interactiveObjects = [];
             foreach ($page->areaInteraktif as $area) {
 
