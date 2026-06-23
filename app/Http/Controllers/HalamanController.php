@@ -1,143 +1,389 @@
 <?php
 
-namespace App\Http\Controllers; 
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Buku;
-use App\Models\Halaman;
-use App\Models\AudioLatar;
 use Illuminate\Support\Facades\Storage;
-use App\Jobs\ProcessPdfJob;  
+use App\Models\Halaman;
+use App\Models\AreaInteraktif;
+use App\Models\AudioLatar;
+use App\Models\Buku;
 
 class HalamanController extends Controller
 {
-    public function index($id_buku)
+    // ── Halaman Management (list) ────────────────────────────────────────────
+
+    public function management(Request $request)
     {
-        $buku = Buku::withCount('halaman')->findOrFail($id_buku);
-        
-        $halaman = Halaman::with(['audioLatar', 'areaInteraktif'])
-                          ->where('id_buku', $id_buku)
-                          ->orderBy('nomor_halaman', 'asc')
-                          ->get();
+        $query = Halaman::with('buku')->orderBy('id_buku', 'asc')->orderBy('nomor_halaman', 'asc');
 
-        $audioLatar = AudioLatar::orderBy('nama_audio')->get();
-
-        return view('halaman.index', compact('buku', 'halaman', 'audioLatar'));
-    }
-
-    public function edit($id_halaman)
-    {
-        $halaman = Halaman::with(['buku', 'audioLatar', 'areaInteraktif'])
-                          ->findOrFail($id_halaman);
-
-        if ($halaman->buku->status_publikasi === 'Published') {
-            return redirect()->route('buku.halaman.index', $halaman->id_buku)
-                             ->with('error', 'Tidak dapat mengedit buku yang sudah dipublikasikan.');
+        if ($request->filled('search')) {
+            $query->whereHas('buku', function ($q) {
+                $q->where('judul_idn', 'like', '%' . request('search') . '%')
+                  ->orWhere('judul_sn',  'like', '%' . request('search') . '%');
+            });
         }
 
-        $audioLatarList = AudioLatar::orderBy('nama_audio')->get();
-
-        return view('halaman.edit', compact('halaman', 'audioLatarList'));
-    }
-
-    public function update(Request $request, $id_halaman)
-    {
-        $halaman = Halaman::with('buku')->findOrFail($id_halaman);
-
-        if ($halaman->buku->status_publikasi === 'Published') {
-            return back()->with('error', 'Buku sudah dipublikasikan.');
+        if ($request->filled('id_buku') && $request->id_buku !== '') {
+            $query->where('id_buku', $request->id_buku);
         }
 
-        $request->validate([
-            'narasi_indo'    => 'nullable|file|mimes:m4a,mp3,wav,mpga|max:2048',
-            'narasi_sunda'   => 'nullable|file|mimes:m4a,mp3,wav,mpga|max:2048',
-            'id_audio_latar' => 'nullable|exists:audio_latar,id_audio_latar',
+        if ($request->filled('status') && $request->status !== '') {
+            $query->whereHas('buku', function ($q) {
+                $q->where('status_publikasi', request('status'));
+            });
+        }
+
+        if ($request->filled('sort')) {
+            switch ($request->sort) {
+                case 'halaman_asc':  $query->orderBy('nomor_halaman', 'asc');  break;
+                case 'halaman_desc': $query->orderBy('nomor_halaman', 'desc'); break;
+                case 'date_newest':  $query->orderBy('created_at', 'desc');    break;
+                case 'date_oldest':  $query->orderBy('created_at', 'asc');     break;
+                case 'buku_asc':     $query->orderBy('id_buku', 'asc');        break;
+                default:             $query->orderBy('id_buku', 'asc')->orderBy('nomor_halaman', 'asc');
+            }
+        }
+
+        $halaman = $query->paginate(15);
+        $allBuku = Buku::all();
+
+        return view('halaman.management', compact('halaman', 'allBuku'));
+    }
+
+    // ── Edit / Show ──────────────────────────────────────────────────────────
+
+    public function edit(Halaman $halaman)
+    {
+        $halaman->load(['areaInteraktif', 'buku', 'audioLatar']);
+        $allAudioLatar = AudioLatar::orderBy('nama_audio')->get();
+
+        // [FIX #5] Cari halaman sebelumnya dan sesudahnya dalam buku yang sama
+        $prevHalaman = Halaman::where('id_buku', $halaman->id_buku)
+            ->where('nomor_halaman', '<', $halaman->nomor_halaman)
+            ->orderBy('nomor_halaman', 'desc')
+            ->first();
+
+        $nextHalaman = Halaman::where('id_buku', $halaman->id_buku)
+            ->where('nomor_halaman', '>', $halaman->nomor_halaman)
+            ->orderBy('nomor_halaman', 'asc')
+            ->first();
+
+        return view('halaman.edit', compact('halaman', 'allAudioLatar', 'prevHalaman', 'nextHalaman'));
+    }
+
+    public function show(Halaman $halaman)
+    {
+        $halaman->load(['buku', 'areaInteraktif', 'audioLatar']);
+        return view('halaman.show', compact('halaman'));
+    }
+
+    // ── Store (create new halaman) ───────────────────────────────────────────
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'id_buku'     => 'required|exists:buku,id_buku',
+            'path_gambar' => 'required|image',
+        ]);
+
+        $path     = $request->file('path_gambar')->store('buku/halaman', 'public');
+        $lastPage = Halaman::where('id_buku', $validated['id_buku'])->max('nomor_halaman');
+
+        Halaman::create([
+            'id_buku'       => $validated['id_buku'],
+            'nomor_halaman' => ($lastPage ?? 0) + 1,
+            'path_gambar'   => $path,
+        ]);
+
+        return back()->with('success', 'Halaman berhasil ditambahkan');
+    }
+
+    // ── Update ───────────────────────────────────────────────────────────────
+
+    public function update(Request $request, Halaman $halaman)
+    {
+        try {
+            if ($request->has('nomor_halaman')) {
+                $validated     = $request->validate(['nomor_halaman' => 'nullable|integer|min:1']);
+                $oldPageNumber = $halaman->nomor_halaman;
+                $newPageNumber = $validated['nomor_halaman'];
+
+                if ($oldPageNumber !== $newPageNumber) {
+                    $maxPageNumber = $halaman->buku->halaman()->max('nomor_halaman');
+                    $newPageNumber = min($newPageNumber, $maxPageNumber);
+
+                    if ($oldPageNumber < $newPageNumber) {
+                        $halaman->buku->halaman()
+                            ->whereBetween('nomor_halaman', [$oldPageNumber + 1, $newPageNumber])
+                            ->decrement('nomor_halaman');
+                    } else {
+                        $halaman->buku->halaman()
+                            ->whereBetween('nomor_halaman', [$newPageNumber, $oldPageNumber - 1])
+                            ->increment('nomor_halaman');
+                    }
+
+                    $halaman->update(['nomor_halaman' => $newPageNumber]);
+                }
+            }
+
+            return back()->with('success', 'Halaman berhasil diperbarui');
+        } catch (\Throwable $e) {
+            \Log::error('HalamanController update error: ' . $e->getMessage());
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
+            throw $e;
+        }
+    }
+
+    // ── Destroy ──────────────────────────────────────────────────────────────
+
+    public function destroy(Halaman $halaman)
+    {
+        try {
+            $buku              = $halaman->buku;
+            $deletedPageNumber = $halaman->nomor_halaman;
+
+            foreach ($halaman->areaInteraktif as $area) {
+                foreach (['audio_indo', 'audio_sunda'] as $field) {
+                    if ($area->$field && Storage::disk('public')->exists($area->$field)) {
+                        Storage::disk('public')->delete($area->$field);
+                    }
+                }
+            }
+            $halaman->areaInteraktif()->delete();
+
+            if ($halaman->path_gambar && Storage::disk('public')->exists($halaman->path_gambar)) {
+                Storage::disk('public')->delete($halaman->path_gambar);
+            }
+
+            $halaman->delete();
+
+            $buku->halaman()
+                ->where('nomor_halaman', '>', $deletedPageNumber)
+                ->decrement('nomor_halaman');
+
+            return back()->with('success', 'Halaman berhasil dihapus');
+        } catch (\Exception $e) {
+            return back()->withErrors(['delete' => 'Gagal menghapus halaman: ' . $e->getMessage()]);
+        }
+    }
+
+    // ── Reorder ──────────────────────────────────────────────────────────────
+
+    public function reorder(Request $request)
+    {
+        foreach ($request->halaman as $index => $id) {
+            Halaman::where('id_halaman', $id)->update(['nomor_halaman' => $index + 1]);
+        }
+        return response()->json(['success' => true]);
+    }
+
+    // ── Backsound: set (atur AudioLatar) ─────────────────────────────────────
+
+    public function setBacksound(Request $request, Halaman $halaman)
+    {
+        $validated = $request->validate([
+            'id_audio_latar' => 'required|exists:audio_latar,id_audio_latar',
+        ]);
+
+        $halaman->update(['id_audio_latar' => $validated['id_audio_latar']]);
+
+        return back()->with('success', 'Backsound halaman berhasil diatur');
+    }
+
+    // ── Backsound: remove (lepas relasi, set null) ────────────────────────────
+
+    public function removeBacksound(Halaman $halaman)
+    {
+        $halaman->update(['id_audio_latar' => null]);
+
+        return back()->with('success', 'Backsound halaman berhasil dihapus');
+    }
+
+    // ── Area Interaktif: store ───────────────────────────────────────────────
+
+    public function storeAreaInteraktif(Request $request)
+    {
+        $validated = $request->validate([
+            'id_halaman'   => 'required|exists:halaman,id_halaman',
+            'label'        => 'nullable|string|max:255',
+            'x_pct'        => 'required|numeric|min:0|max:100',
+            'y_pct'        => 'required|numeric|min:0|max:100',
+            'w_pct'        => 'required|numeric|min:0|max:100',
+            'h_pct'        => 'required|numeric|min:0|max:100',
+            'x'            => 'nullable|integer',
+            'y'            => 'nullable|integer',
+            'lebar_area'   => 'nullable|integer|min:1',
+            'panjang_area' => 'nullable|integer|min:1',
         ]);
 
         try {
-            $data = [];
+            $area = AreaInteraktif::create([
+                'id_halaman'   => $validated['id_halaman'],
+                'label'        => $validated['label'] ?? null,
+                'x_pct'        => $validated['x_pct'],
+                'y_pct'        => $validated['y_pct'],
+                'w_pct'        => $validated['w_pct'],
+                'h_pct'        => $validated['h_pct'],
+                'x'            => $validated['x'] ?? 0,
+                'y'            => $validated['y'] ?? 0,
+                'lebar_area'   => $validated['lebar_area'] ?? 0,
+                'panjang_area' => $validated['panjang_area'] ?? 0,
+            ]);
 
-            if ($request->hasFile('narasi_indo')) {
-                if ($halaman->narasi_indo) Storage::disk('public')->delete($halaman->narasi_indo);
-                $data['narasi_indo'] = $request->file('narasi_indo')
-                    ->store('buku_' . $halaman->id_buku . '/audio_narasi_indo', 'public');
-            }
-
-            if ($request->hasFile('narasi_sunda')) {
-                if ($halaman->narasi_sunda) Storage::disk('public')->delete($halaman->narasi_sunda);
-                $data['narasi_sunda'] = $request->file('narasi_sunda')
-                    ->store('buku_' . $halaman->id_buku . '/audio_narasi_sunda', 'public');
-            }
-
-            if ($request->has('id_audio_latar')) {
-                $data['id_audio_latar'] = $request->id_audio_latar; 
-            }
-
-            $halaman->update($data);
-
-            return redirect()
-                ->route('halaman.edit', $id_halaman)
-                ->with('success', 'Multimedia halaman berhasil diperbarui.');
-
-        } catch (\Exception $e) {
-            return back()->with('error', 'Gagal mengupdate multimedia: ' . $e->getMessage());
+            return response()->json([
+                'success' => true,
+                'area'    => $area,
+                'message' => 'Area interaktif berhasil disimpan',
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('storeAreaInteraktif error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    public function destroy($id_halaman)
+    // ── Area Interaktif: update coords ──────────────────────────────────────
+
+    public function updateAreaInteraktif(Request $request, AreaInteraktif $area)
     {
-        $halaman = Halaman::with('buku')->findOrFail($id_halaman);
-        $id_buku = $halaman->id_buku;
-
-        if ($halaman->buku->status_publikasi === 'Published') {
-            return back()->with('error', 'Tidak dapat menghapus halaman dari buku yang dipublikasikan.');
-        }
-
-        $totalHalaman = Halaman::where('id_buku', $id_buku)->count();
-        if ($totalHalaman <= 2) {
-            return back()->with('error', 'Minimal harus tersisa 2 halaman.');
-        }
-
-        if ($halaman->path_gambar) Storage::disk('public')->delete($halaman->path_gambar);
-        if ($halaman->narasi_indo) Storage::disk('public')->delete($halaman->narasi_indo);
-        if ($halaman->narasi_sunda) Storage::disk('public')->delete($halaman->narasi_sunda);
-
-        $halaman->delete();
-
-        $sisaHalaman = Halaman::where('id_buku', $id_buku)
-                              ->orderBy('nomor_halaman')
-                              ->get();
-
-        foreach ($sisaHalaman as $index => $h) {
-            $h->nomor_halaman = $index + 1;
-            $h->save();
-        }
-
-        return redirect()
-            ->route('buku.halaman.index', $id_buku)
-            ->with('success', 'Halaman berhasil dihapus dan nomor diurutkan ulang.');
-    }
-
-    public function reorder(Request $request, $id_buku)
-    {
-        $buku = Buku::findOrFail($id_buku);
-
-        if ($buku->status_publikasi === 'Published') {
-            return response()->json(['error' => 'Tidak diizinkan'], 422);
-        }
-
-        $request->validate([
-            'urutan_id' => 'required|array',
-            'urutan_id.*' => 'integer|exists:halaman,id_halaman'
+        $validated = $request->validate([
+            'x'            => 'required|integer',
+            'y'            => 'required|integer',
+            'lebar_area'   => 'required|integer|min:1',
+            'panjang_area' => 'required|integer|min:1',
         ]);
 
-        foreach ($request->urutan_id as $index => $id) {
-            Halaman::where('id_halaman', $id)
-                   ->where('id_buku', $id_buku)
-                   ->update(['nomor_halaman' => $index + 1]);
-        }
+        $area->update($validated);
+        return response()->json(['success' => true]);
+    }
 
-        return response()->json(['message' => 'Urutan halaman berhasil diperbarui']);
+    // ── Area Interaktif: delete ──────────────────────────────────────────────
+
+    public function deleteAreaInteraktif(AreaInteraktif $area)
+    {
+        try {
+            foreach (['audio_indo', 'audio_sunda'] as $field) {
+                if ($area->$field && Storage::disk('public')->exists($area->$field)) {
+                    Storage::disk('public')->delete($area->$field);
+                }
+            }
+            $area->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Area interaktif berhasil dihapus',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    // ── Area Interaktif: upload audio ────────────────────────────────────────
+
+    public function storeAreaAudio(Request $request, AreaInteraktif $area)
+    {
+        $validated = $request->validate([
+            'audio_type' => 'required|in:indo,sunda',
+            'audio_file' => 'required|file|mimes:mp3,wav,ogg,m4a|max:10240',
+        ]);
+
+        try {
+            $field = 'audio_' . $validated['audio_type'];
+
+            // [FIX #3] Hapus file lama jika ada sebelum menyimpan yang baru
+            if ($area->$field && Storage::disk('public')->exists($area->$field)) {
+                Storage::disk('public')->delete($area->$field);
+            }
+
+            $path       = $request->file('audio_file')->store('buku/audio', 'public');
+            $area->$field = $path;
+            $area->save();
+
+            $lang = $validated['audio_type'] === 'indo' ? 'Indonesia' : 'Sunda';
+            return back()->with('success', "Audio {$lang} area berhasil diunggah");
+        } catch (\Exception $e) {
+            return back()->withErrors(['audio' => 'Gagal menyimpan audio: ' . $e->getMessage()]);
+        }
+    }
+
+    // ── Narasi Halaman: store ────────────────────────────────────────────────
+
+    public function storeNarasi(Request $request, Halaman $halaman)
+    {
+        $validated = $request->validate([
+            'narasi_type' => 'required|in:indo,sunda',
+            'audio_file'  => 'required|file|mimes:mp3,wav,ogg,m4a|max:10240',
+        ]);
+
+        try {
+            $path = $request->file('audio_file')->store('buku/narasi', 'public');
+
+            switch ($validated['narasi_type']) {
+                case 'indo':
+                    // [FIX #3] Hapus file lama sebelum menyimpan baru
+                    if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
+                        Storage::disk('public')->delete($halaman->narasi_indo);
+                    }
+                    $halaman->narasi_indo = $path;
+                    $message = 'Narasi Indonesia berhasil diperbarui';
+                    break;
+
+                case 'sunda':
+                    // [FIX #3] Hapus file lama sebelum menyimpan baru
+                    if ($halaman->narasi_sunda && Storage::disk('public')->exists($halaman->narasi_sunda)) {
+                        Storage::disk('public')->delete($halaman->narasi_sunda);
+                    }
+                    $halaman->narasi_sunda = $path;
+                    $message = 'Narasi Sunda berhasil diperbarui';
+                    break;
+            }
+
+            $halaman->save();
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            return back()->withErrors(['audio' => 'Gagal menyimpan: ' . $e->getMessage()]);
+        }
+    }
+
+    // ── Narasi Halaman: delete ───────────────────────────────────────────────
+
+    public function deleteNarasi(Halaman $halaman, Request $request)
+    {
+        try {
+            $type = $request->input('narasi_type');
+
+            $fieldMap = [
+                'indo'  => ['field' => 'narasi_indo',  'label' => 'Narasi Indonesia'],
+                'sunda' => ['field' => 'narasi_sunda', 'label' => 'Narasi Sunda'],
+            ];
+
+            if (!isset($fieldMap[$type])) {
+                return back()->withErrors(['audio' => 'Tipe audio tidak valid']);
+            }
+
+            $field = $fieldMap[$type]['field'];
+            $label = $fieldMap[$type]['label'];
+
+            if ($halaman->$field && Storage::disk('public')->exists($halaman->$field)) {
+                Storage::disk('public')->delete($halaman->$field);
+            }
+            $halaman->$field = null;
+            $halaman->save();
+
+            return back()->with('success', "{$label} berhasil dihapus");
+        } catch (\Exception $e) {
+            return back()->withErrors(['delete' => 'Gagal menghapus: ' . $e->getMessage()]);
+        }
+    }
+
+    public function flipbook(Buku $buku)
+    {
+        $buku->load(['halaman' => function ($q) {
+            $q->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman');
+        }]);
+
+        return view('halaman.flipbook', compact('buku'));
     }
 }

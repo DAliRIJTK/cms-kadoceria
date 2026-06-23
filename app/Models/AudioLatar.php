@@ -2,24 +2,20 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AudioLatar extends Model
 {
-    use HasFactory;
-
     protected $table = 'audio_latar';
-
     protected $primaryKey = 'id_audio_latar';
+    public $timestamps = true;
 
     protected $fillable = [
         'nama_audio',
-        'path_file',
+        'path_file'
     ];
 
-    public function halaman(): HasMany
+    public function halaman()
     {
         return $this->hasMany(Halaman::class, 'id_audio_latar', 'id_audio_latar');
     }

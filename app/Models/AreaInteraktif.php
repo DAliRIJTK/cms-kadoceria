@@ -2,28 +2,37 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AreaInteraktif extends Model
 {
-    use HasFactory;
-
     protected $table = 'area_interaktif';
     protected $primaryKey = 'id_area';
+    public $timestamps = true;
 
     protected $fillable = [
         'id_halaman',
+        'label',
         'x',
         'y',
         'lebar_area',
         'panjang_area',
+        'x_pct',
+        'y_pct',
+        'w_pct',
+        'h_pct',
         'audio_indo',
         'audio_sunda',
     ];
 
-    public function halaman(): BelongsTo
+    protected $casts = [
+        'x_pct' => 'float',
+        'y_pct' => 'float',
+        'w_pct' => 'float',
+        'h_pct' => 'float',
+    ];
+
+    public function halaman()
     {
         return $this->belongsTo(Halaman::class, 'id_halaman', 'id_halaman');
     }
