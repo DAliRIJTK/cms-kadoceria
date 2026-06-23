@@ -94,14 +94,26 @@ class HalamanController extends Controller
             return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
         }
 
-        $path     = $request->file('path_gambar')->store('buku/halaman', 'public');
         $lastPage = Halaman::where('id_buku', $validated['id_buku'])->max('nomor_halaman');
+        $newPageNumber = ($lastPage ?? 0) + 1;
+
+        $ext = $request->file('path_gambar')->getClientOriginalExtension();
+        if ($newPageNumber === 1) {
+            $filename = 'cover.' . $ext;
+        } else {
+            $filename = 'halaman ' . ($newPageNumber - 1) . '.' . $ext;
+        }
+
+        $bookDir = $buku->slugify($buku->judul_idn);
+        $path = $request->file('path_gambar')->storeAs('buku/' . $bookDir . '/halaman', $filename, 'public');
 
         Halaman::create([
             'id_buku'       => $validated['id_buku'],
-            'nomor_halaman' => ($lastPage ?? 0) + 1,
+            'nomor_halaman' => $newPageNumber,
             'path_gambar'   => $path,
         ]);
+
+        $buku->syncStorageStructure();
 
         return back()->with('success', 'Halaman berhasil ditambahkan');
     }
@@ -136,6 +148,7 @@ class HalamanController extends Controller
                     }
 
                     $halaman->update(['nomor_halaman' => $newPageNumber]);
+                    $halaman->buku->syncStorageStructure();
                 }
             }
 
@@ -184,6 +197,8 @@ class HalamanController extends Controller
                 ->where('nomor_halaman', '>', $deletedPageNumber)
                 ->decrement('nomor_halaman');
 
+            $buku->syncStorageStructure();
+
             return back()->with('success', 'Halaman berhasil dihapus');
         } catch (\Exception $e) {
             return back()->withErrors(['delete' => 'Gagal menghapus halaman: ' . $e->getMessage()]);
@@ -202,6 +217,9 @@ class HalamanController extends Controller
         foreach ($request->halaman as $index => $id) {
             Halaman::where('id_halaman', $id)->update(['nomor_halaman' => $index + 1]);
         }
+        if (isset($firstHalaman)) {
+            $firstHalaman->buku->syncStorageStructure();
+        }
         return response()->json(['success' => true]);
     }
 
@@ -216,6 +234,7 @@ class HalamanController extends Controller
         ]);
 
         $halaman->update(['id_audio_latar' => $validated['id_audio_latar']]);
+        $halaman->buku->syncStorageStructure();
 
         return back()->with('success', 'Backsound halaman berhasil diatur');
     }
@@ -227,6 +246,7 @@ class HalamanController extends Controller
         }
 
         $halaman->update(['id_audio_latar' => null]);
+        $halaman->buku->syncStorageStructure();
 
         return back()->with('success', 'Backsound halaman berhasil dihapus');
     }

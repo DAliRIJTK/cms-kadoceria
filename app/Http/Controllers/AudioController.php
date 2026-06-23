@@ -38,6 +38,8 @@ class AudioController extends Controller
             $area->$field = $path;
             $area->save();
 
+            $area->halaman->buku->syncStorageStructure();
+
             $lang = $validated['audio_type'] === 'indo' ? 'Indonesia' : 'Sunda';
             return back()->with('success', "Audio {$lang} area berhasil diunggah");
         } catch (\Exception $e) {
@@ -85,6 +87,7 @@ class AudioController extends Controller
             }
 
             $halaman->save();
+            $halaman->buku->syncStorageStructure();
             return back()->with('success', $message);
         } catch (\Exception $e) {
             return back()->withErrors(['audio' => 'Gagal menyimpan: ' . $e->getMessage()]);
