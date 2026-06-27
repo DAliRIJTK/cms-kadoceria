@@ -11,13 +11,6 @@ class AudioController extends Controller
 {
     public function storeAreaAudio(Request $request, AreaInteraktif $area)
     {
-        $buku = $area->halaman->buku;
-
-        if ($buku->status_publikasi === 'Terbit') {
-            return back()->withErrors([
-                'audio' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'
-            ]);
-        }
 
         $validated = $request->validate([
             'audio_type' => 'required|in:indo,sunda',
@@ -73,13 +66,6 @@ class AudioController extends Controller
 
     public function storeNarasi(Request $request, Halaman $halaman)
     {
-        $buku = $halaman->buku;
-
-        if ($buku->status_publikasi === 'Terbit') {
-            return back()->withErrors([
-                'audio' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'
-            ]);
-        }
 
         $validated = $request->validate([
             'narasi_type' => 'required|in:indo,sunda',
@@ -144,13 +130,6 @@ class AudioController extends Controller
 
     public function deleteNarasi(Halaman $halaman, Request $request)
     {
-        $buku = $halaman->buku;
-
-        if ($buku->status_publikasi === 'Terbit') {
-            return back()->withErrors([
-                'delete' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'
-            ]);
-        }
 
         try {
             $type = $request->input('narasi_type');
@@ -181,13 +160,6 @@ class AudioController extends Controller
 
     public function deleteAreaAudio(AreaInteraktif $area, Request $request)
     {
-        $buku = $area->halaman->buku;
-
-        if ($buku->status_publikasi === 'Terbit') {
-            return back()->withErrors([
-                'delete' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'
-            ]);
-        }
 
         try {
             $type = $request->input('audio_type');

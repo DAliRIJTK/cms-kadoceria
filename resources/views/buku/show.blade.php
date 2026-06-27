@@ -8,27 +8,6 @@
     </a>
 </div>
 
-{{-- Header: Judul + Status --}}
-<div class="flex justify-between items-start mb-6">
-    <div>
-        <h1 class="text-3xl font-bold text-gray-900">{{ $buku->judul_idn }}</h1>
-        @if($buku->judul_sn)
-            <p class="text-gray-500 mt-1">{{ $buku->judul_sn }}</p>
-        @endif
-    </div>
-    <div>
-        @if($buku->status_publikasi === 'Terbit')
-            <span class="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold text-sm border border-green-200">
-                ✅ Terbit
-            </span>
-        @else
-            <span class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-800 rounded-lg font-semibold text-sm border border-yellow-200">
-                📋 Draft
-            </span>
-        @endif
-    </div>
-</div>
-
 {{-- Error/Success Alerts --}}
 <x-modal-alert id="alertModal" type="error" />
 <x-modal-alert id="successModal" type="success" />
@@ -37,6 +16,27 @@
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
     <div class="lg:col-span-3">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+
+            {{-- Header: Judul + Status di dalam Card --}}
+            <div class="flex justify-between items-start mb-6 pb-6 border-b border-gray-100">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ $buku->judul_idn }}</h1>
+                    @if($buku->judul_sn)
+                        <p class="text-gray-500 mt-1 text-sm italic">{{ $buku->judul_sn }}</p>
+                    @endif
+                </div>
+                <div>
+                    @if($buku->status_publikasi === 'Terbit')
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-lg font-semibold text-xs border border-green-200">
+                            ✅ Terbit
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 text-yellow-800 rounded-lg font-semibold text-xs border border-yellow-200">
+                            📋 Draft
+                        </span>
+                    @endif
+                </div>
+            </div>
 
             {{-- Metadata row --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-100">
@@ -97,19 +97,13 @@
                 @endif
 
                 @if($buku->status_publikasi === 'Draft')
-                    <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="inline"
-                          onsubmit="return confirm('Publikasikan buku ini? Buku akan dapat diunduh oleh pengguna aplikasi.');">
-                        @csrf
-                        @method('PATCH')
-                        <input type="hidden" name="status_publikasi" value="Terbit">
-                        <button type="submit"
-                                class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                            🚀 Publikasikan
-                        </button>
-                    </form>
+                    <button onclick="openPublishModal('modal-publish')"
+                            class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                        🚀 Publikasikan
+                    </button>
                 @else
                     <button
-                        onclick="document.getElementById('modal-unpublish').classList.remove('hidden')"
+                        onclick="openPublishModal('modal-unpublish')"
                         class="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
                         📋 Kembalikan ke Draft
                     </button>
@@ -282,13 +276,6 @@
                     🔊 Musik
                 </button>
             </div>
-
-            {{-- Page slider --}}
-            <input type="range" id="fb-slider" min="0" max="{{ $halamanSorted->count() - 1 }}" value="0" step="1"
-                style="
-                    flex:1; max-width:240px; height:4px; border-radius:4px;
-                    accent-color: var(--fb-primary); cursor:pointer; margin: 0 4px;
-                ">
 
             {{-- Page counter --}}
             <span id="fb-counter" style="font-size:12px; color:rgba(255,255,255,0.65); min-width:70px; text-align:center; flex-shrink:0;"></span>
@@ -490,7 +477,6 @@
         const audioBar      = document.getElementById('fb-audio-bar');
         const audioLabel    = document.getElementById('fb-audio-label');
         const stage         = document.getElementById('fb-stage');
-        const slider        = document.getElementById('fb-slider');
 
         /* ── Size ── */
         function fbSize() {
@@ -510,7 +496,6 @@
             fbRenderAreas(page);
 
             counter.textContent = `${page ? page.nomor : fbIdx + 1} / ${TOTAL}`;
-            slider.value = fbIdx;
 
             // [FIX #4] Tampilkan narasi group jika halaman punya narasi (id atau su)
             const hasNarasiId = page && !!page.narasi_id;
@@ -622,11 +607,11 @@
             }
             btn.style.display = 'flex';
             if (fbBacksoundPaused) {
-                btn.innerHTML = '🔇 Musik';
-                btn.style.background = 'rgba(220,38,38,0.3)';
-            } else {
-                btn.innerHTML = '🔊 Musik';
+                btn.innerHTML = '🔇 Putar Backsound';
                 btn.style.background = 'rgba(255,255,255,0.1)';
+            } else {
+                btn.innerHTML = '🔊 Berhenti Backsound';
+                btn.style.background = 'rgba(220,38,38,0.3)';
             }
         }
 
@@ -767,23 +752,17 @@
             });
         }
 
-        /* ── Slider ── */
-        slider.addEventListener('input', e => {
-            const idx = parseInt(e.target.value, 10);
-            if (idx === fbIdx) return;
-            fbStopAudio(false);
-            fbIdx = idx;
-            fbRender();
-        });
-
         /* ── Scroll wheel navigation ── */
         let fbWheelLock = false;
         stage.addEventListener('wheel', e => {
-            e.preventDefault();
-            if (fbWheelLock) return;
             const dir = e.deltaY > 0 ? 1 : -1;
             const newIdx = fbIdx + dir;
-            if (newIdx < 0 || newIdx >= TOTAL) return;
+            if (newIdx < 0 || newIdx >= TOTAL) {
+                // Let the browser handle standard scroll if we cannot turn the page
+                return;
+            }
+            e.preventDefault();
+            if (fbWheelLock) return;
             fbWheelLock = true;
             fbGoPage(dir);
             setTimeout(() => fbWheelLock = false, 350);
@@ -805,11 +784,19 @@
         });
 
         /* ── Init ── */
-        window.addEventListener('load', () => {
+        function initFb() {
             fbSize();
             fbRender();
-            setTimeout(() => loading.style.display = 'none', 350);
-        });
+            setTimeout(() => {
+                if (loading) loading.style.display = 'none';
+            }, 350);
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initFb();
+        } else {
+            window.addEventListener('load', initFb);
+        }
         new ResizeObserver(fbSize).observe(stage);
 
     })();
@@ -830,33 +817,86 @@
 {{-- ── End Pratinjau Flipbook ── --}}
 
 {{-- Modal Konfirmasi Kembalikan ke Draft --}}
-<div id="modal-unpublish" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
-    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onclick="event.stopPropagation()">
-        <div class="flex items-start gap-4 mb-5">
-            <div class="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-xl">
-                ⚠️
-            </div>
-            <div>
-                <h3 class="text-lg font-bold text-gray-900 mb-1">Kembalikan ke Draft?</h3>
-                <p class="text-sm text-gray-600">
-                    Buku <strong>{{ $buku->judul_idn }}</strong> akan disembunyikan dari aplikasi Flutter dan tidak bisa diunduh pengguna hingga dipublikasikan kembali.
-                </p>
-            </div>
+<div id="modal-unpublish" class="fixed inset-0 z-50 hidden items-center justify-center" aria-modal="true" role="dialog">
+    {{-- Backdrop --}}
+    <div class="modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0"
+         onclick="closePublishModal('modal-unpublish')"></div>
+
+    {{-- Card --}}
+    <div class="modal-card relative bg-white rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4
+                min-w-[320px] max-w-[90vw] scale-90 opacity-0 transition-all duration-300" onclick="event.stopPropagation()">
+
+        {{-- Icon --}}
+        <div class="w-20 h-20 rounded-full bg-yellow-100 flex items-center justify-center text-3xl">
+            ⚠️
         </div>
-        <div class="flex justify-end gap-3">
-            <button
-                onclick="document.getElementById('modal-unpublish').classList.add('hidden')"
-                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors">
+
+        {{-- Text --}}
+        <div class="text-center">
+            <p class="text-xl font-bold text-gray-900 mt-1">Kembalikan ke Draft?</p>
+            <p class="text-sm text-gray-500 mt-2 leading-relaxed">
+                Buku <strong>{{ $buku->judul_idn }}</strong> akan disembunyikan dari aplikasi mobile Kaco Ceria dan tidak bisa diunduh pengguna hingga dipublikasikan kembali.
+            </p>
+        </div>
+
+        {{-- Confirm buttons --}}
+        <div class="flex gap-3 mt-2 w-full">
+            <button type="button"
+                    onclick="closePublishModal('modal-unpublish')"
+                    class="flex-1 px-6 py-3 rounded-xl border-2 border-yellow-400 text-yellow-600 font-bold text-base hover:bg-yellow-50 transition-colors">
                 Batal
             </button>
-            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="inline">
+            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="flex-1">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status_publikasi" value="Draft">
                 <input type="hidden" name="confirm_unpublish" value="yes">
                 <button type="submit"
-                        class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
-                    Ya, Kembalikan ke Draft
+                        class="w-full px-6 py-3 rounded-xl bg-yellow-600 hover:bg-yellow-700 text-white font-bold text-base transition-colors shadow-md">
+                    Ya, Konfirmasi
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Konfirmasi Publikasikan --}}
+<div id="modal-publish" class="fixed inset-0 z-50 hidden items-center justify-center" aria-modal="true" role="dialog">
+    {{-- Backdrop --}}
+    <div class="modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0"
+         onclick="closePublishModal('modal-publish')"></div>
+
+    {{-- Card --}}
+    <div class="modal-card relative bg-white rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4
+                min-w-[320px] max-w-[90vw] scale-90 opacity-0 transition-all duration-300" onclick="event.stopPropagation()">
+
+        {{-- Icon --}}
+        <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-3xl">
+            🚀
+        </div>
+
+        {{-- Text --}}
+        <div class="text-center">
+            <p class="text-xl font-bold text-gray-900 mt-1">Publikasikan Buku?</p>
+            <p class="text-sm text-gray-500 mt-2 leading-relaxed">
+                Buku <strong>{{ $buku->judul_idn }}</strong> akan diterbitkan. Buku akan dapat diunduh dan dibaca oleh pengguna di aplikasi mobile Kaco Ceria.
+            </p>
+        </div>
+
+        {{-- Confirm buttons --}}
+        <div class="flex gap-3 mt-2 w-full">
+            <button type="button"
+                    onclick="closePublishModal('modal-publish')"
+                    class="flex-1 px-6 py-3 rounded-xl border-2 border-green-400 text-green-600 font-bold text-base hover:bg-green-50 transition-colors">
+                Batal
+            </button>
+            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="flex-1">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status_publikasi" value="Terbit">
+                <button type="submit"
+                        class="w-full px-6 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-base transition-colors shadow-md">
+                    Ya, Publikasikan
                 </button>
             </form>
         </div>
@@ -864,9 +904,31 @@
 </div>
 
 <script>
-    document.getElementById('modal-unpublish').addEventListener('click', function (e) {
-        if (e.target === this) this.classList.add('hidden');
-    });
+    function openPublishModal(id) {
+        const modal = document.getElementById(id);
+        const backdrop = modal.querySelector('.modal-backdrop');
+        const card     = modal.querySelector('.modal-card');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        requestAnimationFrame(() => {
+            backdrop.classList.remove('opacity-0');
+            card.classList.remove('scale-90', 'opacity-0');
+            card.classList.add('scale-100', 'opacity-100');
+        });
+    }
+
+    function closePublishModal(id) {
+        const modal = document.getElementById(id);
+        const backdrop = modal.querySelector('.modal-backdrop');
+        const card     = modal.querySelector('.modal-card');
+        backdrop.classList.add('opacity-0');
+        card.classList.add('scale-90', 'opacity-0');
+        card.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
 </script>
 
 @push('scripts')

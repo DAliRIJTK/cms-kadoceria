@@ -25,10 +25,6 @@ class HalamanController extends Controller
 
         if ($request->filled('id_buku') && $request->id_buku !== '') {
             $buku = Buku::find($request->id_buku);
-            if ($buku && $buku->status_publikasi === 'Terbit') {
-                return redirect()->route('buku.show', $buku->id_buku)
-                    ->withErrors(['publication' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan pengelolaan halaman.']);
-            }
             $query->where('id_buku', $request->id_buku);
         }
 
@@ -58,10 +54,6 @@ class HalamanController extends Controller
 
     public function edit(Halaman $halaman)
     {
-        if ($halaman->buku->status_publikasi === 'Terbit') {
-            return redirect()->route('halaman.show', $halaman->id_halaman)
-                ->withErrors(['publication' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
-        }
 
         $halaman->load(['areaInteraktif', 'buku', 'audioLatar']);
         $allAudioLatar = AudioLatar::orderBy('nama_audio')->get();
@@ -95,10 +87,6 @@ class HalamanController extends Controller
 
         $buku = Buku::findOrFail($validated['id_buku']);
 
-        if ($buku->status_publikasi === 'Terbit') {
-            return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
-        }
-
         $lastPage = Halaman::where('id_buku', $validated['id_buku'])->max('nomor_halaman');
         $newPageNumber = ($lastPage ?? 0) + 1;
 
@@ -125,13 +113,6 @@ class HalamanController extends Controller
 
     public function update(Request $request, Halaman $halaman)
     {
-        if ($halaman->buku->status_publikasi === 'Terbit') {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'], 422);
-            }
-            return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
-        }
-
         try {
             if ($request->has('nomor_halaman')) {
                 $validated     = $request->validate(['nomor_halaman' => 'nullable|integer|min:1']);
@@ -172,9 +153,6 @@ class HalamanController extends Controller
     {
         $buku = $halaman->buku;
 
-        if ($buku->status_publikasi === 'Terbit') {
-            return back()->withErrors(['delete' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
-        }
         $currentPageCount = $buku->halaman()->count();
         if ($currentPageCount - 1 < 1) {
             return back()->withErrors(['delete' => 'Penghapusan halaman tidak diperbolehkan jika sisa halaman kurang dari 1.']);
@@ -191,6 +169,13 @@ class HalamanController extends Controller
                 }
             }
             $halaman->areaInteraktif()->delete();
+
+            // Delete narration audio files if they exist
+            foreach (['narasi_indo', 'narasi_sunda'] as $field) {
+                if ($halaman->$field && Storage::disk('public')->exists($halaman->$field)) {
+                    Storage::disk('public')->delete($halaman->$field);
+                }
+            }
 
             if ($halaman->path_gambar && Storage::disk('public')->exists($halaman->path_gambar)) {
                 Storage::disk('public')->delete($halaman->path_gambar);
@@ -214,9 +199,6 @@ class HalamanController extends Controller
     {
         if ($request->filled('halaman') && count($request->halaman) > 0) {
             $firstHalaman = Halaman::find($request->halaman[0]);
-            if ($firstHalaman && $firstHalaman->buku->status_publikasi === 'Terbit') {
-                return response()->json(['success' => false, 'message' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'], 422);
-            }
         }
 
         foreach ($request->halaman as $index => $id) {
@@ -230,10 +212,6 @@ class HalamanController extends Controller
 
     public function setBacksound(Request $request, Halaman $halaman)
     {
-        if ($halaman->buku->status_publikasi === 'Terbit') {
-            return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
-        }
-
         $validated = $request->validate([
             'id_audio_latar' => 'required|exists:audio_latar,id_audio_latar',
         ]);
@@ -246,9 +224,6 @@ class HalamanController extends Controller
 
     public function removeBacksound(Halaman $halaman)
     {
-        if ($halaman->buku->status_publikasi === 'Terbit') {
-            return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
-        }
 
         $halaman->update(['id_audio_latar' => null]);
         $halaman->buku->syncStorageStructure();

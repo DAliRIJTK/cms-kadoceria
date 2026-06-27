@@ -34,7 +34,11 @@
     <div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h2 class="text-base font-bold text-gray-900 mb-1">Area Interaktif</h2>
-            <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+            @if($halaman->buku->status_publikasi === 'Terbit')
+                <p class="text-gray-400 text-xs mb-4">Daftar area interaktif yang terdapat pada halaman ini.</p>
+            @else
+                <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+            @endif
 
             <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 select-none" id="imageWrapper">
                 @if($halaman->path_gambar && file_exists(storage_path('app/public/' . $halaman->path_gambar)))
@@ -44,7 +48,7 @@
                          class="w-full block"
                          draggable="false">
                     <canvas id="drawCanvas"
-                            class="absolute inset-0 w-full h-full cursor-crosshair"
+                            class="absolute inset-0 w-full h-full {{ $halaman->buku->status_publikasi === 'Terbit' ? 'cursor-default' : 'cursor-crosshair' }}"
                             style="touch-action: none;"></canvas>
                     {{-- Existing area overlays --}}
                     @foreach($halaman->areaInteraktif as $area)
@@ -151,42 +155,49 @@
                             <audio controls class="flex-1 h-8"
                                    src="{{ asset('storage/' . $halaman->narasi_indo) }}"></audio>
                         </div>
-                        {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
-                        <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
+                    @else
+                        @if($halaman->buku->status_publikasi === 'Terbit')
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada audio narasi.</p>
+                        @endif
                     @endif
-                    @if($halaman->narasi_indo)
-                        <form id="delete-narasi-indo-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                              method="POST" class="hidden">
-                            @csrf @method('DELETE')
+
+                    @if($halaman->buku->status_publikasi !== 'Terbit')
+                        @if($halaman->narasi_indo)
+                            {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
+                            <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
+                            <form id="delete-narasi-indo-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                                  method="POST" class="hidden">
+                                @csrf @method('DELETE')
+                                <input type="hidden" name="narasi_type" value="indo">
+                            </form>
+                        @endif
+                        <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
+                              method="POST" enctype="multipart/form-data">
+                            @csrf
                             <input type="hidden" name="narasi_type" value="indo">
+                            <div class="flex gap-2">
+                                <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+                                    {{ $halaman->narasi_indo ? 'Ganti File' : 'Pilih File' }}
+                                    <input type="file" name="audio_file" accept=".mp3,.m4a"
+                                           required class="hidden" onchange="updateFileName(this)">
+                                </label>
+                                <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+                                    Belum ada file dipilih
+                                </span>
+                                <button type="submit"
+                                        class="px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Unggah
+                                </button>
+                                @if($halaman->narasi_indo)
+                                    <button type="submit" form="delete-narasi-indo-form"
+                                            class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                        Hapus
+                                    </button>
+                                @endif
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                         </form>
                     @endif
-                    <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
-                          method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="narasi_type" value="indo">
-                        <div class="flex gap-2">
-                            <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                                {{ $halaman->narasi_indo ? 'Ganti File' : 'Pilih File' }}
-                                <input type="file" name="audio_file" accept=".mp3,.m4a"
-                                       required class="hidden" onchange="updateFileName(this)">
-                            </label>
-                            <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
-                                Belum ada file dipilih
-                            </span>
-                            <button type="submit"
-                                    class="px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                                Unggah
-                            </button>
-                            @if($halaman->narasi_indo)
-                                <button type="submit" form="delete-narasi-indo-form"
-                                        class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Hapus
-                                </button>
-                            @endif
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
-                    </form>
                 </div>
 
                 {{-- Narasi Sunda --}}
@@ -197,42 +208,49 @@
                             <audio controls class="flex-1 h-8"
                                    src="{{ asset('storage/' . $halaman->narasi_sunda) }}"></audio>
                         </div>
-                        {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
-                        <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
+                    @else
+                        @if($halaman->buku->status_publikasi === 'Terbit')
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada audio narasi.</p>
+                        @endif
                     @endif
-                    @if($halaman->narasi_sunda)
-                        <form id="delete-narasi-sunda-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                              method="POST" class="hidden">
-                            @csrf @method('DELETE')
+
+                    @if($halaman->buku->status_publikasi !== 'Terbit')
+                        @if($halaman->narasi_sunda)
+                            {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
+                            <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
+                            <form id="delete-narasi-sunda-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                                  method="POST" class="hidden">
+                                @csrf @method('DELETE')
+                                <input type="hidden" name="narasi_type" value="sunda">
+                            </form>
+                        @endif
+                        <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
+                              method="POST" enctype="multipart/form-data">
+                            @csrf
                             <input type="hidden" name="narasi_type" value="sunda">
+                            <div class="flex gap-2">
+                                <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+                                    {{ $halaman->narasi_sunda ? 'Ganti File' : 'Pilih File' }}
+                                    <input type="file" name="audio_file" accept=".mp3,.m4a"
+                                           required class="hidden" onchange="updateFileName(this)">
+                                </label>
+                                <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+                                    Belum ada file dipilih
+                                </span>
+                                <button type="submit"
+                                        class="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Unggah
+                                </button>
+                                @if($halaman->narasi_sunda)
+                                    <button type="submit" form="delete-narasi-sunda-form"
+                                            class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                        Hapus
+                                    </button>
+                                @endif
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                         </form>
                     @endif
-                    <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
-                          method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="narasi_type" value="sunda">
-                        <div class="flex gap-2">
-                            <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                                {{ $halaman->narasi_sunda ? 'Ganti File' : 'Pilih File' }}
-                                <input type="file" name="audio_file" accept=".mp3,.m4a"
-                                       required class="hidden" onchange="updateFileName(this)">
-                            </label>
-                            <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
-                                Belum ada file dipilih
-                            </span>
-                            <button type="submit"
-                                    class="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                                Unggah
-                            </button>
-                            @if($halaman->narasi_sunda)
-                                <button type="submit" form="delete-narasi-sunda-form"
-                                        class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Hapus
-                                </button>
-                            @endif
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
-                    </form>
                 </div>
 
                 {{-- Backsound — menggunakan relasi AudioLatar --}}
@@ -242,7 +260,7 @@
                     {{-- Tampilkan audio aktif jika ada --}}
                     @if($halaman->audioLatar)
                         <div class="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between gap-3">
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-xs font-semibold text-yellow-800 truncate">
                                     🎵 {{ $halaman->audioLatar->nama_audio }}
                                 </p>
@@ -250,46 +268,54 @@
                                        src="{{ asset('storage/' . $halaman->audioLatar->path_file) }}"></audio>
                             </div>
                             {{-- Hapus: lepas relasi saja (set id_audio_latar = null) --}}
-                            <form action="{{ route('halaman.removeBacksound', $halaman->id_halaman) }}"
-                                  method="POST" class="flex-shrink-0">
-                                @csrf @method('PATCH')
-                                <button type="submit"
-                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Hapus
-                                </button>
-                            </form>
+                            @if($halaman->buku->status_publikasi !== 'Terbit')
+                                <form action="{{ route('halaman.removeBacksound', $halaman->id_halaman) }}"
+                                      method="POST" class="flex-shrink-0">
+                                    @csrf @method('PATCH')
+                                    <button type="submit"
+                                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                        Hapus
+                                    </button>
+                                </form>
+                            @endif
                         </div>
+                    @else
+                        @if($halaman->buku->status_publikasi === 'Terbit')
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada backsound.</p>
+                        @endif
                     @endif
 
                     {{-- Pilih dari daftar AudioLatar yang sudah ada --}}
-                    <form action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
-                          method="POST">
-                        @csrf @method('PATCH')
-                        <div class="flex gap-2">
-                            <select name="id_audio_latar"
-                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
-                                    required>
-                                <option value="">-- Pilih backsound --</option>
-                                @foreach($allAudioLatar as $al)
-                                    <option value="{{ $al->id_audio_latar }}"
-                                        {{ $halaman->id_audio_latar == $al->id_audio_latar ? 'selected' : '' }}>
-                                        {{ $al->nama_audio }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <button type="submit"
-                                    class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-semibold transition-colors">
-                                Atur
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">
-                            Pilih dari daftar audio latar yang tersedia.
-                            <a href="{{ route('audio-latar.index') }}"
-                               class="text-yellow-600 hover:underline">
-                                + Tambah audio latar baru
-                            </a>
-                        </p>
-                    </form>
+                    @if($halaman->buku->status_publikasi !== 'Terbit')
+                        <form action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
+                              method="POST">
+                            @csrf @method('PATCH')
+                            <div class="flex gap-2">
+                                <select name="id_audio_latar"
+                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+                                        required>
+                                    <option value="">-- Pilih backsound --</option>
+                                    @foreach($allAudioLatar as $al)
+                                        <option value="{{ $al->id_audio_latar }}"
+                                            {{ $halaman->id_audio_latar == $al->id_audio_latar ? 'selected' : '' }}>
+                                            {{ $al->nama_audio }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button type="submit"
+                                        class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Atur
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Pilih dari daftar audio latar yang tersedia.
+                                <a href="{{ route('audio-latar.index') }}"
+                                   class="text-yellow-600 hover:underline">
+                                    + Tambah audio latar baru
+                                </a>
+                            </p>
+                        </form>
+                    @endif
                 </div>
 
             </div>
@@ -354,10 +380,13 @@ function updateFileName(input) {
         return { x, y };
     }
 
+    const isPublished = @json($halaman->buku->status_publikasi === 'Terbit');
+
     canvas.addEventListener('mousedown',  onStart);
     canvas.addEventListener('touchstart', onStart, { passive: false });
 
     function onStart(e) {
+        if (isPublished) return;
         e.preventDefault();
         drawing = true;
         const pos = getPos(e);

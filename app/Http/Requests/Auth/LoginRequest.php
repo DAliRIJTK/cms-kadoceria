@@ -44,14 +44,12 @@ class LoginRequest extends FormRequest
 
         $login = $this->input('email');
 
-        // Look up user by email or name/username
-        $user = \App\Models\User::where('email', $login)
-            ->orWhere('name', $login)
-            ->first();
+        // Determine if the input is an email address or username (name column)
+        $fieldType = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
         $credentials = [
-            'email'    => $user ? $user->email : $login,
-            'password' => $this->input('password'),
+            $fieldType => $login,
+            'password'  => $this->input('password'),
         ];
 
         if (! Auth::attempt($credentials, $this->boolean('remember'))) {

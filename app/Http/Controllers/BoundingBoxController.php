@@ -24,14 +24,6 @@ class BoundingBoxController extends Controller
         ]);
 
         $halaman = \App\Models\Halaman::findOrFail($validated['id_halaman']);
-        $buku = $halaman->buku;
-
-        if ($buku->status_publikasi === 'Terbit') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'
-            ], 422);
-        }
 
         if (($validated['x_pct'] + $validated['w_pct'] > 100) || ($validated['y_pct'] + $validated['h_pct'] > 100)) {
             return response()->json([
@@ -91,14 +83,6 @@ class BoundingBoxController extends Controller
             'h_pct'        => 'nullable|numeric|min:0|max:100',
         ]);
 
-        $buku = $area->halaman->buku;
-
-        if ($buku->status_publikasi === 'Terbit') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'
-            ], 422);
-        }
 
         $x_pct = $request->input('x_pct', $area->x_pct);
         $y_pct = $request->input('y_pct', $area->y_pct);
@@ -148,14 +132,6 @@ class BoundingBoxController extends Controller
 
     public function destroy(AreaInteraktif $area)
     {
-        $buku = $area->halaman->buku;
-
-        if ($buku->status_publikasi === 'Terbit') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.'
-            ], 422);
-        }
 
         try {
             foreach (['audio_indo', 'audio_sunda'] as $field) {
