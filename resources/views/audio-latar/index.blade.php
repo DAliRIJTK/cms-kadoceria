@@ -3,6 +3,7 @@
 @section('content')
 
 <div class="mb-8">
+    <a href="{{ url()->previous() != url()->current() ? url()->previous() : route('halaman.management') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4 inline-block">← Kembali</a>
     <h1 class="text-3xl font-bold text-gray-800">Audio Latar</h1>
     <p class="text-gray-500 mt-2">Kelola semua audio latar buku Anda</p>
 </div>
@@ -56,7 +57,7 @@
                     <h3 class="font-semibold text-gray-800">{{ $audio->nama_audio }}</h3>
                     <p class="text-xs text-gray-600 mt-1">ID: {{ $audio->id_audio_latar }}</p>
                 </div>
-                <form action="{{ route('audio-latar.delete', $audio->id_audio_latar) }}" method="POST" onsubmit="return confirm('Hapus audio ini?');">
+                <form action="{{ route('audio-latar.delete', $audio->id_audio_latar) }}" method="POST">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm">Hapus</button>

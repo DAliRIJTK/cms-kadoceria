@@ -54,11 +54,13 @@
                             $anotasiCount = $page->areaInteraktif->count();
                         @endphp
 
-                        <tr class="hover:bg-gray-50 transition-colors sortable-row" data-id="{{ $page->id_halaman }}">
+                        <tr class="hover:bg-gray-50 transition-colors {{ $page->buku->status_publikasi === 'Terbit' ? '' : 'sortable-row' }}" data-id="{{ $page->id_halaman }}">
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <span class="drag-handle text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none text-lg leading-none" title="Seret untuk mengubah urutan">⠿</span>
+                                    @if($page->buku->status_publikasi !== 'Terbit')
+                                        <span class="drag-handle text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none text-lg leading-none" title="Seret untuk mengubah urutan">⠿</span>
+                                    @endif
                                     <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
                                 </div>
                             </td>
@@ -119,19 +121,22 @@
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <a href="{{ route('halaman.edit', $page->id_halaman) }}"
-                                       class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
-                                        Sunting
-                                    </a>
-                                    <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline"
-                                          onsubmit="return confirm('Hapus halaman ini?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                                class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                            Hapus
-                                        </button>
-                                    </form>
+                                    @if($page->buku->status_publikasi !== 'Terbit')
+                                        <a href="{{ route('halaman.edit', $page->id_halaman) }}"
+                                           class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
+                                            Sunting
+                                        </a>
+                                        <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-xs text-gray-400 italic">Buku Terbit (Read-only)</span>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

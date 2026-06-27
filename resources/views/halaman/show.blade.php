@@ -62,7 +62,7 @@
                                     <p class="text-sm font-medium text-gray-800">Area {{ $loop->iteration }}</p>
                                     <p class="text-xs text-gray-600">Posisi: X={{ $area->x }}, Y={{ $area->y }} | Ukuran: {{ $area->lebar_area }}x{{ $area->panjang_area }}</p>
                                 </div>
-                                <form action="{{ route('halaman.deleteAreaInteraktif', ['area' => $area->id_area]) }}" method="POST" class="inline" onsubmit="return confirm('Hapus area ini?');">
+                                <form action="{{ route('halaman.deleteAreaInteraktif', ['area' => $area->id_area]) }}" method="POST" class="inline">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-xs text-red-600 hover:text-red-800 font-medium">Hapus</button>
@@ -100,7 +100,7 @@
                 <a href="{{ route('halaman.edit', $halaman->id_halaman) }}" class="block w-full px-4 py-2 text-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm">
                     Edit
                 </a>
-                <form action="{{ route('halaman.destroy', $halaman->id_halaman) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus halaman ini?');">
+                <form action="{{ route('halaman.destroy', $halaman->id_halaman) }}" method="POST" class="inline">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="w-full px-4 py-2 text-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm">

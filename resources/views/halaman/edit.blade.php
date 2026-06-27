@@ -9,29 +9,8 @@
     </a>
 </div>
 
-{{-- Alerts --}}
-@if (session('success'))
-    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 flex gap-3">
-        <span class="text-xl">✅</span>
-        <p class="text-green-800 font-medium self-center">{{ session('success') }}</p>
-    </div>
-@endif
-
-@if ($errors->any())
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-        <div class="flex gap-3">
-            <span class="text-xl">⚠️</span>
-            <div>
-                <h3 class="font-semibold text-red-800 mb-1">Terjadi Kesalahan</h3>
-                <ul class="text-sm text-red-700 space-y-0.5 list-disc list-inside">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-    </div>
-@endif
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
 
 {{-- Header --}}
 <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
@@ -47,12 +26,6 @@
         </div>
     </div>
 
-    <div class="flex items-center gap-2 flex-wrap">
-        <button id="saveAreaBtn" type="button"
-                class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm">
-            💾 Simpan Area Baru
-        </button>
-    </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -113,9 +86,11 @@
                         Hal. {{ $nextHalaman->nomor_halaman }} ›
                     </a>
                 @else
-                    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed">
-                        Berikutnya ›
-                    </span>
+                    <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+                       title="Selesai Sunting">
+                        Selesai
+                    </a>
                 @endif
             </div>
         </div>
@@ -132,12 +107,15 @@
                     <input type="text" id="newAreaLabel"
                             placeholder="Contoh: Mata, Telinga, Pohon..."
                             class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <button id="saveAreaBtn" type="button"
+                            class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        💾 Simpan
+                    </button>
                     <button type="button" id="cancelAreaBtn"
                             class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors">
                         Batal
                     </button>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Tekan "Simpan Area Baru" di atas setelah mengisi label.</p>
             </div>
             <br>
             <h2 class="text-base font-bold text-gray-900 mb-4">
@@ -176,6 +154,13 @@
                         {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
                         <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
                     @endif
+                    @if($halaman->narasi_indo)
+                        <form id="delete-narasi-indo-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                              method="POST" class="hidden">
+                            @csrf @method('DELETE')
+                            <input type="hidden" name="narasi_type" value="indo">
+                        </form>
+                    @endif
                     <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
                           method="POST" enctype="multipart/form-data">
                         @csrf
@@ -194,15 +179,10 @@
                                 Unggah
                             </button>
                             @if($halaman->narasi_indo)
-                                <form action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                                      method="POST" class="inline">
-                                    @csrf @method('DELETE')
-                                    <input type="hidden" name="narasi_type" value="indo">
-                                    <button type="submit"
-                                            class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                        Hapus
-                                    </button>
-                                </form>
+                                <button type="submit" form="delete-narasi-indo-form"
+                                        class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Hapus
+                                </button>
                             @endif
                         </div>
                         <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
@@ -219,6 +199,13 @@
                         </div>
                         {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
                         <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
+                    @endif
+                    @if($halaman->narasi_sunda)
+                        <form id="delete-narasi-sunda-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                              method="POST" class="hidden">
+                            @csrf @method('DELETE')
+                            <input type="hidden" name="narasi_type" value="sunda">
+                        </form>
                     @endif
                     <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
                           method="POST" enctype="multipart/form-data">
@@ -238,15 +225,10 @@
                                 Unggah
                             </button>
                             @if($halaman->narasi_sunda)
-                                <form action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                                      method="POST" class="inline">
-                                    @csrf @method('DELETE')
-                                    <input type="hidden" name="narasi_type" value="sunda">
-                                    <button type="submit"
-                                            class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                        Hapus
-                                    </button>
-                                </form>
+                                <button type="submit" form="delete-narasi-sunda-form"
+                                        class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Hapus
+                                </button>
                             @endif
                         </div>
                         <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
@@ -348,12 +330,28 @@ function updateFileName(input) {
 
     function getPos(e) {
         const rect    = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-            x: (clientX - rect.left) * (canvas.width  / rect.width),
-            y: (clientY - rect.top)  * (canvas.height / rect.height),
-        };
+        let clientX = 0;
+        let clientY = 0;
+
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        let x = (clientX - rect.left) * (canvas.width  / rect.width);
+        let y = (clientY - rect.top)  * (canvas.height / rect.height);
+
+        // Clamp values to canvas bounds
+        x = Math.max(0, Math.min(canvas.width, x));
+        y = Math.max(0, Math.min(canvas.height, y));
+
+        return { x, y };
     }
 
     canvas.addEventListener('mousedown',  onStart);
@@ -368,8 +366,8 @@ function updateFileName(input) {
         hideLabelInput();
     }
 
-    canvas.addEventListener('mousemove',  onMove);
-    canvas.addEventListener('touchmove',  onMove, { passive: false });
+    window.addEventListener('mousemove',  onMove);
+    window.addEventListener('touchmove',  onMove, { passive: false });
 
     function onMove(e) {
         if (!drawing) return;
@@ -383,17 +381,13 @@ function updateFileName(input) {
         ctx.fillRect(startX, startY, pos.x - startX, pos.y - startY);
     }
 
-    canvas.addEventListener('mouseup',  onEnd);
-    canvas.addEventListener('touchend', onEnd);
+    window.addEventListener('mouseup',  onEnd);
+    window.addEventListener('touchend', onEnd);
 
     function onEnd(e) {
         if (!drawing) return;
         drawing = false;
-        const rect = canvas.getBoundingClientRect();
-        const pos  = e.changedTouches
-            ? { x: (e.changedTouches[0].clientX - rect.left) * (canvas.width  / rect.width),
-                y: (e.changedTouches[0].clientY - rect.top)  * (canvas.height / rect.height) }
-            : getPos(e);
+        const pos = getPos(e);
 
         const w = pos.x - startX, h = pos.y - startY;
         if (Math.abs(w) < 10 || Math.abs(h) < 10) {
@@ -469,21 +463,35 @@ function updateFileName(input) {
         })
         .then(r => r.json())
         .then(data => {
-        if (data.success) {
-            appendAreaCard(data.area);
-            appendAreaOverlay(data.area, label);
+            if (data.success) {
+                appendAreaCard(data.area);
+                appendAreaOverlay(data.area, label);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                currentRect = null;
+                hideLabelInput();
+                updateCount(1);
+            } else {
+                ModalAlert.show('alertModal', {
+                    title: 'Gagal Menyimpan',
+                    subtitle: data.message || 'Terjadi kesalahan tidak diketahui.'
+                });
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                currentRect = null;
+                hideLabelInput();
+            }
+        })
+        .catch(err => {
+            ModalAlert.show('alertModal', {
+                title: 'Error',
+                subtitle: 'Terjadi kesalahan jaringan atau server saat menyimpan area.'
+            });
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             currentRect = null;
             hideLabelInput();
-            updateCount(1);
-        } else {
-                alert('Gagal menyimpan: ' + (data.message || 'Unknown error'));
-            }
         })
-        .catch(err => alert('Error: ' + err.message))
         .finally(() => {
             btn.disabled  = false;
-            btn.innerHTML = '💾 Simpan Area Baru';
+            btn.innerHTML = '💾 Simpan';
         });
     });
 
@@ -577,27 +585,39 @@ function updateFileName(input) {
     });
 
     function handleDeleteArea() {
-        if (!confirm('Hapus area ini beserta audionya?')) return;
         const aId   = this.dataset.id;
         const route = this.dataset.route;
         const csrf  = this.dataset.csrf;
 
-        fetch(route, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            body: JSON.stringify({ _method: 'DELETE' }),
-        })
-        .then(r => r.json())
-        .then(data => {
-        if (data.success) {
-            document.getElementById('area-card-' + aId)?.remove();
-            document.querySelector('.area-overlay[data-id="' + aId + '"]')?.remove();
-            updateCount(-1);
-        } else {
-                alert('Gagal menghapus: ' + (data.message || 'Unknown'));
-            }
-        })
-        .catch(err => alert('Error: ' + err.message));
+        ModalAlert.confirm('globalConfirmModal', {
+            title: 'Hapus Area Interaktif',
+            subtitle: 'Apakah Anda yakin ingin menghapus area interaktif ini beserta audionya?'
+        }, () => {
+            fetch(route, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify({ _method: 'DELETE' }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('area-card-' + aId)?.remove();
+                    document.querySelector('.area-overlay[data-id="' + aId + '"]')?.remove();
+                    updateCount(-1);
+                } else {
+                    ModalAlert.show('alertModal', {
+                        title: 'Gagal Menghapus',
+                        subtitle: data.message || 'Terjadi kesalahan tidak diketahui.'
+                    });
+                }
+            })
+            .catch(err => {
+                ModalAlert.show('alertModal', {
+                    title: 'Error',
+                    subtitle: 'Terjadi kesalahan jaringan atau server saat menghapus area.'
+                });
+            });
+        });
     }
 
     document.querySelectorAll('input[type="file"]').forEach(inp => {
@@ -606,5 +626,24 @@ function updateFileName(input) {
 
 })();
 </script>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        @if ($errors->any())
+            ModalAlert.show('alertModal', {
+                title: 'Terjadi Kesalahan',
+                subtitle: '{{ $errors->first() }}'
+            });
+        @endif
+        @if (session('success'))
+            ModalAlert.show('successModal', {
+                title: 'Berhasil!',
+                subtitle: '{{ session('success') }}'
+            });
+        @endif
+    });
+</script>
+@endpush
 
 @endsection

@@ -13,8 +13,8 @@
         </a>
     </div>
 
-    <form method="GET" action="{{ route('buku.index') }}" class="bg-white rounded-lg shadow-sm p-4 space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <form method="GET" action="{{ route('buku.index') }}" class="bg-white rounded-lg shadow-sm p-4">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Cari Buku</label>
                 <input 
@@ -45,15 +45,15 @@
                     <option value="date_oldest" @if(request('sort') === 'date_oldest') selected @endif>Terlama</option>
                 </select>
             </div>
-        </div>
 
-        <div class="flex gap-2">
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium">
-                Cari
-            </button>
-            <a href="{{ route('buku.index') }}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg transition-colors duration-200 font-medium">
-                Reset
-            </a>
+            <div class="flex gap-2">
+                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium text-center">
+                    Cari
+                </button>
+                <a href="{{ route('buku.index') }}" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition-colors duration-200 font-medium text-center">
+                    Reset
+                </a>
+            </div>
         </div>
     </form>
 </div>

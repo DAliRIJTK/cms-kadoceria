@@ -74,7 +74,7 @@ class BoundingBoxController extends Controller
             ]);
         } catch (\Throwable $e) {
             \Log::error('storeAreaInteraktif error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan server saat menyimpan area.'], 500);
         }
     }
 
@@ -127,18 +127,23 @@ class BoundingBoxController extends Controller
             }
         }
 
-        $area->update([
-            'x'            => $validated['x'],
-            'y'            => $validated['y'],
-            'lebar_area'   => $validated['lebar_area'],
-            'panjang_area' => $validated['panjang_area'],
-            'x_pct'        => $x_pct,
-            'y_pct'        => $y_pct,
-            'w_pct'        => $w_pct,
-            'h_pct'        => $h_pct,
-        ]);
+        try {
+            $area->update([
+                'x'            => $validated['x'],
+                'y'            => $validated['y'],
+                'lebar_area'   => $validated['lebar_area'],
+                'panjang_area' => $validated['panjang_area'],
+                'x_pct'        => $x_pct,
+                'y_pct'        => $y_pct,
+                'w_pct'        => $w_pct,
+                'h_pct'        => $h_pct,
+            ]);
 
-        return response()->json(['success' => true]);
+            return response()->json(['success' => true]);
+        } catch (\Throwable $e) {
+            \Log::error('updateAreaInteraktif error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan server saat memperbarui area.'], 500);
+        }
     }
 
     public function destroy(AreaInteraktif $area)
@@ -165,7 +170,8 @@ class BoundingBoxController extends Controller
                 'message' => 'Area interaktif berhasil dihapus',
             ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            \Log::error('deleteAreaInteraktif error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan server saat menghapus area.'], 500);
         }
     }
 }

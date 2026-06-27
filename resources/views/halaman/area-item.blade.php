@@ -18,7 +18,18 @@
     <div class="bg-blue-50 rounded-lg p-3 mb-2 border border-blue-100">
         <p class="text-xs font-bold text-blue-800 mb-2">Audio Objek - Bahasa Indonesia</p>
         @if($area->audio_indo)
-            <audio controls class="w-full h-8 mb-2" src="{{ asset('storage/' . $area->audio_indo) }}"></audio>
+            <div class="flex items-center gap-2 mb-2">
+                <audio controls class="flex-1 h-8" src="{{ asset('storage/' . $area->audio_indo) }}"></audio>
+                <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
+                    @csrf
+                    @method('DELETE')
+                    <input type="hidden" name="audio_type" value="indo">
+                    <button type="submit"
+                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                        Hapus
+                    </button>
+                </form>
+            </div>
         @endif
         <form action="{{ route('halaman.storeAreaAudio', $area->id_area) }}" method="POST" enctype="multipart/form-data">
             @csrf
@@ -43,7 +54,18 @@
     <div class="bg-purple-50 rounded-lg p-3 border border-purple-100">
         <p class="text-xs font-bold text-purple-800 mb-2">Audio Objek - Bahasa Sunda</p>
         @if($area->audio_sunda)
-            <audio controls class="w-full h-8 mb-2" src="{{ asset('storage/' . $area->audio_sunda) }}"></audio>
+            <div class="flex items-center gap-2 mb-2">
+                <audio controls class="flex-1 h-8" src="{{ asset('storage/' . $area->audio_sunda) }}"></audio>
+                <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
+                    @csrf
+                    @method('DELETE')
+                    <input type="hidden" name="audio_type" value="sunda">
+                    <button type="submit"
+                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                        Hapus
+                    </button>
+                </form>
+            </div>
         @endif
         <form action="{{ route('halaman.storeAreaAudio', $area->id_area) }}" method="POST" enctype="multipart/form-data">
             @csrf

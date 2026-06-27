@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Buku;
+use App\Services\BukuBundleService;
 
 class BukuApiController extends Controller
 {
@@ -200,6 +201,47 @@ class BukuApiController extends Controller
         ];
 
         return response()->json($data);
+    }
+
+    /**
+     * Pemicu manual generate bundle buku via API.
+     * POST /api/buku/{id}/generate
+     */
+    public function generateBundle(Request $request, $id, BukuBundleService $bundleService)
+    {
+        $buku = Buku::where('id_buku', $id)->first();
+
+        if (!$buku) {
+            return response()->json(['error' => 'Buku tidak ditemukan'], 404);
+        }
+
+        if ($buku->status_publikasi !== 'Terbit') {
+            return response()->json(['error' => 'Buku harus dipublikasikan (status Terbit) terlebih dahulu sebelum dapat di-generate'], 400);
+        }
+
+        try {
+            $bundleService->generateAndPackageBundle($buku);
+
+            $fileSize = null;
+            if (!empty($buku->zip_bundle_path)) {
+                $zipAbsPath = storage_path('app/public/' . $buku->zip_bundle_path);
+                if (file_exists($zipAbsPath)) {
+                    $bytes = filesize($zipAbsPath);
+                    $fileSize = round($bytes / 1048576, 1) . ' MB';
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bundle dan metadata buku berhasil di-generate',
+                'downloadUrl' => $buku->zip_bundle_path ? asset('storage/' . $buku->zip_bundle_path) : null,
+                'fileSize' => $fileSize,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Gagal memproses bundle: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

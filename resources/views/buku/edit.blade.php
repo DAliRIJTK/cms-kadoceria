@@ -9,24 +9,8 @@
     <p class="text-gray-500 mt-2">Perbarui informasi buku Anda</p>
 </div>
 
-@if ($errors->any())
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex gap-3">
-        <span class="text-2xl">⚠️</span>
-        <div>
-            <h3 class="font-semibold text-red-800 mb-2">Gagal Menyimpan Perubahan</h3>
-            <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
-                @foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach
-            </ul>
-        </div>
-    </div>
-@endif
-
-@if (session('success'))
-    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex gap-3">
-        <span class="text-2xl">✅</span>
-        <p class="text-green-800 font-medium self-center">{{ session('success') }}</p>
-    </div>
-@endif
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
 
 @php
     $primerRgb   = old('warna_primer',   $buku->warna_primer   ?? '99,102,241');
@@ -208,13 +192,54 @@ function onPickerChange(type, hex) {
     updatePreview();
 }
 function onRgbChange(type) {
-    const r = document.getElementById(type+'R').value||0;
-    const g = document.getElementById(type+'G').value||0;
-    const b = document.getElementById(type+'B').value||0;
-    document.getElementById('warna'+(type==='primer'?'Primer':'Sekunder')+'Hidden').value = `${r},${g},${b}`;
-    document.getElementById(type+'Picker').value = rgbToHex(r,g,b);
+    const rEl = document.getElementById(type+'R');
+    const gEl = document.getElementById(type+'G');
+    const bEl = document.getElementById(type+'B');
+    
+    let r = rEl.value === '' ? '' : parseInt(rEl.value);
+    let g = gEl.value === '' ? '' : parseInt(gEl.value);
+    let b = bEl.value === '' ? '' : parseInt(bEl.value);
+    
+    if (r !== '' && !isNaN(r)) {
+        if (r < 0) { r = 0; rEl.value = 0; }
+        if (r > 255) { r = 255; rEl.value = 255; }
+    }
+    if (g !== '' && !isNaN(g)) {
+        if (g < 0) { g = 0; gEl.value = 0; }
+        if (g > 255) { g = 255; gEl.value = 255; }
+    }
+    if (b !== '' && !isNaN(b)) {
+        if (b < 0) { b = 0; bEl.value = 0; }
+        if (b > 255) { b = 255; bEl.value = 255; }
+    }
+    
+    const rVal = r === '' || isNaN(r) ? 0 : r;
+    const gVal = g === '' || isNaN(g) ? 0 : g;
+    const bVal = b === '' || isNaN(b) ? 0 : b;
+    
+    document.getElementById('warna'+(type==='primer'?'Primer':'Sekunder')+'Hidden').value = `${rVal},${gVal},${bVal}`;
+    document.getElementById(type+'Picker').value = rgbToHex(rVal,gVal,bVal);
     updatePreview();
 }
 </script>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        @if ($errors->any())
+            ModalAlert.show('alertModal', {
+                title: 'Gagal Menyimpan Perubahan',
+                subtitle: '{{ $errors->first() }}'
+            });
+        @endif
+        @if (session('success'))
+            ModalAlert.show('successModal', {
+                title: 'Berhasil!',
+                subtitle: '{{ session('success') }}'
+            });
+        @endif
+    });
+</script>
+@endpush
 
 @endsection

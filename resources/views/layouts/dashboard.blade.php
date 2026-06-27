@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CMS</title>
+    <link rel="icon" type="image/png" href="{{ asset('assets/logobalai.png') }}">
+    <title>CMS - Kado Ceria</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -46,7 +47,64 @@
 </div>
 
 @stack('scripts')
+<x-modal-alert id="globalConfirmModal" type="confirm" title="Konfirmasi" subtitle="Apakah Anda yakin?" confirm-label="Ya" cancel-label="Batal" />
 <x-modal-scripts />
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('submit', function (e) {
+        const form = e.target;
+        const methodInput = form.querySelector('input[name="_method"]');
+        const isDelete = (methodInput && methodInput.value.toUpperCase() === 'DELETE') || form.action.includes('removeBacksound');
+        const isLogout = form.action.includes('logout');
+
+        if ((isDelete || isLogout) && !form.dataset.confirmed) {
+            e.preventDefault();
+            
+            let title = 'Konfirmasi Hapus';
+            let subtitle = 'Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.';
+            
+            if (isLogout) {
+                title = 'Keluar Aplikasi';
+                subtitle = 'Apakah Anda yakin ingin keluar dari sistem?';
+            } else if (form.id === 'delete-narasi-indo-form') {
+                title = 'Hapus Narasi Indonesia';
+                subtitle = 'Apakah Anda yakin ingin menghapus audio narasi Bahasa Indonesia ini?';
+            } else if (form.id === 'delete-narasi-sunda-form') {
+                title = 'Hapus Narasi Sunda';
+                subtitle = 'Apakah Anda yakin ingin menghapus audio narasi Bahasa Sunda ini?';
+            } else if (form.action.includes('deleteNarasi')) {
+                title = 'Hapus Narasi';
+                subtitle = 'Apakah Anda yakin ingin menghapus audio narasi ini?';
+            } else if (form.action.includes('removeBacksound')) {
+                title = 'Hapus Backsound';
+                subtitle = 'Apakah Anda yakin ingin menghapus backsound halaman ini?';
+            } else if (form.action.includes('deleteAreaAudio')) {
+                const langVal = form.querySelector('input[name="audio_type"]')?.value;
+                const langLabel = langVal === 'sunda' ? 'Sunda' : 'Indonesia';
+                title = 'Hapus Audio Objek';
+                subtitle = `Apakah Anda yakin ingin menghapus audio objek Bahasa ${langLabel} untuk area ini?`;
+            } else if (form.action.includes('buku') && methodInput && methodInput.value.toUpperCase() === 'DELETE') {
+                title = 'Hapus Buku';
+                subtitle = 'Apakah Anda yakin ingin menghapus buku ini beserta seluruh isinya? Tindakan ini tidak dapat dibatalkan.';
+            } else if (form.action.includes('halaman') && methodInput && methodInput.value.toUpperCase() === 'DELETE') {
+                title = 'Hapus Halaman';
+                subtitle = 'Apakah Anda yakin ingin menghapus halaman ini? Tindakan ini tidak dapat dibatalkan.';
+            } else if (form.action.includes('area-interaktif') && methodInput && methodInput.value.toUpperCase() === 'DELETE') {
+                title = 'Hapus Area Interaktif';
+                subtitle = 'Apakah Anda yakin ingin menghapus area interaktif ini?';
+            } else if (form.action.includes('audio-latar') && methodInput && methodInput.value.toUpperCase() === 'DELETE') {
+                title = 'Hapus Audio Latar';
+                subtitle = 'Apakah Anda yakin ingin menghapus audio latar ini?';
+            }
+
+            ModalAlert.confirm('globalConfirmModal', { title, subtitle }, function () {
+                form.dataset.confirmed = 'true';
+                form.submit();
+            });
+        }
+    });
+});
+</script>
 
 </body>
 </html>

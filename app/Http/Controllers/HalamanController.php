@@ -24,6 +24,11 @@ class HalamanController extends Controller
         }
 
         if ($request->filled('id_buku') && $request->id_buku !== '') {
+            $buku = Buku::find($request->id_buku);
+            if ($buku && $buku->status_publikasi === 'Terbit') {
+                return redirect()->route('buku.show', $buku->id_buku)
+                    ->withErrors(['publication' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan pengelolaan halaman.']);
+            }
             $query->where('id_buku', $request->id_buku);
         }
 
@@ -171,8 +176,8 @@ class HalamanController extends Controller
             return back()->withErrors(['delete' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk melakukan penyuntingan.']);
         }
         $currentPageCount = $buku->halaman()->count();
-        if ($currentPageCount - 1 <= 10) {
-            return back()->withErrors(['delete' => 'Penghapusan halaman tidak diperbolehkan jika sisa halaman kurang dari atau sama dengan 10.']);
+        if ($currentPageCount - 1 < 1) {
+            return back()->withErrors(['delete' => 'Penghapusan halaman tidak diperbolehkan jika sisa halaman kurang dari 1.']);
         }
 
         try {

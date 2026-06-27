@@ -30,17 +30,8 @@
 </div>
 
 {{-- Error/Success Alerts --}}
-@if($errors->has('publication'))
-    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-        {{ $errors->first('publication') }}
-    </div>
-@endif
-
-@if(session('success'))
-    <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-        {{ session('success') }}
-    </div>
-@endif
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
 
 {{-- Info Card + Cover --}}
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
@@ -84,25 +75,26 @@
 
             {{-- Action Buttons --}}
             <div class="flex flex-wrap gap-3 pt-2">
-                <a href="{{ route('buku.edit', $buku->id_buku) }}"
-                   class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                    Edit Informasi
-                </a>
+                @if($buku->status_publikasi !== 'Terbit')
+                    <a href="{{ route('buku.edit', $buku->id_buku) }}"
+                       class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                        Edit Informasi
+                    </a>
 
-                <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
-                   class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                    Kelola Halaman
-                </a>
+                    <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
+                       class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                        Kelola Halaman
+                    </a>
 
-                <form action="{{ route('buku.destroy', $buku->id_buku) }}" method="POST" class="inline"
-                      onsubmit="return confirm('Apakah Anda yakin ingin menghapus buku ini? Tindakan ini tidak dapat dibatalkan.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit"
-                            class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                        Hapus Buku
-                    </button>
-                </form>
+                    <form action="{{ route('buku.destroy', $buku->id_buku) }}" method="POST" class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit"
+                                class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Hapus Buku
+                        </button>
+                    </form>
+                @endif
 
                 @if($buku->status_publikasi === 'Draft')
                     <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="inline"
@@ -180,7 +172,7 @@
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h2 class="text-lg font-bold text-gray-800">Pratinjau Flipbook</h2>
         <div class="flex items-center gap-3">
-            @if($buku->halaman()->count() > 0)
+            @if($buku->halaman()->count() > 0 && $buku->status_publikasi !== 'Terbit')
                 <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
                    class="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-xs transition-colors">
                     Kelola Halaman
@@ -270,16 +262,25 @@
             justify-content: space-between;
             padding: 8px 16px; gap: 10px; flex-shrink: 0; z-index: 10;
         ">
-            {{-- Lang toggle --}}
-            <div style="display:flex; background:rgba(255,255,255,0.1); border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.18);">
-                <button id="fb-lang-id" onclick="fbSetLang('id')" style="
-                    padding:5px 11px; font-size:11px; font-weight:700;
-                    background: var(--fb-primary); color:#fff;
-                    border:none; cursor:pointer;">ID</button>
-                <button id="fb-lang-su" onclick="fbSetLang('su')" style="
-                    padding:5px 11px; font-size:11px; font-weight:700;
-                    background:transparent; color:rgba(255,255,255,0.55);
-                    border:none; cursor:pointer;">SU</button>
+            {{-- Lang & Backsound controls --}}
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; background:rgba(255,255,255,0.1); border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.18);">
+                    <button id="fb-lang-id" onclick="fbSetLang('id')" style="
+                        padding:5px 11px; font-size:11px; font-weight:700;
+                        background: var(--fb-primary); color:#fff;
+                        border:none; cursor:pointer;">ID</button>
+                    <button id="fb-lang-su" onclick="fbSetLang('su')" style="
+                        padding:5px 11px; font-size:11px; font-weight:700;
+                        background:transparent; color:rgba(255,255,255,0.55);
+                        border:none; cursor:pointer;">SU</button>
+                </div>
+                {{-- Backsound pause/play toggle --}}
+                <button id="fb-btn-backsound-toggle" onclick="fbToggleBacksound()" title="Pause/Play Audio Latar" style="
+                    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+                    color: #fff; padding: 5px 10px; border-radius: 7px;
+                    font-size: 11px; font-weight: 700; cursor: pointer; display: none; align-items: center; gap: 4px; transition: background 0.2s;">
+                    🔊 Musik
+                </button>
             </div>
 
             {{-- Page slider --}}
@@ -387,6 +388,7 @@
 
         {{-- Thumbnail strip --}}
         <div id="fb-thumb-strip" style="
+            position: relative;
             background:rgba(0,0,0,0.45);
             display:flex; gap:5px; padding:7px 14px;
             overflow-x:auto; flex-shrink:0; align-items:center;
@@ -591,14 +593,54 @@
             if (stopBack && fbBacksound) { fbBacksound.pause(); fbBacksound = null; }
         };
 
+        let fbBacksoundPaused = false; // Initial state
+
+        window.fbToggleBacksound = function() {
+            if (!fbBacksound) {
+                fbBacksoundPaused = !fbBacksoundPaused;
+                fbUpdateBacksoundButton();
+                return;
+            }
+
+            if (fbBacksound.paused) {
+                fbBacksoundPaused = false;
+                fbBacksound.play().catch(()=>{});
+            } else {
+                fbBacksoundPaused = true;
+                fbBacksound.pause();
+            }
+            fbUpdateBacksoundButton();
+        };
+
+        function fbUpdateBacksoundButton() {
+            const btn = document.getElementById('fb-btn-backsound-toggle');
+            if (!btn) return;
+            const page = PAGES[fbIdx];
+            if (!page || !page.backsound) {
+                btn.style.display = 'none';
+                return;
+            }
+            btn.style.display = 'flex';
+            if (fbBacksoundPaused) {
+                btn.innerHTML = '🔇 Musik';
+                btn.style.background = 'rgba(220,38,38,0.3)';
+            } else {
+                btn.innerHTML = '🔊 Musik';
+                btn.style.background = 'rgba(255,255,255,0.1)';
+            }
+        }
+
         function fbPlayBacksound(page) {
             if (fbBacksound) { fbBacksound.pause(); fbBacksound = null; }
             if (page && page.backsound) {
                 fbBacksound = new Audio(page.backsound);
                 fbBacksound.loop = true;
                 fbBacksound.volume = 0.35;
-                fbBacksound.play().catch(()=>{});
+                if (!fbBacksoundPaused) {
+                    fbBacksound.play().catch(()=>{});
+                }
             }
+            fbUpdateBacksoundButton();
         }
 
         /* ── [FIX #4] Narasi: play per bahasa / SU→ID chain ── */
@@ -709,10 +751,19 @@
 
         /* ── Thumbs ── */
         function fbUpdateThumbs() {
+            const strip = document.getElementById('fb-thumb-strip');
             document.querySelectorAll('.fb-thumb').forEach(el => {
                 const active = parseInt(el.dataset.idx) === fbIdx;
                 el.classList.toggle('fb-active', active);
-                if (active) el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+                if (active && strip) {
+                    const elOffset = el.offsetLeft;
+                    const elWidth = el.offsetWidth;
+                    const stripWidth = strip.clientWidth;
+                    strip.scrollTo({
+                        left: elOffset - (stripWidth / 2) + (elWidth / 2),
+                        behavior: 'smooth'
+                    });
+                }
             });
         }
 
@@ -817,5 +868,24 @@
         if (e.target === this) this.classList.add('hidden');
     });
 </script>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        @if ($errors->has('publication'))
+            ModalAlert.show('alertModal', {
+                title: 'Buku Belum Siap Diterbitkan',
+                subtitle: '{{ $errors->first('publication') }}'
+            });
+        @endif
+        @if (session('success'))
+            ModalAlert.show('successModal', {
+                title: 'Berhasil!',
+                subtitle: '{{ session('success') }}'
+            });
+        @endif
+    });
+</script>
+@endpush
 
 @endsection
