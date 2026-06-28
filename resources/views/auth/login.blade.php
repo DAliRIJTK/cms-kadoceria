@@ -77,8 +77,8 @@
                 </div>
 
                 <!-- Button -->
-                <button type="submit" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-700 font-semibold transition-colors">
-                    🔓 Masuk
+                <button type="submit" class="w-full py-3 rounded-lg bg-green-600 hover:bg-green-700 font-semibold transition-colors">
+                     Masuk
                 </button>
 
             </form>
