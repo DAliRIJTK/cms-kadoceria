@@ -21,7 +21,7 @@
     $sekunderHex = '#' . implode('', array_map(fn($v) => str_pad(dechex(intval($v)), 2, '0', STR_PAD_LEFT), $sArr));
 @endphp
 
-<form method="POST" action="{{ route('buku.update', $buku->id_buku) }}" class="space-y-6">
+<form id="editBukuForm" method="POST" action="{{ route('buku.update', $buku->id_buku) }}" class="space-y-6" novalidate>
     @csrf
     @method('PATCH')
 
@@ -43,40 +43,60 @@
             </div>
 
             <div>
-                <label for="judul_sn" class="block text-sm font-semibold text-gray-700 mb-2">Judul Buku Sunda</label>
+                <label for="judul_sn" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Judul Buku Sunda <span class="text-red-500">*</span>
+                </label>
                 <input type="text" id="judul_sn" name="judul_sn"
                        value="{{ old('judul_sn', $buku->judul_sn) }}"
                        placeholder="Masukkan judul buku dalam bahasa Sunda..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                       required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition {{ $errors->has('judul_sn') ? 'border-red-500' : '' }}">
+                @error('judul_sn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
 
             <div>
-                <label for="penulis" class="block text-sm font-semibold text-gray-700 mb-2">Penulis</label>
+                <label for="penulis" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Penulis <span class="text-red-500">*</span>
+                </label>
                 <input type="text" id="penulis" name="penulis"
                        value="{{ old('penulis', $buku->penulis) }}" placeholder="Nama penulis..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                       required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition {{ $errors->has('penulis') ? 'border-red-500' : '' }}">
+                @error('penulis')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
 
             <div>
-                <label for="ilustrator" class="block text-sm font-semibold text-gray-700 mb-2">Ilustrator</label>
+                <label for="ilustrator" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Ilustrator <span class="text-red-500">*</span>
+                </label>
                 <input type="text" id="ilustrator" name="ilustrator"
                        value="{{ old('ilustrator', $buku->ilustrator) }}" placeholder="Nama ilustrator..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                       required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition {{ $errors->has('ilustrator') ? 'border-red-500' : '' }}">
+                @error('ilustrator')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
         </div>
 
         <div class="mt-6">
-            <label for="deskripsi_idn" class="block text-sm font-semibold text-gray-700 mb-2">Sinopsis Buku Indonesia</label>
+            <label for="deskripsi_idn" class="block text-sm font-semibold text-gray-700 mb-2">
+                Sinopsis Buku Indonesia <span class="text-red-500">*</span>
+            </label>
             <textarea id="deskripsi_idn" name="deskripsi_idn" rows="4"
                       placeholder="Tulis sinopsis singkat tentang buku ini dalam bahasa Indonesia..."
-                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none">{{ old('deskripsi_idn', $buku->deskripsi_idn) }}</textarea>
+                      required
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none {{ $errors->has('deskripsi_idn') ? 'border-red-500' : '' }}">{{ old('deskripsi_idn', $buku->deskripsi_idn) }}</textarea>
+            @error('deskripsi_idn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
         </div>
 
         <div class="mt-6">
-            <label for="deskripsi_sn" class="block text-sm font-semibold text-gray-700 mb-2">Sinopsis Buku Sunda</label>
+            <label for="deskripsi_sn" class="block text-sm font-semibold text-gray-700 mb-2">
+                Sinopsis Buku Sunda <span class="text-red-500">*</span>
+            </label>
             <textarea id="deskripsi_sn" name="deskripsi_sn" rows="4"
                       placeholder="Tulis sinopsis singkat tentang buku ini dalam bahasa Sunda..."
-                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none">{{ old('deskripsi_sn', $buku->deskripsi_sn) }}</textarea>
+                      required
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none {{ $errors->has('deskripsi_sn') ? 'border-red-500' : '' }}">{{ old('deskripsi_sn', $buku->deskripsi_sn) }}</textarea>
+            @error('deskripsi_sn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
         </div>
     </div>
 
@@ -226,7 +246,39 @@ function onRgbChange(type) {
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        @if ($errors->any())
+        const form = document.getElementById('editBukuForm');
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            const fields = [
+                { id: 'judul_idn', name: 'Judul buku Indonesia' },
+                { id: 'judul_sn', name: 'Judul buku Sunda' },
+                { id: 'penulis', name: 'Penulis' },
+                { id: 'ilustrator', name: 'Ilustrator' },
+                { id: 'deskripsi_idn', name: 'Sinopsis Indonesia' },
+                { id: 'deskripsi_sn', name: 'Sinopsis Sunda' }
+            ];
+
+            for (const field of fields) {
+                const input = document.getElementById(field.id);
+                if (!input.value.trim()) {
+                    input.focus();
+                    input.classList.add('ring-2','ring-red-400','border-red-400');
+                    setTimeout(() => input.classList.remove('ring-2','ring-red-400','border-red-400'), 2000);
+                    ModalAlert.show('alertModal', { 
+                        title: `${field.name} wajib diisi`, 
+                        subtitle: `Silakan isi ${field.name.toLowerCase()} terlebih dahulu.` 
+                    });
+                    return;
+                }
+            }
+
+            form.submit();
+        });
+
+        @if ($errors->has('duplicate_title'))
+            ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: @json($errors->first('duplicate_title')) });
+        @elseif ($errors->any())
             ModalAlert.show('alertModal', {
                 title: 'Gagal Menyimpan Perubahan',
                 subtitle: '{{ $errors->first() }}'

@@ -58,11 +58,11 @@ class BukuController extends Controller
     {
         $request->validate([
             'judul_idn'      => 'required|string|max:255',
-            'judul_sn'       => 'nullable|string|max:255',
-            'penulis'        => 'nullable|string|max:100',
-            'ilustrator'     => 'nullable|string|max:100',
-            'deskripsi_idn'  => 'nullable|string',
-            'deskripsi_sn'   => 'nullable|string',
+            'judul_sn'       => 'required|string|max:255',
+            'penulis'        => 'required|string|max:100',
+            'ilustrator'     => 'required|string|max:100',
+            'deskripsi_idn'  => 'required|string',
+            'deskripsi_sn'   => 'required|string',
             'warna_primer'   => 'nullable|string|max:20',
             'warna_sekunder' => 'nullable|string|max:20',
             'pdf_file'       => 'required|file|mimes:pdf|max:51200',
@@ -168,14 +168,37 @@ class BukuController extends Controller
 
         $validated = $request->validate([
             'judul_idn'      => 'required|string|max:255',
-            'judul_sn'       => 'nullable|string|max:255',
-            'penulis'        => 'nullable|string|max:100',
-            'ilustrator'     => 'nullable|string|max:100',
-            'deskripsi_idn'  => 'nullable|string',
-            'deskripsi_sn'   => 'nullable|string',
+            'judul_sn'       => 'required|string|max:255',
+            'penulis'        => 'required|string|max:100',
+            'ilustrator'     => 'required|string|max:100',
+            'deskripsi_idn'  => 'required|string',
+            'deskripsi_sn'   => 'required|string',
             'warna_primer'   => 'nullable|string|max:20',
             'warna_sekunder' => 'nullable|string|max:20',
         ]);
+
+        $judulIdn = $request->judul_idn;
+        $judulSn  = $request->judul_sn;
+
+        $duplicateTitle = Buku::where('id_buku', '!=', $buku->id_buku)
+            ->where(function ($query) use ($judulIdn, $judulSn) {
+                $query->where(function ($q) use ($judulIdn) {
+                    $q->whereRaw('LOWER(judul_idn) = ?', [strtolower($judulIdn)])
+                      ->orWhereRaw('LOWER(judul_sn) = ?', [strtolower($judulIdn)]);
+                })
+                ->when($judulSn, function ($qOuter) use ($judulSn) {
+                    $qOuter->orWhere(function ($q) use ($judulSn) {
+                        $q->whereRaw('LOWER(judul_idn) = ?', [strtolower($judulSn)])
+                          ->orWhereRaw('LOWER(judul_sn) = ?', [strtolower($judulSn)]);
+                    });
+                });
+            })
+            ->exists();
+
+        if ($duplicateTitle) {
+            return back()->withInput()
+                ->withErrors(['duplicate_title' => 'Judul buku (Bahasa Indonesia/Sunda) sudah digunakan pada buku lain. Silakan gunakan judul yang berbeda.']);
+        }
 
         $validated['warna_primer']   = $this->sanitizeRgb($validated['warna_primer']   ?? null, '99,102,241');
         $validated['warna_sekunder'] = $this->sanitizeRgb($validated['warna_sekunder'] ?? null, '168,85,247');
