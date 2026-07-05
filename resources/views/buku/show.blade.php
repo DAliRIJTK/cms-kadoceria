@@ -5,6 +5,11 @@
 <x-modal-alert id="alertModal" type="error" />
 <x-modal-alert id="successModal" type="success" />
 
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
+
 <div class="mb-6">
     <a href="{{ route('buku.index') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
         ← Kembali ke Daftar Buku
@@ -968,18 +973,24 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        @if ($errors->any())
-            ModalAlert.show('alertModal', {
-                title: 'Gagal Proses',
-                subtitle: @json($errors->first())
-            });
-        @endif
-        @if (session('success'))
-            ModalAlert.show('successModal', {
-                title: 'Berhasil!',
-                subtitle: @json(session('success'))
-            });
-        @endif
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Gagal Proses',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
     });
 </script>
 

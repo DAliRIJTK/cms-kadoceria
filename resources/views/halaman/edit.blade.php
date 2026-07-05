@@ -12,6 +12,11 @@
 <x-modal-alert id="alertModal" type="error" />
 <x-modal-alert id="successModal" type="success" />
 
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
+
 {{-- Header --}}
 <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
     <div class="flex flex-wrap items-center gap-3">
@@ -49,7 +54,12 @@
                     @foreach($halaman->areaInteraktif as $area)
                         <div class="absolute border-2 border-red-500 bg-red-500/10 pointer-events-none area-overlay"
                              data-id="{{ $area->id_area }}"
-                             style="left:{{ $area->x_pct ?? 0 }}%; top:{{ $area->y_pct ?? 0 }}%; width:{{ $area->w_pct ?? 0 }}%; height:{{ $area->h_pct ?? 0 }}%;">
+                             @style([
+                                 "left: " . ($area->x_pct ?? 0) . "%",
+                                 "top: " . ($area->y_pct ?? 0) . "%",
+                                 "width: " . ($area->w_pct ?? 0) . "%",
+                                 "height: " . ($area->h_pct ?? 0) . "%",
+                             ])>
                             <span class="absolute -top-5 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap max-w-[120px] truncate">
                                 {{ $area->label ?? 'Area ' . $loop->iteration }}
                             </span>
@@ -654,18 +664,24 @@ function updateFileName(input) {
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        @if ($errors->any())
-            ModalAlert.show('alertModal', {
-                title: 'Terjadi Kesalahan',
-                subtitle: '{{ $errors->first() }}'
-            });
-        @endif
-        @if (session('success'))
-            ModalAlert.show('successModal', {
-                title: 'Berhasil!',
-                subtitle: '{{ session('success') }}'
-            });
-        @endif
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Terjadi Kesalahan',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
     });
 </script>
 @endpush
