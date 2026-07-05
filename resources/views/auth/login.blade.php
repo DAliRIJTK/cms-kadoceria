@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <link rel="icon" type="image/png" href="{{ asset('assets/logobalai.png') }}">
+    <title>CMS - Kado Ceria</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -30,32 +31,8 @@
             <h1 class="text-3xl font-bold mb-2">Masuk</h1>
             <p class="mb-6 opacity-90">Untuk melanjutkan kedalam aplikasi.</p>
 
-            <!-- Error Messages (FR-4) -->
-            @if ($errors->any())
-                <div class="bg-red-500 bg-opacity-20 border border-red-300 rounded-lg p-4 mb-6">
-                    <div class="flex gap-3">
-                        <span class="text-xl">⚠️</span>
-                        <div class="flex-1">
-                            <h3 class="font-semibold mb-2">Gagal Masuk</h3>
-                            <ul class="text-sm space-y-1 list-disc list-inside opacity-90">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
-            <!-- Success Message (if any) -->
-            @if (session('success'))
-                <div class="bg-green-500 bg-opacity-20 border border-green-300 rounded-lg p-4 mb-6">
-                    <div class="flex gap-3">
-                        <span class="text-xl">✅</span>
-                        <p class="font-medium">{{ session('success') }}</p>
-                    </div>
-                </div>
-            @endif
+            <x-modal-alert id="loginAlertModal" type="error" />
+            <x-modal-alert id="loginSuccessModal" type="success" />
 
             <form method="POST" action="{{ route('login') }}">
                 @csrf
@@ -64,11 +41,11 @@
                 <div class="mb-4">
                     <label class="block font-medium mb-2">Email atau Username</label>
                     <input 
-                        type="email" 
+                        type="text" 
                         name="email"
                         value="{{ old('email') }}"
                         class="w-full p-3 rounded-lg text-black mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300 {{ $errors->has('email') ? 'ring-2 ring-red-400' : '' }}"
-                        placeholder="user@gmail.com"
+                        placeholder="Email atau Username"
                         required
                         autofocus
                     >
@@ -116,5 +93,22 @@
 
     </div>
 
+    <x-modal-scripts />
+    @if ($errors->any())
+        <script>
+            ModalAlert.show('loginAlertModal', {
+                title: 'Gagal Masuk',
+                subtitle: '{{ $errors->first() }}'
+            });
+        </script>
+    @endif
+    @if (session('success'))
+        <script>
+            ModalAlert.show('loginSuccessModal', {
+                title: 'Berhasil!',
+                subtitle: '{{ Session::get("success") }}'
+            });
+        </script>
+    @endif
 </body>
 </html>

@@ -4,266 +4,189 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Page;
-use App\Models\Audio;
+use App\Models\Halaman;
+use App\Models\AreaInteraktif;
 
 class AudioController extends Controller
 {
-    public function management(Page $page)
+    public function storeAreaAudio(Request $request, AreaInteraktif $area)
     {
-        $page->load(['audios']);
-        $audioTypes = ['narration', 'backsound', 'object'];
-        return view('pages.audio', compact('page', 'audioTypes'));
-    }
 
-    public function store(Request $request, Page $page)
-    {
-        // Reload page dengan relasi book
-        $page = $page->load('book');
-        
         $validated = $request->validate([
-            'type' => 'required|in:narration,narration_sunda,backsound,narration_object,narration_sunda_object',
-            'audio_file' => 'required|file|mimes:mp3,wav,ogg,m4a|max:10240',
-            'box_id' => 'nullable|exists:bounding_boxes,id',
+            'audio_type' => 'required|in:indo,sunda',
+            'audio_file' => 'required|file|mimes:mp3,m4a,mpga,mp4,x-m4a,wav|extensions:mp3,m4a|max:3024',
         ], [
-            'audio_file.required' => 'File audio harus diunggah',
-            'audio_file.mimes' => 'Format audio harus MP3, WAV, OGG, atau M4A',
-            'audio_file.max' => 'Ukuran file audio maksimal 10MB',
-            'type.required' => 'Jenis audio harus dipilih',
+            'audio_file.max'   => 'Ukuran file audio maksimal 1MB.',
+            'audio_file.mimes' => 'Format audio harus MP3 atau M4A.',
+            'audio_file.extensions' => 'Ekstensi file audio harus .mp3 atau .m4a.',
         ]);
-
-        // Validasi: untuk narration & narration_sunda halaman level, tidak boleh ada box_id
-        if (in_array($validated['type'], ['narration', 'narration_sunda', 'backsound'])) {
-            // Cek duplikat audio halaman level
-            $existingAudio = $page->audios()
-                ->where('type', $validated['type'])
-                ->whereNull('bounding_box_id')
-                ->first();
-            
-            if ($existingAudio) {
-                $typeLabels = [
-                    'narration' => 'Narasi Indonesia',
-                    'narration_sunda' => 'Narasi Sunda',
-                    'backsound' => 'Backsound'
-                ];
-                return back()->withErrors([
-                    'audio' => $typeLabels[$validated['type']] . ' halaman sudah ada. Hapus yang lama terlebih dahulu.'
-                ]);
-            }
-        }
-
-        // Validasi: untuk audio objek, harus ada box_id
-        if (in_array($validated['type'], ['narration_object', 'narration_sunda_object'])) {
-            if (!$validated['box_id']) {
-                return back()->withErrors([
-                    'audio' => 'Box ID harus ada untuk audio objek'
-                ]);
-            }
-
-            // Cek duplikat audio objek untuk bounding box
-            $existingAudio = $page->audios()
-                ->where('bounding_box_id', $validated['box_id'])
-                ->where('type', $validated['type'])
-                ->first();
-            
-            if ($existingAudio) {
-                $typeLabels = [
-                    'narration_object' => 'Audio Objek Narasi Indonesia',
-                    'narration_sunda_object' => 'Audio Objek Narasi Sunda'
-                ];
-                return back()->withErrors([
-                    'audio' => $typeLabels[$validated['type']] . ' untuk area ini sudah ada. Hapus yang lama terlebih dahulu.'
-                ]);
-            }
-        }
 
         try {
-            // Debug: Log book info
-            $book = $page->book;
-            \Log::info('Audio upload - Book:', ['id' => $book?->id, 'title' => $book?->title]);
-            
-            // Generate book slug from title
-            if (!$book || !$book->title) {
-                return back()->withErrors([
-                    'audio' => 'Book tidak ditemukan atau tidak memiliki title'
-                ]);
+            $uploadedHash = md5_file($request->file('audio_file')->getRealPath());
+
+            // Check duplicate against opposite language
+            if ($validated['audio_type'] === 'indo') {
+                if ($area->audio_sunda && Storage::disk('public')->exists($area->audio_sunda)) {
+                    $otherHash = md5_file(storage_path('app/public/' . $area->audio_sunda));
+                    if ($uploadedHash === $otherHash) {
+                        return back()->withErrors([
+                            'audio' => 'File audio Indonesia tidak boleh sama dengan file audio Sunda untuk area ini.'
+                        ]);
+                    }
+                }
+            } else {
+                if ($area->audio_indo && Storage::disk('public')->exists($area->audio_indo)) {
+                    $otherHash = md5_file(storage_path('app/public/' . $area->audio_indo));
+                    if ($uploadedHash === $otherHash) {
+                        return back()->withErrors([
+                            'audio' => 'File audio Sunda tidak boleh sama dengan file audio Indonesia untuk area ini.'
+                        ]);
+                    }
+                }
             }
-            
-            $bookSlug = strtolower(
-                str_replace(
-                    [' ', ',', '.', '(', ')', '/'],
-                    '_',
-                    trim($book->title)
-                )
-            );
-            $bookSlug = preg_replace('/_+/', '_', $bookSlug);
-            $bookSlug = trim($bookSlug, '_');
 
-            // Map audio type ke folder name
-            $typeFolderMap = [
-                'narration' => 'audio_narasi_indo',
-                'narration_sunda' => 'audio_narasi_sunda',
-                'backsound' => 'audio_backsound',
-                'narration_object' => 'audio_narasi_indo',
-                'narration_sunda_object' => 'audio_narasi_sunda'
-            ];
-            
-            $audioFolder = $typeFolderMap[$validated['type']] ?? 'audio_other';
-            $storagePath = "audios/{$bookSlug}/{$audioFolder}";
-            
-            \Log::info('Audio storage path:', ['path' => $storagePath, 'book_slug' => $bookSlug, 'type' => $validated['type']]);
-            
-            // Get original filename dan sanitize
-            $originalName = $request->file('audio_file')->getClientOriginalName();
-            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
-            
-            // Sanitize filename: remove special chars, keep alphanumeric, underscore, dash
-            $sanitizedName = pathinfo($originalName, PATHINFO_FILENAME);
-            $sanitizedName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $sanitizedName);
-            $sanitizedName = preg_replace('/_+/', '_', $sanitizedName);
-            $filename = trim($sanitizedName, '_') . '.' . $extension;
-            
-            // Store dengan nama file original (tapi sudah sanitize)
-            $path = $request->file('audio_file')->storeAs($storagePath, $filename, 'public');
-            
-            \Log::info('Audio stored:', ['file_path' => $path, 'original_name' => $originalName, 'sanitized_name' => $filename]);
+            $field = 'audio_' . $validated['audio_type'];
 
-            // Auto-generate label
-            $typeLabels = [
-                'narration' => 'page' . $page->page_number . '_narasi_indonesia',
-                'narration_sunda' => 'page' . $page->page_number . '_narasi_sunda',
-                'backsound' => 'page' . $page->page_number . '_backsound',
-                'narration_object' => 'page' . $page->page_number . '_obj_narasi_indo',
-                'narration_sunda_object' => 'page' . $page->page_number . '_obj_narasi_sunda'
-            ];
-            
-            $label = $typeLabels[$validated['type']] ?? 'audio_' . time();
+            if ($area->$field && Storage::disk('public')->exists($area->$field)) {
+                Storage::disk('public')->delete($area->$field);
+            }
 
-            Audio::create([
-                'page_id' => $page->id,
-                'bounding_box_id' => $validated['box_id'] ?? null,
-                'type' => $validated['type'],
-                'label' => $label,
-                'file_url' => $path,
-            ]);
+            $path       = $request->file('audio_file')->store('buku/audio', 'public');
+            $area->$field = $path;
+            $area->save();
 
-            $successMessages = [
-                'narration' => 'Narasi Indonesia halaman berhasil ditambahkan',
-                'narration_sunda' => 'Narasi Sunda halaman berhasil ditambahkan',
-                'backsound' => 'Backsound halaman berhasil ditambahkan',
-                'narration_object' => 'Audio Objek Narasi Indonesia berhasil ditambahkan',
-                'narration_sunda_object' => 'Audio Objek Narasi Sunda berhasil ditambahkan'
-            ];
-            
-            return back()->with('success', $successMessages[$validated['type']] ?? 'Audio berhasil ditambahkan');
+            $area->halaman->buku->syncStorageStructure();
+
+            $lang = $validated['audio_type'] === 'indo' ? 'Indonesia' : 'Sunda';
+            return back()->with('success', "Audio {$lang} area berhasil diunggah");
         } catch (\Exception $e) {
-            return back()->withErrors([
-                'audio' => 'Gagal menyimpan audio: ' . $e->getMessage()
-            ]);
+            return back()->withErrors(['audio' => 'Gagal menyimpan audio: ' . $e->getMessage()]);
         }
     }
 
-    public function delete(Audio $audio)
+    public function storeNarasi(Request $request, Halaman $halaman)
     {
+
+        $validated = $request->validate([
+            'narasi_type' => 'required|in:indo,sunda',
+            'audio_file'  => 'required|file|mimes:mp3,m4a,mpga,mp4,x-m4a,wav|extensions:mp3,m4a|max:3024',
+        ], [
+            'audio_file.max'   => 'Ukuran file audio maksimal 1MB.',
+            'audio_file.mimes' => 'Format audio harus MP3 atau M4A.',
+            'audio_file.extensions' => 'Ekstensi file audio harus .mp3 atau .m4a.',
+        ]);
+
         try {
-            if ($audio->file_url && Storage::disk('public')->exists($audio->file_url)) {
-                Storage::disk('public')->delete($audio->file_url);
+            $uploadedHash = md5_file($request->file('audio_file')->getRealPath());
+
+            // Check duplicate against opposite language
+            if ($validated['narasi_type'] === 'indo') {
+                if ($halaman->narasi_sunda && Storage::disk('public')->exists($halaman->narasi_sunda)) {
+                    $otherHash = md5_file(storage_path('app/public/' . $halaman->narasi_sunda));
+                    if ($uploadedHash === $otherHash) {
+                        return back()->withErrors([
+                            'audio' => 'File audio narasi Indonesia tidak boleh sama dengan file audio narasi Sunda untuk halaman ini.'
+                        ]);
+                    }
+                }
+            } else {
+                if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
+                    $otherHash = md5_file(storage_path('app/public/' . $halaman->narasi_indo));
+                    if ($uploadedHash === $otherHash) {
+                        return back()->withErrors([
+                            'audio' => 'File audio narasi Sunda tidak boleh sama dengan file audio narasi Indonesia untuk halaman ini.'
+                        ]);
+                    }
+                }
             }
 
-            $audioType = ucfirst($audio->type);
-            $audio->delete();
+            $path = $request->file('audio_file')->store('buku/narasi', 'public');
 
-            return back()->with('success', "$audioType berhasil dihapus");
+            switch ($validated['narasi_type']) {
+                case 'indo':
+                    if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
+                        Storage::disk('public')->delete($halaman->narasi_indo);
+                    }
+                    $halaman->narasi_indo = $path;
+                    $message = 'Narasi Indonesia berhasil diperbarui';
+                    break;
+
+                case 'sunda':
+                    if ($halaman->narasi_sunda && Storage::disk('public')->exists($halaman->narasi_sunda)) {
+                        Storage::disk('public')->delete($halaman->narasi_sunda);
+                    }
+                    $halaman->narasi_sunda = $path;
+                    $message = 'Narasi Sunda berhasil diperbarui';
+                    break;
+            }
+
+            $halaman->save();
+            $halaman->buku->syncStorageStructure();
+            return back()->with('success', $message);
         } catch (\Exception $e) {
-            return back()->withErrors([
-                'delete' => 'Gagal menghapus audio: ' . $e->getMessage()
-            ]);
+            return back()->withErrors(['audio' => 'Gagal menyimpan: ' . $e->getMessage()]);
         }
     }
 
-    public function storeNarration(Request $request)
+    public function deleteNarasi(Halaman $halaman, Request $request)
     {
-        $validated = $request->validate([
-            'page_id' => 'required|exists:pages,id',
-            'audio' => 'required|file|mimes:mp3,wav,ogg',
-        ]);
 
-        $page = Page::find($validated['page_id']);
-        $book = $page->book;
-        $bookSlug = strtolower(
-            str_replace(
-                [' ', ',', '.', '(', ')', '/'],
-                '_',
-                trim($book->title)
-            )
-        );
-        $bookSlug = preg_replace('/_+/', '_', $bookSlug);
-        $bookSlug = trim($bookSlug, '_');
-        
-        // Get original filename dan sanitize
-        $originalName = $request->file('audio')->getClientOriginalName();
-        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
-        $sanitizedName = pathinfo($originalName, PATHINFO_FILENAME);
-        $sanitizedName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $sanitizedName);
-        $sanitizedName = preg_replace('/_+/', '_', $sanitizedName);
-        $filename = trim($sanitizedName, '_') . '.' . $extension;
-        
-        $path = $request->file('audio')->storeAs("audios/{$bookSlug}/audio_narasi_indo", $filename, 'public');
+        try {
+            $type = $request->input('narasi_type');
 
-        Audio::create([
-            'page_id' => $validated['page_id'],
-            'type' => 'narration',
-            'file_url' => $path,
-        ]);
+            $fieldMap = [
+                'indo'  => ['field' => 'narasi_indo',  'label' => 'Narasi Indonesia'],
+                'sunda' => ['field' => 'narasi_sunda', 'label' => 'Narasi Sunda'],
+            ];
 
-        return back()->with('success', 'Narration ditambahkan');
-    }
+            if (!isset($fieldMap[$type])) {
+                return back()->withErrors(['audio' => 'Tipe audio tidak valid']);
+            }
 
-    public function storeBacksound(Request $request)
-    {
-        $validated = $request->validate([
-            'page_id' => 'required|exists:pages,id',
-            'audio' => 'required|file|mimes:mp3,wav,ogg',
-        ]);
+            $field = $fieldMap[$type]['field'];
+            $label = $fieldMap[$type]['label'];
 
-        $page = Page::find($validated['page_id']);
-        $book = $page->book;
-        $bookSlug = strtolower(
-            str_replace(
-                [' ', ',', '.', '(', ')', '/'],
-                '_',
-                trim($book->title)
-            )
-        );
-        $bookSlug = preg_replace('/_+/', '_', $bookSlug);
-        $bookSlug = trim($bookSlug, '_');
-        
-        // Get original filename dan sanitize
-        $originalName = $request->file('audio')->getClientOriginalName();
-        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
-        $sanitizedName = pathinfo($originalName, PATHINFO_FILENAME);
-        $sanitizedName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $sanitizedName);
-        $sanitizedName = preg_replace('/_+/', '_', $sanitizedName);
-        $filename = trim($sanitizedName, '_') . '.' . $extension;
-        
-        $path = $request->file('audio')->storeAs("audios/{$bookSlug}/audio_backsound", $filename, 'public');
+            if ($halaman->$field && Storage::disk('public')->exists($halaman->$field)) {
+                Storage::disk('public')->delete($halaman->$field);
+            }
+            $halaman->$field = null;
+            $halaman->save();
 
-        Audio::create([
-            'page_id' => $validated['page_id'],
-            'type' => 'backsound',
-            'file_url' => $path,
-        ]);
-
-        return back()->with('success', 'Backsound ditambahkan');
-    }
-
-    public function update(Request $request, Audio $audio)
-    {
-        if ($request->hasFile('audio')) {
-            $path = $request->file('audio')->store('audios', 'public');
-            $audio->update(['file_url' => $path]);
+            return back()->with('success', "{$label} berhasil dihapus");
+        } catch (\Exception $e) {
+            return back()->withErrors(['delete' => 'Gagal menghapus: ' . $e->getMessage()]);
         }
+    }
 
-        return back()->with('success', 'Audio diupdate');
+    public function deleteAreaAudio(AreaInteraktif $area, Request $request)
+    {
+
+        try {
+            $type = $request->input('audio_type');
+
+            $fieldMap = [
+                'indo'  => ['field' => 'audio_indo',  'label' => 'Audio Objek Indonesia'],
+                'sunda' => ['field' => 'audio_sunda', 'label' => 'Audio Objek Sunda'],
+            ];
+
+            if (!isset($fieldMap[$type])) {
+                return back()->withErrors(['audio' => 'Tipe audio tidak valid']);
+            }
+
+            $field = $fieldMap[$type]['field'];
+            $label = $fieldMap[$type]['label'];
+
+            if ($area->$field && Storage::disk('public')->exists($area->$field)) {
+                Storage::disk('public')->delete($area->$field);
+            }
+            $area->$field = null;
+            $area->save();
+
+            $area->halaman->buku->syncStorageStructure();
+
+            return back()->with('success', "{$label} berhasil dihapus");
+        } catch (\Exception $e) {
+            return back()->withErrors(['delete' => 'Gagal menghapus: ' . $e->getMessage()]);
+        }
     }
 }

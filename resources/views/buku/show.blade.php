@@ -2,50 +2,57 @@
 
 @section('content')
 
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
+
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
+
 <div class="mb-6">
-    <a href="{{ route('buku.index') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
+    <a href="{{ route('dashboard') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
         ← Kembali ke Daftar Buku
     </a>
 </div>
 
-{{-- Header: Judul + Status --}}
-<div class="flex justify-between items-start mb-6">
-    <div>
-        <h1 class="text-3xl font-bold text-gray-900">{{ $buku->judul_idn }}</h1>
-        @if($buku->judul_sn)
-            <p class="text-gray-500 mt-1">{{ $buku->judul_sn }}</p>
-        @endif
-    </div>
-    <div>
-        @if($buku->status_publikasi === 'Terbit')
-            <span class="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg font-semibold text-sm border border-green-200">
-                ✅ Terbit
-            </span>
-        @else
-            <span class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-800 rounded-lg font-semibold text-sm border border-yellow-200">
-                📋 Draft
-            </span>
-        @endif
+@if(isset($warning) && $warning)
+<div class="mb-6 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200 border-l-4 border-l-amber-500 rounded-r-xl p-4 shadow-sm">
+    <div class="flex items-start gap-3">
+        <div class="text-xl">⚠️</div>
+        <div>
+            <h4 class="text-sm font-bold text-amber-900">Perhatian: Aset Multimedia Tidak Lengkap</h4>
+            <p class="text-xs text-amber-700 mt-1 font-medium">{{ $warning }}</p>
+        </div>
     </div>
 </div>
-
-{{-- Error/Success Alerts --}}
-@if($errors->has('publication'))
-    <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-        {{ $errors->first('publication') }}
-    </div>
-@endif
-
-@if(session('success'))
-    <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-        {{ session('success') }}
-    </div>
 @endif
 
 {{-- Info Card + Cover --}}
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
     <div class="lg:col-span-3">
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+
+            {{-- Header: Judul + Status di dalam Card --}}
+            <div class="flex justify-between items-start mb-6 pb-6 border-b border-gray-100">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ $buku->judul_idn }}</h1>
+                    @if($buku->judul_sn)
+                        <p class="text-gray-500 mt-1 text-sm italic">{{ $buku->judul_sn }}</p>
+                    @endif
+                </div>
+                <div>
+                    @if($buku->status_publikasi === 'Terbit')
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-800 rounded-lg font-semibold text-xs border border-green-200">
+                            ✅ Terbit
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 text-yellow-800 rounded-lg font-semibold text-xs border border-yellow-200">
+                            📋 Draft
+                        </span>
+                    @endif
+                </div>
+            </div>
 
             {{-- Metadata row --}}
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-100">
@@ -84,40 +91,35 @@
 
             {{-- Action Buttons --}}
             <div class="flex flex-wrap gap-3 pt-2">
-                <a href="{{ route('buku.edit', $buku->id_buku) }}"
-                   class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                    Edit Informasi
-                </a>
+                @if($buku->status_publikasi !== 'Terbit')
+                    <a href="{{ route('buku.edit', $buku->id_buku) }}"
+                       class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                        Edit Informasi
+                    </a>
 
-                <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
-                   class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                    Kelola Halaman
-                </a>
+                    <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
+                       class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                        Kelola Halaman
+                    </a>
 
-                <form action="{{ route('buku.destroy', $buku->id_buku) }}" method="POST" class="inline"
-                      onsubmit="return confirm('Apakah Anda yakin ingin menghapus buku ini? Tindakan ini tidak dapat dibatalkan.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit"
-                            class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                        Hapus Buku
-                    </button>
-                </form>
-
-                @if($buku->status_publikasi === 'Draft')
-                    <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="inline"
-                          onsubmit="return confirm('Publikasikan buku ini? Buku akan dapat diunduh oleh pengguna aplikasi.');">
+                    <form action="{{ route('buku.destroy', $buku->id_buku) }}" method="POST" class="inline">
                         @csrf
-                        @method('PATCH')
-                        <input type="hidden" name="status_publikasi" value="Terbit">
+                        @method('DELETE')
                         <button type="submit"
-                                class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                            🚀 Publikasikan
+                                class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Hapus Buku
                         </button>
                     </form>
+                @endif
+
+                @if($buku->status_publikasi === 'Draft')
+                    <button onclick="openPublishModal('modal-publish')"
+                            class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                        🚀 Publikasikan
+                    </button>
                 @else
                     <button
-                        onclick="document.getElementById('modal-unpublish').classList.remove('hidden')"
+                        onclick="openPublishModal('modal-unpublish')"
                         class="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
                         📋 Kembalikan ke Draft
                     </button>
@@ -126,14 +128,27 @@
         </div>
     </div>
 
-    {{-- Cover --}}
-    <div class="lg:col-span-1">
-        @if($buku->path_cover && file_exists(storage_path('app/public/' . $buku->path_cover)))
-            <img src="{{ asset('storage/' . $buku->path_cover) }}"
+    {{-- [FIX #2] Cover — fallback ke halaman pertama jika cover tidak ada --}}
+    <div class="lg:col-span-1 flex justify-center lg:justify-start flex-col">
+        @php
+            // Cari gambar cover yang valid: path_cover → halaman pertama
+            $coverUrl = null;
+            if ($buku->path_cover && file_exists(storage_path('app/public/' . $buku->path_cover))) {
+                $coverUrl = asset('storage/' . $buku->path_cover);
+            } else {
+                $firstPage = $buku->halaman->sortBy('nomor_halaman')->first();
+                if ($firstPage && $firstPage->path_gambar && file_exists(storage_path('app/public/' . $firstPage->path_gambar))) {
+                    $coverUrl = asset('storage/' . $firstPage->path_gambar);
+                }
+            }
+        @endphp
+
+        @if($coverUrl)
+            <img src="{{ $coverUrl }}"
                  alt="{{ $buku->judul_idn }}"
-                 class="w-full rounded-xl shadow-md border border-gray-200 object-cover">
+                 class="w-full max-w-[280px] lg:max-w-full h-auto rounded-xl shadow-md border border-gray-200">
         @else
-            <div class="w-full aspect-[3/4] bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
+            <div class="w-full max-w-[280px] lg:max-w-full aspect-[3/4] bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
                 <span class="text-gray-400 text-sm">Tidak ada cover</span>
             </div>
         @endif
@@ -167,7 +182,7 @@
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h2 class="text-lg font-bold text-gray-800">Pratinjau Flipbook</h2>
         <div class="flex items-center gap-3">
-            @if($buku->halaman()->count() > 0)
+            @if($buku->halaman()->count() > 0 && $buku->status_publikasi !== 'Terbit')
                 <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
                    class="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-xs transition-colors">
                     Kelola Halaman
@@ -190,7 +205,7 @@
         $primaryHex   = $getHexColor($buku->warna_primer, '#6366F1');
         $secondaryHex = $getHexColor($buku->warna_sekunder, '#8B5CF6');
 
-        // ✅ FIX: Urutkan berdasarkan nomor_halaman ascending
+        // Urutkan berdasarkan nomor_halaman ascending
         $halamanSorted = $buku->halaman->sortBy('nomor_halaman')->values();
 
         $pagesData = $halamanSorted->map(function($page) {
@@ -218,17 +233,9 @@
     @endphp
 
     {{-- ── Flipbook Container ── --}}
-    <div id="fb-shell" style="
-        background: #1a1a2e;
+    <div id="fb-shell" data-pages="{{ json_encode($pagesData) }}" style="
         --fb-primary: {{ $primaryHex }};
         --fb-secondary: {{ $secondaryHex }};
-        display: flex;
-        flex-direction: column;
-        height: 620px;
-        position: relative;
-        overflow: hidden;
-        font-family: 'Segoe UI', system-ui, sans-serif;
-        user-select: none;
     ">
         {{-- Loading overlay --}}
         <div id="fb-loading" style="
@@ -249,51 +256,75 @@
         </div>
 
         {{-- Top mini-bar --}}
-        <div style="
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            display: flex; align-items: center;
-            justify-content: space-between;
-            padding: 8px 16px; gap: 10px; flex-shrink: 0; z-index: 10;
-        ">
-            {{-- Lang toggle --}}
-            <div style="display:flex; background:rgba(255,255,255,0.1); border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.18);">
-                <button id="fb-lang-id" onclick="fbSetLang('id')" style="
-                    padding:5px 11px; font-size:11px; font-weight:700;
-                    background: var(--fb-primary); color:#fff;
-                    border:none; cursor:pointer;">ID</button>
-                <button id="fb-lang-su" onclick="fbSetLang('su')" style="
-                    padding:5px 11px; font-size:11px; font-weight:700;
-                    background:transparent; color:rgba(255,255,255,0.55);
-                    border:none; cursor:pointer;">SU</button>
+        <div id="fb-top-bar">
+            {{-- Lang controls --}}
+            <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; background:rgba(255,255,255,0.1); border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.18);">
+                    <button id="fb-lang-id" onclick="fbSetLang('id')" style="
+                        padding:5px 11px; font-size:11px; font-weight:700;
+                        background: var(--fb-primary); color:#fff;
+                        border:none; cursor:pointer;" title="Bahasa Indonesia">ID</button>
+                    <button id="fb-lang-su" onclick="fbSetLang('su')" style="
+                        padding:5px 11px; font-size:11px; font-weight:700;
+                        background:transparent; color:rgba(255,255,255,0.55);
+                        border:none; cursor:pointer;" title="Bahasa Sunda">SU</button>
+                    <button id="fb-lang-both" onclick="fbSetLang('both')" style="
+                        padding:5px 11px; font-size:11px; font-weight:700;
+                        background:transparent; color:rgba(255,255,255,0.55);
+                        border:none; cursor:pointer;" title="Bahasa Sunda lalu Indonesia">SU & ID</button>
+                </div>
             </div>
-
-            {{-- Page slider --}}
-            <input type="range" id="fb-slider" min="0" max="{{ $halamanSorted->count() - 1 }}" value="0" step="1"
-                style="
-                    flex:1; max-width:240px; height:4px; border-radius:4px;
-                    accent-color: var(--fb-primary); cursor:pointer; margin: 0 4px;
-                ">
 
             {{-- Page counter --}}
             <span id="fb-counter" style="font-size:12px; color:rgba(255,255,255,0.65); min-width:70px; text-align:center; flex-shrink:0;"></span>
 
-            {{-- Narasi button --}}
-            <button id="fb-btn-narasi" onclick="fbPlayNarasi()" style="
-                display:none;
-                background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);
-                color:#fff; padding:5px 12px; border-radius:7px;
-                font-size:12px; font-weight:600; cursor:pointer;">
-                🔊 Narasi
-            </button>
+            {{-- Narasi & Backsound controls --}}
+            <div style="display:flex; align-items:center; gap:5px;">
+                {{-- Backsound pause/play toggle --}}
+                <button id="fb-btn-backsound-toggle" onclick="fbToggleBacksound()" title="Pause/Play Audio Latar" style="
+                    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+                    color: #fff; padding: 5px 10px; border-radius: 7px;
+                    font-size: 11px; font-weight: 700; cursor: pointer; display: none; align-items: center; gap: 4px; transition: background 0.2s;">
+                    🔊 Musik
+                </button>
+
+                {{-- Narasi button group: Pemutaran narasi sesuai bahasa aktif --}}
+                <div id="fb-narasi-group" style="display:none; align-items:center; gap:5px;">
+                    {{-- Tombol toggle narasi --}}
+                    <button id="fb-btn-narasi-toggle" onclick="fbToggleNarasi()" title="Play/Stop Narasi" style="
+                        background: var(--fb-primary);
+                        border: 1px solid rgba(255,255,255,0.2);
+                        color: #fff; padding: 5px 10px; border-radius: 7px;
+                        font-size: 11px; font-weight: 700; cursor: pointer;
+                        white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s;">
+                        🔊 Putar Narasi
+                    </button>
+                </div>
+            </div>
         </div>
 
         {{-- Stage --}}
         <div id="fb-stage" style="
             flex:1; display:flex; align-items:center; justify-content:center;
-            overflow:hidden; position:relative; padding:16px 70px;
+            overflow:hidden; position:relative;
         ">
+            {{-- Nav arrows --}}
+            <button id="fb-btn-prev" onclick="fbGoPage(-1)" style="
+                position:absolute; top:50%; transform:translateY(-50%);
+                background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
+                color:#fff; width:40px; height:40px; border-radius:50%;
+                font-size:20px; cursor:pointer; display:flex;
+                align-items:center; justify-content:center;
+                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">‹</button>
+
+            <button id="fb-btn-next" onclick="fbGoPage(1)" style="
+                position:absolute; top:50%; transform:translateY(-50%);
+                background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
+                color:#fff; width:40px; height:40px; border-radius:50%;
+                font-size:20px; cursor:pointer; display:flex;
+                align-items:center; justify-content:center;
+                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">›</button>
+
             {{-- Book wrap --}}
             <div id="fb-book-wrap" style="position:relative; display:flex; align-items:center; justify-content:center;">
 
@@ -309,45 +340,12 @@
                     ">
                     <div id="fb-areas" style="position:absolute; inset:0; pointer-events:none;"></div>
                 </div>
-
-                {{-- Nav arrows --}}
-                <button id="fb-btn-prev" onclick="fbGoPage(-1)" style="
-                    position:absolute; left:-56px; top:50%; transform:translateY(-50%);
-                    background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
-                    color:#fff; width:40px; height:40px; border-radius:50%;
-                    font-size:20px; cursor:pointer; display:flex;
-                    align-items:center; justify-content:center;
-                    backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">‹</button>
-
-                <button id="fb-btn-next" onclick="fbGoPage(1)" style="
-                    position:absolute; right:-56px; top:50%; transform:translateY(-50%);
-                    background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
-                    color:#fff; width:40px; height:40px; border-radius:50%;
-                    font-size:20px; cursor:pointer; display:flex;
-                    align-items:center; justify-content:center;
-                    backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">›</button>
-            </div>
-
-            {{-- Audio bar --}}
-            <div id="fb-audio-bar" style="
-                position:absolute; bottom:14px; left:50%; transform:translateX(-50%);
-                background:rgba(0,0,0,0.82); backdrop-filter:blur(10px);
-                border:1px solid rgba(255,255,255,0.13); border-radius:50px;
-                padding:8px 18px; display:flex; align-items:center; gap:10px;
-                color:#fff; font-size:12px; opacity:0;
-                transition:opacity 0.3s; pointer-events:none; max-width:85%;
-            ">
-                <span style="animation:fb-note 1s ease-in-out infinite; display:inline-block; font-size:16px;">🎵</span>
-                <span id="fb-audio-label" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;color:rgba(255,255,255,0.8);"></span>
-                <button onclick="fbStopAudio()" style="
-                    background:rgba(255,255,255,0.14); border:none; color:#fff;
-                    border-radius:50%; width:26px; height:26px; font-size:12px;
-                    cursor:pointer; display:flex; align-items:center; justify-content:center;">■</button>
             </div>
         </div>
 
-        {{-- Thumbnail strip — ✅ gunakan $halamanSorted --}}
+        {{-- Thumbnail strip --}}
         <div id="fb-thumb-strip" style="
+            position: relative;
             background:rgba(0,0,0,0.45);
             display:flex; gap:5px; padding:7px 14px;
             overflow-x:auto; flex-shrink:0; align-items:center;
@@ -355,7 +353,7 @@
             scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.18) transparent;
         ">
             @foreach($halamanSorted as $loopIdx => $page)
-            <div class="fb-thumb" data-idx="{{ $loopIdx }}" onclick="fbJumpTo({{ $loopIdx }})" style="
+            <div class="fb-thumb" data-idx="{{ $loopIdx }}" onclick="fbJumpTo(parseInt(this.dataset.idx))" style="
                 flex-shrink:0; width:40px; height:54px; border-radius:3px;
                 overflow:hidden; cursor:pointer;
                 border:2px solid transparent;
@@ -382,11 +380,74 @@
         @keyframes fb-note  { 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)} }
         @keyframes fb-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,.5)} 50%{box-shadow:0 0 0 6px rgba(255,215,0,0)} }
 
+        #fb-shell {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            height: 620px;
+            position: relative;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            user-select: none;
+        }
+
+        #fb-top-bar {
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            gap: 10px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        #fb-stage {
+            padding: 16px;
+        }
+        #fb-btn-prev {
+            left: 16px;
+        }
+        #fb-btn-next {
+            right: 16px;
+        }
+
+        @media (max-width: 768px) {
+            #fb-stage {
+                padding: 16px 8px;
+            }
+            #fb-btn-prev {
+                left: 8px;
+                background: rgba(0, 0, 0, 0.6) !important;
+            }
+            #fb-btn-next {
+                right: 8px;
+                background: rgba(0, 0, 0, 0.6) !important;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #fb-shell {
+                height: 480px;
+            }
+            #fb-top-bar {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 8px;
+                padding: 8px;
+            }
+        }
+
         #fb-btn-prev:hover, #fb-btn-next:hover { background: rgba(255,255,255,0.28) !important; }
         #fb-btn-prev:disabled, #fb-btn-next:disabled { opacity:.22; cursor:not-allowed; }
 
         .fb-thumb:hover { transform: scale(1.1); }
         .fb-thumb.fb-active { border-color: var(--fb-primary) !important; }
+
+        #fb-narasi-group button:hover { filter: brightness(1.2); }
+        #fb-btn-narasi-both.fb-playing-both { background: linear-gradient(90deg,#6d28d9,#1d4ed8) !important; box-shadow: 0 0 8px rgba(124,58,237,0.6); }
 
         .fb-area-box {
             position:absolute; border:2px solid rgba(255,200,0,.7);
@@ -419,28 +480,29 @@
     {{-- ── Flipbook JS ── --}}
     <script>
     (function(){
-        const PAGES = @json($pagesData);
-        const TOTAL = PAGES.length;
+        const shell         = document.getElementById('fb-shell');
+        const PAGES         = JSON.parse(shell.getAttribute('data-pages') || '[]');
+        const TOTAL         = PAGES.length;
 
         let fbIdx         = 0;
         let fbLang        = 'id';
         let fbActiveAudio = null;
         let fbBacksound   = null;
         let fbAnimating   = false;
-
-        const shell      = document.getElementById('fb-shell');
-        const loading    = document.getElementById('fb-loading');
-        const pageCard   = document.getElementById('fb-page-card');
-        const pageImg    = document.getElementById('fb-page-img');
-        const areasEl    = document.getElementById('fb-areas');
-        const counter    = document.getElementById('fb-counter');
-        const btnPrev    = document.getElementById('fb-btn-prev');
-        const btnNext    = document.getElementById('fb-btn-next');
-        const btnNarasi  = document.getElementById('fb-btn-narasi');
-        const audioBar   = document.getElementById('fb-audio-bar');
-        const audioLabel = document.getElementById('fb-audio-label');
-        const stage      = document.getElementById('fb-stage');
-        const slider     = document.getElementById('fb-slider');
+        let fbNarasiChain = false;
+        let fbNarasiPlaying = false;
+        let fbAreaChain   = false;
+        const loading       = document.getElementById('fb-loading');
+        const pageCard      = document.getElementById('fb-page-card');
+        const pageImg       = document.getElementById('fb-page-img');
+        const areasEl       = document.getElementById('fb-areas');
+        const counter       = document.getElementById('fb-counter');
+        const btnPrev       = document.getElementById('fb-btn-prev');
+        const btnNext       = document.getElementById('fb-btn-next');
+        const narasiGroup   = document.getElementById('fb-narasi-group');
+        const btnNarasiToggle = document.getElementById('fb-btn-narasi-toggle');
+        const audioBar      = document.getElementById('fb-audio-bar');
+        const stage         = document.getElementById('fb-stage');
 
         /* ── Size ── */
         function fbSize() {
@@ -460,10 +522,15 @@
             fbRenderAreas(page);
 
             counter.textContent = `${page ? page.nomor : fbIdx + 1} / ${TOTAL}`;
-            slider.value = fbIdx;
 
-            const hasNarasi = page && (page.narasi_id || page.narasi_su);
-            btnNarasi.style.display = hasNarasi ? 'inline-flex' : 'none';
+            // Tampilkan narasi group jika halaman punya narasi untuk bahasa aktif
+            const hasNarasiId = page && !!page.narasi_id;
+            const hasNarasiSu = page && !!page.narasi_su;
+            const hasActiveNarasi = (fbLang === 'id' && hasNarasiId) || 
+                                    (fbLang === 'su' && hasNarasiSu) || 
+                                    (fbLang === 'both' && (hasNarasiId || hasNarasiSu));
+            narasiGroup.style.display = hasActiveNarasi ? 'flex' : 'none';
+            fbUpdateNarasiButton();
 
             fbPlayBacksound(page);
             fbUpdateThumbs();
@@ -497,39 +564,125 @@
 
                 box.addEventListener('click', e => {
                     e.stopPropagation();
-                    const src = fbLang === 'id' ? area.audio_id : area.audio_su;
-                    fbPlayAreaAudio(src || area.audio_id || area.audio_su, lbl.textContent, area.id, box);
+                    let sources = [];
+                    if (fbLang === 'id') {
+                        if (area.audio_id) sources.push(area.audio_id);
+                        else if (area.audio_su) sources.push(area.audio_su); // fallback
+                    } else if (fbLang === 'su') {
+                        if (area.audio_su) sources.push(area.audio_su);
+                        else if (area.audio_id) sources.push(area.audio_id); // fallback
+                    } else if (fbLang === 'both') {
+                        if (area.audio_su) sources.push(area.audio_su);
+                        if (area.audio_id) sources.push(area.audio_id);
+                    }
+                    fbPlayAreaAudio(sources, lbl.textContent, area.id, box);
                 });
 
                 areasEl.appendChild(box);
             });
         }
 
-        /* ── Audio ── */
-        function fbPlayAreaAudio(src, label, areaId, boxEl) {
-            if (!src) return;
+
+
+        function fbPlayAreaAudio(sources, label, areaId, boxEl) {
+            if (!sources || !sources.length) return;
             fbStopAudio(false);
-            fbActiveAudio = new Audio(src);
+
+            fbAreaChain = true;
             boxEl.classList.add('fb-playing');
-            audioLabel.textContent = label;
-            audioBar.style.opacity = '1';
-            audioBar.style.pointerEvents = 'all';
-            fbActiveAudio.play().catch(()=>{});
-            fbActiveAudio.addEventListener('ended', () => {
-                boxEl.classList.remove('fb-playing');
-                audioBar.style.opacity = '0';
-                audioBar.style.pointerEvents = 'none';
-                fbActiveAudio = null;
-            });
+            if (audioBar) {
+                audioBar.style.opacity = '1';
+                audioBar.style.pointerEvents = 'all';
+            }
+
+            let curIdx = 0;
+
+            function playNext() {
+                if (!fbAreaChain || curIdx >= sources.length) {
+                    boxEl.classList.remove('fb-playing');
+                    if (audioBar) {
+                        audioBar.style.opacity = '0';
+                        audioBar.style.pointerEvents = 'none';
+                    }
+                    fbActiveAudio = null;
+                    fbAreaChain = false;
+                    return;
+                }
+
+                const src = sources[curIdx];
+                if (!src) {
+                    curIdx++;
+                    playNext();
+                    return;
+                }
+
+                // Tambahkan akhiran bahasa jika memutar SU & ID
+                let suffix = '';
+                if (sources.length > 1) {
+                    suffix = (curIdx === 0) ? ' (Sunda)' : ' (Indonesia)';
+                }
+
+                fbActiveAudio = new Audio(src);
+                fbActiveAudio.play().catch(()=>{});
+                fbActiveAudio.addEventListener('ended', () => {
+                    curIdx++;
+                    playNext();
+                });
+            }
+
+            playNext();
         }
 
         window.fbStopAudio = function(stopBack = false) {
+            fbNarasiChain = false;
+            fbNarasiPlaying = false;
+            fbAreaChain = false;
             if (fbActiveAudio) { fbActiveAudio.pause(); fbActiveAudio = null; }
             document.querySelectorAll('.fb-area-box.fb-playing').forEach(b => b.classList.remove('fb-playing'));
-            audioBar.style.opacity = '0';
-            audioBar.style.pointerEvents = 'none';
+            if (audioBar) {
+                audioBar.style.opacity = '0';
+                audioBar.style.pointerEvents = 'none';
+            }
+            fbUpdateNarasiButton();
             if (stopBack && fbBacksound) { fbBacksound.pause(); fbBacksound = null; }
         };
+
+        let fbBacksoundPaused = false; // Initial state
+
+        window.fbToggleBacksound = function() {
+            if (!fbBacksound) {
+                fbBacksoundPaused = !fbBacksoundPaused;
+                fbUpdateBacksoundButton();
+                return;
+            }
+
+            if (fbBacksound.paused) {
+                fbBacksoundPaused = false;
+                fbBacksound.play().catch(()=>{});
+            } else {
+                fbBacksoundPaused = true;
+                fbBacksound.pause();
+            }
+            fbUpdateBacksoundButton();
+        };
+
+        function fbUpdateBacksoundButton() {
+            const btn = document.getElementById('fb-btn-backsound-toggle');
+            if (!btn) return;
+            const page = PAGES[fbIdx];
+            if (!page || !page.backsound) {
+                btn.style.display = 'none';
+                return;
+            }
+            btn.style.display = 'flex';
+            if (fbBacksoundPaused) {
+                btn.innerHTML = '🔇 Backsound';
+                btn.style.background = 'rgba(220,38,38,0.3)';
+            } else {
+                btn.innerHTML = '🔊 Backsound';
+                btn.style.background = 'var(--fb-primary)';
+            }
+        }
 
         function fbPlayBacksound(page) {
             if (fbBacksound) { fbBacksound.pause(); fbBacksound = null; }
@@ -537,28 +690,103 @@
                 fbBacksound = new Audio(page.backsound);
                 fbBacksound.loop = true;
                 fbBacksound.volume = 0.35;
-                fbBacksound.play().catch(()=>{});
+                if (!fbBacksoundPaused) {
+                    fbBacksound.play().catch(()=>{});
+                }
+            }
+            fbUpdateBacksoundButton();
+        }
+
+
+
+        function fbUpdateNarasiButton() {
+            const btn = document.getElementById('fb-btn-narasi-toggle');
+            if (!btn) return;
+            if (fbNarasiPlaying) {
+                btn.innerHTML = '🔊 Narasi';
+                btn.style.background = 'var(--fb-primary)';
+            } else {
+                btn.innerHTML = '🔇 Narasi';
+                btn.style.background = 'rgba(220,38,38,0.3)';
             }
         }
 
-        window.fbPlayNarasi = function() {
+        window.fbToggleNarasi = function() {
+            if (fbNarasiPlaying) {
+                fbStopAudio(false);
+            } else {
+                fbPlayActiveNarasi();
+            }
+        };
+
+        window.fbPlayNarasi = function(lang) {
             const page = PAGES[fbIdx];
             if (!page) return;
-            const src = fbLang === 'id' ? page.narasi_id : page.narasi_su;
-            if (!src) return;
+
             fbStopAudio(false);
-            fbActiveAudio = new Audio(src);
-            audioLabel.textContent = 'Narasi halaman ' + page.nomor;
-            audioBar.style.opacity = '1';
-            audioBar.style.pointerEvents = 'all';
-            btnNarasi.style.background = 'var(--fb-primary)';
-            fbActiveAudio.play().catch(()=>{});
-            fbActiveAudio.addEventListener('ended', () => {
-                audioBar.style.opacity = '0';
-                audioBar.style.pointerEvents = 'none';
-                btnNarasi.style.background = '';
-                fbActiveAudio = null;
-            });
+
+            if (lang === 'both') {
+                const srcSu = page.narasi_su;
+                const srcId = page.narasi_id;
+
+                if (!srcSu && !srcId) return;
+                if (!srcSu) { fbPlayNarasi('id'); return; }
+                if (!srcId) { fbPlayNarasi('su'); return; }
+
+                fbNarasiChain = true;
+                fbNarasiPlaying = true;
+                fbUpdateNarasiButton();
+
+                fbActiveAudio = new Audio(srcSu);
+                if (audioBar) {
+                    audioBar.style.opacity = '1';
+                    audioBar.style.pointerEvents = 'all';
+                }
+                fbActiveAudio.play().catch(()=>{});
+
+                fbActiveAudio.addEventListener('ended', () => {
+                    if (!fbNarasiChain) return;
+                    fbActiveAudio = new Audio(srcId);
+                    fbActiveAudio.play().catch(()=>{});
+                    fbActiveAudio.addEventListener('ended', () => {
+                        fbNarasiChain = false;
+                        fbNarasiPlaying = false;
+                        fbUpdateNarasiButton();
+                        if (audioBar) {
+                            audioBar.style.opacity = '0';
+                            audioBar.style.pointerEvents = 'none';
+                        }
+                        fbActiveAudio = null;
+                    });
+                });
+            } else {
+                const src = lang === 'su' ? page.narasi_su : page.narasi_id;
+                if (!src) return;
+
+                fbNarasiPlaying = true;
+                fbUpdateNarasiButton();
+
+                fbActiveAudio = new Audio(src);
+                if (audioBar) {
+                    audioBar.style.opacity = '1';
+                    audioBar.style.pointerEvents = 'all';
+                }
+                fbActiveAudio.play().catch(()=>{});
+
+                fbActiveAudio.addEventListener('ended', () => {
+                    fbNarasiPlaying = false;
+                    fbUpdateNarasiButton();
+                    if (audioBar) {
+                        audioBar.style.opacity = '0';
+                        audioBar.style.pointerEvents = 'none';
+                    }
+                    fbActiveAudio = null;
+                });
+            }
+        };
+
+        window.fbPlayActiveNarasi = function() {
+            fbPlayNarasi(fbLang);
         };
 
         /* ── Lang ── */
@@ -568,7 +796,11 @@
             document.getElementById('fb-lang-id').style.color      = lang === 'id' ? '#fff' : 'rgba(255,255,255,0.55)';
             document.getElementById('fb-lang-su').style.background = lang === 'su' ? 'var(--fb-primary)' : 'transparent';
             document.getElementById('fb-lang-su').style.color      = lang === 'su' ? '#fff' : 'rgba(255,255,255,0.55)';
+            document.getElementById('fb-lang-both').style.background = lang === 'both' ? 'var(--fb-primary)' : 'transparent';
+            document.getElementById('fb-lang-both').style.color      = lang === 'both' ? '#fff' : 'rgba(255,255,255,0.55)';
             fbStopAudio(false);
+            fbRender();
+            fbPlayActiveNarasi(); // Auto play narration!
         };
 
         /* ── Navigation ── */
@@ -591,30 +823,33 @@
 
         /* ── Thumbs ── */
         function fbUpdateThumbs() {
+            const strip = document.getElementById('fb-thumb-strip');
             document.querySelectorAll('.fb-thumb').forEach(el => {
                 const active = parseInt(el.dataset.idx) === fbIdx;
                 el.classList.toggle('fb-active', active);
-                if (active) el.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' });
+                if (active && strip) {
+                    const elOffset = el.offsetLeft;
+                    const elWidth = el.offsetWidth;
+                    const stripWidth = strip.clientWidth;
+                    strip.scrollTo({
+                        left: elOffset - (stripWidth / 2) + (elWidth / 2),
+                        behavior: 'smooth'
+                    });
+                }
             });
         }
-
-        /* ── Slider ── */
-        slider.addEventListener('input', e => {
-            const idx = parseInt(e.target.value, 10);
-            if (idx === fbIdx) return;
-            fbStopAudio(false);
-            fbIdx = idx;
-            fbRender();
-        });
 
         /* ── Scroll wheel navigation ── */
         let fbWheelLock = false;
         stage.addEventListener('wheel', e => {
-            e.preventDefault();
-            if (fbWheelLock) return;
             const dir = e.deltaY > 0 ? 1 : -1;
             const newIdx = fbIdx + dir;
-            if (newIdx < 0 || newIdx >= TOTAL) return;
+            if (newIdx < 0 || newIdx >= TOTAL) {
+                // Let the browser handle standard scroll if we cannot turn the page
+                return;
+            }
+            e.preventDefault();
+            if (fbWheelLock) return;
             fbWheelLock = true;
             fbGoPage(dir);
             setTimeout(() => fbWheelLock = false, 350);
@@ -636,11 +871,19 @@
         });
 
         /* ── Init ── */
-        window.addEventListener('load', () => {
+        function initFb() {
             fbSize();
             fbRender();
-            setTimeout(() => loading.style.display = 'none', 350);
-        });
+            setTimeout(() => {
+                if (loading) loading.style.display = 'none';
+            }, 350);
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            initFb();
+        } else {
+            window.addEventListener('load', initFb);
+        }
         new ResizeObserver(fbSize).observe(stage);
 
     })();
@@ -661,33 +904,86 @@
 {{-- ── End Pratinjau Flipbook ── --}}
 
 {{-- Modal Konfirmasi Kembalikan ke Draft --}}
-<div id="modal-unpublish" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
-    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6" onclick="event.stopPropagation()">
-        <div class="flex items-start gap-4 mb-5">
-            <div class="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-xl">
-                ⚠️
-            </div>
-            <div>
-                <h3 class="text-lg font-bold text-gray-900 mb-1">Kembalikan ke Draft?</h3>
-                <p class="text-sm text-gray-600">
-                    Buku <strong>{{ $buku->judul_idn }}</strong> akan disembunyikan dari aplikasi Flutter dan tidak bisa diunduh pengguna hingga dipublikasikan kembali.
-                </p>
-            </div>
+<div id="modal-unpublish" class="fixed inset-0 z-50 hidden items-center justify-center" aria-modal="true" role="dialog">
+    {{-- Backdrop --}}
+    <div class="modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0"
+         onclick="closePublishModal('modal-unpublish')"></div>
+
+    {{-- Card --}}
+    <div class="modal-card relative bg-white rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4
+                min-w-[320px] max-w-[90vw] scale-90 opacity-0 transition-all duration-300" onclick="event.stopPropagation()">
+
+        {{-- Icon --}}
+        <div class="w-20 h-20 rounded-full bg-yellow-100 flex items-center justify-center text-3xl">
+            ⚠️
         </div>
-        <div class="flex justify-end gap-3">
-            <button
-                onclick="document.getElementById('modal-unpublish').classList.add('hidden')"
-                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors">
+
+        {{-- Text --}}
+        <div class="text-center">
+            <p class="text-xl font-bold text-gray-900 mt-1">Kembalikan ke Draft?</p>
+            <p class="text-sm text-gray-500 mt-2 leading-relaxed">
+                Buku <strong>{{ $buku->judul_idn }}</strong> akan disembunyikan dari aplikasi mobile Kaco Ceria dan tidak bisa diunduh pengguna hingga dipublikasikan kembali.
+            </p>
+        </div>
+
+        {{-- Confirm buttons --}}
+        <div class="flex gap-3 mt-2 w-full">
+            <button type="button"
+                    onclick="closePublishModal('modal-unpublish')"
+                    class="flex-1 px-6 py-3 rounded-xl border-2 border-yellow-400 text-yellow-600 font-bold text-base hover:bg-yellow-50 transition-colors">
                 Batal
             </button>
-            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="inline">
+            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="flex-1">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status_publikasi" value="Draft">
                 <input type="hidden" name="confirm_unpublish" value="yes">
                 <button type="submit"
-                        class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
-                    Ya, Kembalikan ke Draft
+                        class="w-full px-6 py-3 rounded-xl bg-yellow-600 hover:bg-yellow-700 text-white font-bold text-base transition-colors shadow-md">
+                    Ya, Konfirmasi
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Konfirmasi Publikasikan --}}
+<div id="modal-publish" class="fixed inset-0 z-50 hidden items-center justify-center" aria-modal="true" role="dialog">
+    {{-- Backdrop --}}
+    <div class="modal-backdrop absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0"
+         onclick="closePublishModal('modal-publish')"></div>
+
+    {{-- Card --}}
+    <div class="modal-card relative bg-white rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4
+                min-w-[320px] max-w-[90vw] scale-90 opacity-0 transition-all duration-300" onclick="event.stopPropagation()">
+
+        {{-- Icon --}}
+        <div class="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-3xl">
+            🚀
+        </div>
+
+        {{-- Text --}}
+        <div class="text-center">
+            <p class="text-xl font-bold text-gray-900 mt-1">Publikasikan Buku?</p>
+            <p class="text-sm text-gray-500 mt-2 leading-relaxed">
+                Buku <strong>{{ $buku->judul_idn }}</strong> akan diterbitkan. Buku akan dapat diunduh dan dibaca oleh pengguna di aplikasi mobile Kaco Ceria.
+            </p>
+        </div>
+
+        {{-- Confirm buttons --}}
+        <div class="flex gap-3 mt-2 w-full">
+            <button type="button"
+                    onclick="closePublishModal('modal-publish')"
+                    class="flex-1 px-6 py-3 rounded-xl border-2 border-green-400 text-green-600 font-bold text-base hover:bg-green-50 transition-colors">
+                Batal
+            </button>
+            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="flex-1">
+                @csrf
+                @method('PATCH')
+                <input type="hidden" name="status_publikasi" value="Terbit">
+                <button type="submit"
+                        class="w-full px-6 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-base transition-colors shadow-md">
+                    Ya, Publikasikan
                 </button>
             </form>
         </div>
@@ -695,8 +991,51 @@
 </div>
 
 <script>
-    document.getElementById('modal-unpublish').addEventListener('click', function (e) {
-        if (e.target === this) this.classList.add('hidden');
+    function openPublishModal(id) {
+        const modal = document.getElementById(id);
+        const backdrop = modal.querySelector('.modal-backdrop');
+        const card     = modal.querySelector('.modal-card');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        requestAnimationFrame(() => {
+            backdrop.classList.remove('opacity-0');
+            card.classList.remove('scale-90', 'opacity-0');
+            card.classList.add('scale-100', 'opacity-100');
+        });
+    }
+
+    function closePublishModal(id) {
+        const modal = document.getElementById(id);
+        const backdrop = modal.querySelector('.modal-backdrop');
+        const card     = modal.querySelector('.modal-card');
+        backdrop.classList.add('opacity-0');
+        card.classList.add('scale-90', 'opacity-0');
+        card.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 300);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Gagal Proses',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
     });
 </script>
 

@@ -36,7 +36,6 @@
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Pratinjau</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Anotasi</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Audio</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
@@ -55,11 +54,13 @@
                             $anotasiCount = $page->areaInteraktif->count();
                         @endphp
 
-                        <tr class="hover:bg-gray-50 transition-colors sortable-row" data-id="{{ $page->id_halaman }}">
+                        <tr class="hover:bg-gray-50 transition-colors {{ $page->buku->status_publikasi === 'Terbit' ? '' : 'sortable-row' }}" data-id="{{ $page->id_halaman }}">
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <span class="drag-handle text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none text-lg leading-none" title="Seret untuk mengubah urutan">⠿</span>
+                                    @if($page->buku->status_publikasi !== 'Terbit')
+                                        <span class="drag-handle text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none text-lg leading-none" title="Seret untuk mengubah urutan">⠿</span>
+                                    @endif
                                     <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
                                 </div>
                             </td>
@@ -78,7 +79,9 @@
                                         src="{{ asset('storage/' . $page->path_gambar) }}"
                                         alt="Halaman {{ $page->nomor_halaman }}"
                                         class="h-14 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-                                        onclick="showImageModal('{{ asset('storage/' . $page->path_gambar) }}', 'Halaman {{ $page->nomor_halaman }}')"
+                                        data-src="{{ asset('storage/' . $page->path_gambar) }}"
+                                        data-title="Halaman {{ $page->nomor_halaman }}"
+                                        onclick="showImageModal(this.dataset.src, this.dataset.title)"
                                     >
                                 @else
                                     <div class="h-14 w-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
@@ -114,32 +117,28 @@
                                 </span>
                             </td>
 
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
-                                    {{ $page->buku->status_publikasi === 'Terbit' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
-                                    {{ $page->buku->status_publikasi ?? 'Draft' }}
-                                </span>
-                            </td>
-
                             <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $page->created_at->locale('id_ID')->format('d M Y') }}
                             </td>
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <a href="{{ route('halaman.edit', $page->id_halaman) }}"
-                                       class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
-                                        Sunting
-                                    </a>
-                                    <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline"
-                                          onsubmit="return confirm('Hapus halaman ini?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit"
-                                                class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                            Hapus
-                                        </button>
-                                    </form>
+                                    @if($page->buku->status_publikasi !== 'Terbit')
+                                        <a href="{{ route('halaman.edit', $page->id_halaman) }}"
+                                           class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
+                                            Sunting
+                                        </a>
+                                        <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                                    class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                Hapus
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-xs text-gray-400 italic">Buku Terbit (Read-only)</span>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -252,7 +251,7 @@ function closeImageModal() {
 
     function saveOrder(ids) {
         showToast('Menyimpan urutan...', 'info');
-        fetch('{{ route('halaman.reorder') }}', {
+        fetch("{{ route('halaman.reorder') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

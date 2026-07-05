@@ -17,7 +17,11 @@ class AudioLatarController extends Controller
     {
         $validated = $request->validate([
             'nama_audio' => 'required|string|max:100',
-            'path_file' => 'required|file|mimes:mp3,wav,ogg,m4a|max:10240',
+            'path_file' => 'required|file|mimes:mp3,m4a,mpga,mp4,x-m4a,wav|extensions:mp3,m4a|max:3024',
+        ], [
+            'path_file.max'   => 'Ukuran file audio latar maksimal 1MB.',
+            'path_file.mimes' => 'Format audio harus MP3 atau M4A.',
+            'path_file.extensions' => 'Ekstensi file audio harus .mp3 atau .m4a.',
         ]);
 
         $path = $request->file('path_file')->store('buku/audio-latar', 'public');

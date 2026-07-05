@@ -6,17 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
         Schema::table('buku', function (Blueprint $table) {
-            $table->string('zip_bundle_path')->nullable()->after('status_publikasi');
+            $table->string('pdf_hash', 64)->nullable()->after('original_pdf_name')->index();
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('buku', function (Blueprint $table) {
-            $table->dropColumn('zip_bundle_path');
+            $table->dropColumn('pdf_hash');
         });
     }
 };

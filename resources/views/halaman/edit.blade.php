@@ -9,42 +9,23 @@
     </a>
 </div>
 
-{{-- Alerts --}}
-@if (session('success'))
-    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 flex gap-3">
-        <span class="text-xl">✅</span>
-        <p class="text-green-800 font-medium self-center">{{ session('success') }}</p>
-    </div>
-@endif
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
 
-@if ($errors->any())
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-        <div class="flex gap-3">
-            <span class="text-xl">⚠️</span>
-            <div>
-                <h3 class="font-semibold text-red-800 mb-1">Terjadi Kesalahan</h3>
-                <ul class="text-sm text-red-700 space-y-0.5 list-disc list-inside">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-    </div>
-@endif
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
 
 {{-- Header --}}
 <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
     <div class="flex flex-wrap items-center gap-3">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman }} - Buku "{{ $halaman->buku->judul_idn }}"</h1>
+            <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman }}</h1>
             <p class="text-gray-500 mt-0.5 text-sm">Kelola anotasi dan audio halaman</p>
         </div>
     </div>
-    <button id="saveAreaBtn" type="button"
-            class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm">
-        💾 Simpan Area Baru
-    </button>
+
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -53,7 +34,11 @@
     <div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h2 class="text-base font-bold text-gray-900 mb-1">Area Interaktif</h2>
-            <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+            @if($halaman->buku->status_publikasi === 'Terbit')
+                <p class="text-gray-400 text-xs mb-4">Daftar area interaktif yang terdapat pada halaman ini.</p>
+            @else
+                <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+            @endif
 
             <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 select-none" id="imageWrapper">
                 @if($halaman->path_gambar && file_exists(storage_path('app/public/' . $halaman->path_gambar)))
@@ -63,13 +48,18 @@
                          class="w-full block"
                          draggable="false">
                     <canvas id="drawCanvas"
-                            class="absolute inset-0 w-full h-full cursor-crosshair"
+                            class="absolute inset-0 w-full h-full {{ $halaman->buku->status_publikasi === 'Terbit' ? 'cursor-default' : 'cursor-crosshair' }}"
                             style="touch-action: none;"></canvas>
                     {{-- Existing area overlays --}}
                     @foreach($halaman->areaInteraktif as $area)
                         <div class="absolute border-2 border-red-500 bg-red-500/10 pointer-events-none area-overlay"
                              data-id="{{ $area->id_area }}"
-                             style="left:{{ $area->x_pct ?? 0 }}%; top:{{ $area->y_pct ?? 0 }}%; width:{{ $area->w_pct ?? 0 }}%; height:{{ $area->h_pct ?? 0 }}%;">
+                             @style([
+                                 "left: " . ($area->x_pct ?? 0) . "%",
+                                 "top: " . ($area->y_pct ?? 0) . "%",
+                                 "width: " . ($area->w_pct ?? 0) . "%",
+                                 "height: " . ($area->h_pct ?? 0) . "%",
+                             ])>
                             <span class="absolute -top-5 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap max-w-[120px] truncate">
                                 {{ $area->label ?? 'Area ' . $loop->iteration }}
                             </span>
@@ -79,6 +69,37 @@
                     <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center rounded-lg">
                         <span class="text-3xl font-bold text-gray-400">{{ $halaman->nomor_halaman }}</span>
                     </div>
+                @endif
+            </div>
+
+            {{-- [DIPINDAH] Navigasi halaman sebelumnya / berikutnya, sekarang di bawah gambar --}}
+            <div class="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-gray-100">
+                @if(isset($prevHalaman) && $prevHalaman)
+                    <a href="{{ route('halaman.edit', $prevHalaman->id_halaman) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
+                       title="Halaman {{ $prevHalaman->nomor_halaman }}">
+                        ‹ Hal. {{ $prevHalaman->nomor_halaman }}
+                    </a>
+                @else
+                    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed">
+                        ‹ Sebelumnya
+                    </span>
+                @endif
+
+                <span class="text-xs font-medium text-gray-400">Halaman {{ $halaman->nomor_halaman }}</span>
+
+                @if(isset($nextHalaman) && $nextHalaman)
+                    <a href="{{ route('halaman.edit', $nextHalaman->id_halaman) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
+                       title="Halaman {{ $nextHalaman->nomor_halaman }}">
+                        Hal. {{ $nextHalaman->nomor_halaman }} ›
+                    </a>
+                @else
+                    <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+                       title="Selesai Sunting">
+                        Selesai
+                    </a>
                 @endif
             </div>
         </div>
@@ -95,12 +116,15 @@
                     <input type="text" id="newAreaLabel"
                             placeholder="Contoh: Mata, Telinga, Pohon..."
                             class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <button id="saveAreaBtn" type="button"
+                            class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        💾 Simpan
+                    </button>
                     <button type="button" id="cancelAreaBtn"
                             class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors">
                         Batal
                     </button>
                 </div>
-                <p class="text-xs text-gray-400 mt-1">Tekan "Simpan Area Baru" di atas setelah mengisi label.</p>
             </div>
             <br>
             <h2 class="text-base font-bold text-gray-900 mb-4">
@@ -132,80 +156,106 @@
                 <div class="border-l-4 border-blue-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Narasi - Bahasa Indonesia</p>
                     @if($halaman->narasi_indo)
-                        <audio controls class="w-full h-8 mb-2"
-                               src="{{ asset('storage/' . $halaman->narasi_indo) }}"></audio>
+                        <div class="mb-2 flex items-center gap-2">
+                            <audio controls class="flex-1 h-8"
+                                   src="{{ asset('storage/' . $halaman->narasi_indo) }}"></audio>
+                        </div>
+                    @else
+                        @if($halaman->buku->status_publikasi === 'Terbit')
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada audio narasi.</p>
+                        @endif
                     @endif
-                    <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
-                          method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="narasi_type" value="indo">
-                        <div class="flex gap-2">
-                            <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                                Pilih File
-                                <input type="file" name="audio_file" accept=".wav,.m4a,.mp3,.ogg,audio/*"
-                                       required class="hidden" onchange="updateFileName(this)">
-                            </label>
-                            <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
-                                Belum ada file dipilih
-                            </span>
-                            <button type="submit"
-                                    class="px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                                Unggah
-                            </button>
-                            @if($halaman->narasi_indo)
-                                <form action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                                      method="POST" class="inline">
-                                    @csrf @method('DELETE')
-                                    <input type="hidden" name="narasi_type" value="indo">
-                                    <button type="submit"
+
+                    @if($halaman->buku->status_publikasi !== 'Terbit')
+                        @if($halaman->narasi_indo)
+                            {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
+                            <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
+                            <form id="delete-narasi-indo-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                                  method="POST" class="hidden">
+                                @csrf @method('DELETE')
+                                <input type="hidden" name="narasi_type" value="indo">
+                            </form>
+                        @endif
+                        <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
+                              method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="narasi_type" value="indo">
+                            <div class="flex gap-2">
+                                <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+                                    {{ $halaman->narasi_indo ? 'Ganti File' : 'Pilih File' }}
+                                    <input type="file" name="audio_file" accept=".mp3,.m4a"
+                                           required class="hidden" onchange="updateFileName(this)">
+                                </label>
+                                <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+                                    Belum ada file dipilih
+                                </span>
+                                <button type="submit"
+                                        class="px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Unggah
+                                </button>
+                                @if($halaman->narasi_indo)
+                                    <button type="submit" form="delete-narasi-indo-form"
                                             class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
                                         Hapus
                                     </button>
-                                </form>
-                            @endif
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
-                    </form>
+                                @endif
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
+                        </form>
+                    @endif
                 </div>
 
                 {{-- Narasi Sunda --}}
                 <div class="border-l-4 border-purple-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Narasi - Bahasa Sunda</p>
                     @if($halaman->narasi_sunda)
-                        <audio controls class="w-full h-8 mb-2"
-                               src="{{ asset('storage/' . $halaman->narasi_sunda) }}"></audio>
+                        <div class="mb-2 flex items-center gap-2">
+                            <audio controls class="flex-1 h-8"
+                                   src="{{ asset('storage/' . $halaman->narasi_sunda) }}"></audio>
+                        </div>
+                    @else
+                        @if($halaman->buku->status_publikasi === 'Terbit')
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada audio narasi.</p>
+                        @endif
                     @endif
-                    <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
-                          method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="narasi_type" value="sunda">
-                        <div class="flex gap-2">
-                            <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                                Pilih File
-                                <input type="file" name="audio_file" accept=".wav,.m4a,.mp3,.ogg,audio/*"
-                                       required class="hidden" onchange="updateFileName(this)">
-                            </label>
-                            <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
-                                Belum ada file dipilih
-                            </span>
-                            <button type="submit"
-                                    class="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                                Unggah
-                            </button>
-                            @if($halaman->narasi_sunda)
-                                <form action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                                      method="POST" class="inline">
-                                    @csrf @method('DELETE')
-                                    <input type="hidden" name="narasi_type" value="sunda">
-                                    <button type="submit"
+
+                    @if($halaman->buku->status_publikasi !== 'Terbit')
+                        @if($halaman->narasi_sunda)
+                            {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
+                            <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
+                            <form id="delete-narasi-sunda-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                                  method="POST" class="hidden">
+                                @csrf @method('DELETE')
+                                <input type="hidden" name="narasi_type" value="sunda">
+                            </form>
+                        @endif
+                        <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
+                              method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="narasi_type" value="sunda">
+                            <div class="flex gap-2">
+                                <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+                                    {{ $halaman->narasi_sunda ? 'Ganti File' : 'Pilih File' }}
+                                    <input type="file" name="audio_file" accept=".mp3,.m4a"
+                                           required class="hidden" onchange="updateFileName(this)">
+                                </label>
+                                <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+                                    Belum ada file dipilih
+                                </span>
+                                <button type="submit"
+                                        class="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Unggah
+                                </button>
+                                @if($halaman->narasi_sunda)
+                                    <button type="submit" form="delete-narasi-sunda-form"
                                             class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
                                         Hapus
                                     </button>
-                                </form>
-                            @endif
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
-                    </form>
+                                @endif
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
+                        </form>
+                    @endif
                 </div>
 
                 {{-- Backsound — menggunakan relasi AudioLatar --}}
@@ -215,7 +265,7 @@
                     {{-- Tampilkan audio aktif jika ada --}}
                     @if($halaman->audioLatar)
                         <div class="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between gap-3">
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-xs font-semibold text-yellow-800 truncate">
                                     🎵 {{ $halaman->audioLatar->nama_audio }}
                                 </p>
@@ -223,46 +273,54 @@
                                        src="{{ asset('storage/' . $halaman->audioLatar->path_file) }}"></audio>
                             </div>
                             {{-- Hapus: lepas relasi saja (set id_audio_latar = null) --}}
-                            <form action="{{ route('halaman.removeBacksound', $halaman->id_halaman) }}"
-                                  method="POST" class="flex-shrink-0">
-                                @csrf @method('PATCH')
-                                <button type="submit"
-                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Hapus
-                                </button>
-                            </form>
+                            @if($halaman->buku->status_publikasi !== 'Terbit')
+                                <form action="{{ route('halaman.removeBacksound', $halaman->id_halaman) }}"
+                                      method="POST" class="flex-shrink-0">
+                                    @csrf @method('PATCH')
+                                    <button type="submit"
+                                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                        Hapus
+                                    </button>
+                                </form>
+                            @endif
                         </div>
+                    @else
+                        @if($halaman->buku->status_publikasi === 'Terbit')
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada backsound.</p>
+                        @endif
                     @endif
 
                     {{-- Pilih dari daftar AudioLatar yang sudah ada --}}
-                    <form action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
-                          method="POST">
-                        @csrf @method('PATCH')
-                        <div class="flex gap-2">
-                            <select name="id_audio_latar"
-                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
-                                    required>
-                                <option value="">-- Pilih backsound --</option>
-                                @foreach($allAudioLatar as $al)
-                                    <option value="{{ $al->id_audio_latar }}"
-                                        {{ $halaman->id_audio_latar == $al->id_audio_latar ? 'selected' : '' }}>
-                                        {{ $al->nama_audio }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <button type="submit"
-                                    class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-semibold transition-colors">
-                                Atur
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">
-                            Pilih dari daftar audio latar yang tersedia.
-                            <a href="{{ route('audio-latar.index') }}"
-                               class="text-yellow-600 hover:underline">
-                                + Tambah audio latar baru
-                            </a>
-                        </p>
-                    </form>
+                    @if($halaman->buku->status_publikasi !== 'Terbit')
+                        <form action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
+                              method="POST">
+                            @csrf @method('PATCH')
+                            <div class="flex gap-2">
+                                <select name="id_audio_latar"
+                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+                                        required>
+                                    <option value="">-- Pilih backsound --</option>
+                                    @foreach($allAudioLatar as $al)
+                                        <option value="{{ $al->id_audio_latar }}"
+                                            {{ $halaman->id_audio_latar == $al->id_audio_latar ? 'selected' : '' }}>
+                                            {{ $al->nama_audio }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button type="submit"
+                                        class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Atur
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">
+                                Pilih dari daftar audio latar yang tersedia.
+                                <a href="{{ route('audio-latar.index') }}"
+                                   class="text-yellow-600 hover:underline">
+                                    + Tambah audio latar baru
+                                </a>
+                            </p>
+                        </form>
+                    @endif
                 </div>
 
             </div>
@@ -303,18 +361,37 @@ function updateFileName(input) {
 
     function getPos(e) {
         const rect    = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-            x: (clientX - rect.left) * (canvas.width  / rect.width),
-            y: (clientY - rect.top)  * (canvas.height / rect.height),
-        };
+        let clientX = 0;
+        let clientY = 0;
+
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        let x = (clientX - rect.left) * (canvas.width  / rect.width);
+        let y = (clientY - rect.top)  * (canvas.height / rect.height);
+
+        // Clamp values to canvas bounds
+        x = Math.max(0, Math.min(canvas.width, x));
+        y = Math.max(0, Math.min(canvas.height, y));
+
+        return { x, y };
     }
+
+    const isPublished = '{{ $halaman->buku->status_publikasi }}' === 'Terbit';
 
     canvas.addEventListener('mousedown',  onStart);
     canvas.addEventListener('touchstart', onStart, { passive: false });
 
     function onStart(e) {
+        if (isPublished) return;
         e.preventDefault();
         drawing = true;
         const pos = getPos(e);
@@ -323,8 +400,8 @@ function updateFileName(input) {
         hideLabelInput();
     }
 
-    canvas.addEventListener('mousemove',  onMove);
-    canvas.addEventListener('touchmove',  onMove, { passive: false });
+    window.addEventListener('mousemove',  onMove);
+    window.addEventListener('touchmove',  onMove, { passive: false });
 
     function onMove(e) {
         if (!drawing) return;
@@ -338,17 +415,13 @@ function updateFileName(input) {
         ctx.fillRect(startX, startY, pos.x - startX, pos.y - startY);
     }
 
-    canvas.addEventListener('mouseup',  onEnd);
-    canvas.addEventListener('touchend', onEnd);
+    window.addEventListener('mouseup',  onEnd);
+    window.addEventListener('touchend', onEnd);
 
     function onEnd(e) {
         if (!drawing) return;
         drawing = false;
-        const rect = canvas.getBoundingClientRect();
-        const pos  = e.changedTouches
-            ? { x: (e.changedTouches[0].clientX - rect.left) * (canvas.width  / rect.width),
-                y: (e.changedTouches[0].clientY - rect.top)  * (canvas.height / rect.height) }
-            : getPos(e);
+        const pos = getPos(e);
 
         const w = pos.x - startX, h = pos.y - startY;
         if (Math.abs(w) < 10 || Math.abs(h) < 10) {
@@ -402,7 +475,7 @@ function updateFileName(input) {
         btn.disabled    = true;
         btn.textContent = 'Menyimpan...';
 
-        fetch('{{ route('halaman.storeAreaInteraktif') }}', {
+        fetch("{{ route('halaman.storeAreaInteraktif') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -410,7 +483,7 @@ function updateFileName(input) {
                 'Accept': 'application/json',
             },
             body: JSON.stringify({
-                id_halaman   : {{ $halaman->id_halaman }},
+                id_halaman   : parseInt('{{ $halaman->id_halaman }}'),
                 label        : label,
                 x_pct        : currentRect.xPct,
                 y_pct        : currentRect.yPct,
@@ -424,21 +497,35 @@ function updateFileName(input) {
         })
         .then(r => r.json())
         .then(data => {
-        if (data.success) {
-            appendAreaCard(data.area);
-            appendAreaOverlay(data.area, label);
+            if (data.success) {
+                appendAreaCard(data.area);
+                appendAreaOverlay(data.area, label);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                currentRect = null;
+                hideLabelInput();
+                updateCount(1);
+            } else {
+                ModalAlert.show('alertModal', {
+                    title: 'Gagal Menyimpan',
+                    subtitle: data.message || 'Terjadi kesalahan tidak diketahui.'
+                });
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                currentRect = null;
+                hideLabelInput();
+            }
+        })
+        .catch(err => {
+            ModalAlert.show('alertModal', {
+                title: 'Error',
+                subtitle: 'Terjadi kesalahan jaringan atau server saat menyimpan area.'
+            });
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             currentRect = null;
             hideLabelInput();
-            updateCount(1);
-        } else {
-                alert('Gagal menyimpan: ' + (data.message || 'Unknown error'));
-            }
         })
-        .catch(err => alert('Error: ' + err.message))
         .finally(() => {
             btn.disabled  = false;
-            btn.innerHTML = '💾 Simpan Area Baru';
+            btn.innerHTML = '💾 Simpan';
         });
     });
 
@@ -488,12 +575,12 @@ function updateFileName(input) {
                     <input type="hidden" name="audio_type" value="indo">
                     <div class="flex gap-2">
                         <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                            Pilih File<input type="file" name="audio_file" accept=".wav,.m4a,.mp3,audio/*" class="hidden">
+                            Pilih File<input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
                         </label>
                         <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">Belum ada file dipilih</span>
                         <button type="submit" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">Unggah</button>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
+                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                 </form>
             </div>
             <div class="bg-purple-50 rounded-lg p-3 border border-purple-100">
@@ -503,12 +590,12 @@ function updateFileName(input) {
                     <input type="hidden" name="audio_type" value="sunda">
                     <div class="flex gap-2">
                         <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                            Pilih File<input type="file" name="audio_file" accept=".wav,.m4a,.mp3,audio/*" class="hidden">
+                            Pilih File<input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
                         </label>
                         <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">Belum ada file dipilih</span>
                         <button type="submit" class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">Unggah</button>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">Max 10MB • WAV, M4A, MP3</p>
+                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
                 </form>
             </div>
         </div>`;
@@ -532,27 +619,39 @@ function updateFileName(input) {
     });
 
     function handleDeleteArea() {
-        if (!confirm('Hapus area ini beserta audionya?')) return;
         const aId   = this.dataset.id;
         const route = this.dataset.route;
         const csrf  = this.dataset.csrf;
 
-        fetch(route, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            body: JSON.stringify({ _method: 'DELETE' }),
-        })
-        .then(r => r.json())
-        .then(data => {
-        if (data.success) {
-            document.getElementById('area-card-' + aId)?.remove();
-            document.querySelector('.area-overlay[data-id="' + aId + '"]')?.remove();
-            updateCount(-1);
-        } else {
-                alert('Gagal menghapus: ' + (data.message || 'Unknown'));
-            }
-        })
-        .catch(err => alert('Error: ' + err.message));
+        ModalAlert.confirm('globalConfirmModal', {
+            title: 'Hapus Area Interaktif',
+            subtitle: 'Apakah Anda yakin ingin menghapus area interaktif ini beserta audionya?'
+        }, () => {
+            fetch(route, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                body: JSON.stringify({ _method: 'DELETE' }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('area-card-' + aId)?.remove();
+                    document.querySelector('.area-overlay[data-id="' + aId + '"]')?.remove();
+                    updateCount(-1);
+                } else {
+                    ModalAlert.show('alertModal', {
+                        title: 'Gagal Menghapus',
+                        subtitle: data.message || 'Terjadi kesalahan tidak diketahui.'
+                    });
+                }
+            })
+            .catch(err => {
+                ModalAlert.show('alertModal', {
+                    title: 'Error',
+                    subtitle: 'Terjadi kesalahan jaringan atau server saat menghapus area.'
+                });
+            });
+        });
     }
 
     document.querySelectorAll('input[type="file"]').forEach(inp => {
@@ -561,5 +660,30 @@ function updateFileName(input) {
 
 })();
 </script>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Terjadi Kesalahan',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
+    });
+</script>
+@endpush
 
 @endsection

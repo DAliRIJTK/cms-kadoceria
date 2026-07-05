@@ -10,7 +10,7 @@
     'type'         => 'success',   // success | error | confirm | warning
     'title'        => '',
     'subtitle'     => '',
-    'autoDismiss'  => true,        // auto close after 3s (not for confirm type)
+    'autoDismiss'  => false,       // auto close default false
     'confirmLabel' => 'Ya, Lanjutkan',
     'cancelLabel'  => 'Batal',
     'confirmAction'=> '',          // JS expression or form id to submit
@@ -78,6 +78,13 @@ $icon = $iconMap[$type] ?? $iconMap['error'];
                     {{ $confirmLabel }}
                 </button>
             </div>
+        @else
+            <button type="button"
+                    onclick="ModalAlert.close('{{ $id }}')"
+                    class="w-full mt-2 px-6 py-2.5 rounded-xl font-bold text-base text-white transition-colors shadow-md
+                           {{ $type === 'success' ? 'bg-green-600 hover:bg-green-700' : ($type === 'error' ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700') }}">
+                Tutup
+            </button>
         @endif
 
         {{-- Auto-dismiss progress bar --}}

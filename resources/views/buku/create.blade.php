@@ -2,49 +2,17 @@
 
 @section('content')
 
-{{-- ══ MODAL: Loading ══ --}}
-<div id="loadingModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl px-16 py-12 flex flex-col items-center gap-6 min-w-[340px] max-w-[90vw]">
-        <div class="w-20 h-20">
-            <svg class="animate-spin w-20 h-20" viewBox="0 0 80 80" fill="none">
-                <circle cx="40" cy="40" r="34" stroke="#e5e7eb" stroke-width="8"/>
-                <path d="M40 6 A34 34 0 0 1 74 40" stroke="#1d4ed8" stroke-width="8" stroke-linecap="round"/>
-            </svg>
-        </div>
-        <p class="text-gray-700 text-base font-medium text-center">Sedang mengonversi PDF dan menyimpan buku...</p>
-    </div>
-</div>
+{{-- ══ COMPONENT: Loading & Alert Modals ══ --}}
+<x-modal-loading id="loadingModal" message="Sedang mengonversi PDF dan menyimpan buku..." />
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
 
-{{-- ══ MODAL: Alert ══ --}}
-<style>
-@keyframes pop-in {
-    0%   { transform: scale(0.5); opacity: 0; }
-    70%  { transform: scale(1.1); }
-    100% { transform: scale(1);   opacity: 1; }
-}
-.animate-pop { animation: pop-in .45s cubic-bezier(.34,1.56,.64,1) both; }
-@keyframes draw-check {
-    from { stroke-dashoffset: 40; }
-    to   { stroke-dashoffset: 0; }
-}
-.animate-draw { stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw-check .4s .3s ease forwards; }
-</style>
-
-<div id="alertModal" class="fixed inset-0 z-50 hidden items-center justify-center">
-    <div id="alertBackdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300 opacity-0"></div>
-    <div id="alertCard"
-         class="relative bg-white rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-4
-                min-w-[320px] max-w-[90vw] scale-90 opacity-0 transition-all duration-300">
-        <div id="alertIconWrap" class="w-20 h-20 rounded-full flex items-center justify-center"></div>
-        <div class="text-center">
-            <p id="alertTitle"    class="text-xl font-bold text-gray-900 mt-1"></p>
-            <p id="alertSubtitle" class="text-sm text-gray-500 mt-1 hidden"></p>
-        </div>
-        <div class="w-full h-1 bg-gray-100 rounded-full overflow-hidden mt-1">
-            <div id="alertBar" class="h-full rounded-full" style="width:100%"></div>
-        </div>
-    </div>
+<div id="flash-data" 
+     data-duplicate-title="{{ $errors->first('duplicate_title') }}"
+     data-duplicate-pdf="{{ $errors->first('duplicate_pdf') }}"
+     data-error="{{ $errors->first('error') }}"
+     data-pdf-file="{{ $errors->first('pdf_file') }}"
+     data-success="{{ session('success') }}">
 </div>
 
 {{-- ══ HEADER ══ --}}
@@ -77,40 +45,60 @@
             </div>
 
             <div>
-                <label for="judul_sn" class="block text-sm font-semibold text-gray-700 mb-2">Judul Buku Sunda</label>
+                <label for="judul_sn" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Judul Buku Sunda <span class="text-red-500">*</span>
+                </label>
                 <input type="text" id="judul_sn" name="judul_sn"
                        value="{{ old('judul_sn') }}"
                        placeholder="Masukkan judul buku dalam bahasa Sunda..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                       required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition {{ $errors->has('judul_sn') ? 'border-red-500' : '' }}">
+                @error('judul_sn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
 
             <div>
-                <label for="penulis" class="block text-sm font-semibold text-gray-700 mb-2">Penulis</label>
+                <label for="penulis" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Penulis <span class="text-red-500">*</span>
+                </label>
                 <input type="text" id="penulis" name="penulis"
                        value="{{ old('penulis') }}" placeholder="Nama penulis..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                       required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition {{ $errors->has('penulis') ? 'border-red-500' : '' }}">
+                @error('penulis')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
 
             <div>
-                <label for="ilustrator" class="block text-sm font-semibold text-gray-700 mb-2">Ilustrator</label>
+                <label for="ilustrator" class="block text-sm font-semibold text-gray-700 mb-2">
+                    Ilustrator <span class="text-red-500">*</span>
+                </label>
                 <input type="text" id="ilustrator" name="ilustrator"
                        value="{{ old('ilustrator') }}" placeholder="Nama ilustrator..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                       required
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition {{ $errors->has('ilustrator') ? 'border-red-500' : '' }}">
+                @error('ilustrator')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
             </div>
         </div>
 
         <div class="mt-6">
-            <label for="deskripsi_idn" class="block text-sm font-semibold text-gray-700 mb-2">Sinopsis Buku Indonesia</label>
+            <label for="deskripsi_idn" class="block text-sm font-semibold text-gray-700 mb-2">
+                Sinopsis Buku Indonesia <span class="text-red-500">*</span>
+            </label>
             <textarea id="deskripsi_idn" name="deskripsi_idn" rows="4"
                       placeholder="Tulis sinopsis singkat tentang buku ini dalam bahasa Indonesia..."
-                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none">{{ old('deskripsi_idn') }}</textarea>
+                      required
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none {{ $errors->has('deskripsi_idn') ? 'border-red-500' : '' }}">{{ old('deskripsi_idn') }}</textarea>
+            @error('deskripsi_idn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
         </div>
 
         <div class="mt-6">
-            <label for="deskripsi_sn" class="block text-sm font-semibold text-gray-700 mb-2">Sinopsis Buku Sunda</label>
+            <label for="deskripsi_sn" class="block text-sm font-semibold text-gray-700 mb-2">
+                Sinopsis Buku Sunda <span class="text-red-500">*</span>
+            </label>
             <textarea id="deskripsi_sn" name="deskripsi_sn" rows="4"
                       placeholder="Tulis sinopsis singkat tentang buku ini dalam bahasa Sunda..."
-                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none">{{ old('deskripsi_sn') }}</textarea>
+                      required
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition resize-none {{ $errors->has('deskripsi_sn') ? 'border-red-500' : '' }}">{{ old('deskripsi_sn') }}</textarea>
+            @error('deskripsi_sn')<p class="text-red-500 text-xs mt-1">{{ $message }}</p>@enderror
         </div>
     </div>
 
@@ -130,7 +118,9 @@
 
         <div id="colorPreview"
              class="w-full h-14 rounded-xl mb-5 border border-gray-100"
-             style="background: linear-gradient(135deg, rgb({{ $defPrimer }}) 0%, rgb({{ $defSekunder }}) 100%);">
+             @style([
+                 "background: linear-gradient(135deg, rgb($defPrimer) 0%, rgb($defSekunder) 100%)"
+             ])>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -248,62 +238,8 @@
 </form>
 
 <script>
-// ── Modal helpers (global) ────────────────────────────────────────────────────
-const DISMISS_MS = 3000;
+// ── Config ────────────────────────────────────────────────────────────────────
 const MAX_BYTES  = 50 * 1024 * 1024;
-const _icons = {
-    error: {
-        bg:  'bg-red-100',
-        svg: '<svg class="w-10 h-10 text-red-500 animate-pop" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="20" fill="currentColor" fill-opacity=".15"/><path d="M14 14l12 12M26 14L14 26" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
-        bar: 'bg-red-400',
-    },
-    success: {
-        bg:  'bg-green-100',
-        svg: '<svg class="w-10 h-10 text-green-500 animate-pop" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="20" fill="currentColor" fill-opacity=".15"/><path d="M12 20l6 6 10-12" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="animate-draw"/></svg>',
-        bar: 'bg-green-400',
-    },
-};
-let _dismissTimer = null;
-
-function showAlert(type, title, subtitle) {
-    const cfg = _icons[type] || _icons.error;
-    document.getElementById('alertIconWrap').className = 'w-20 h-20 rounded-full flex items-center justify-center ' + cfg.bg;
-    document.getElementById('alertIconWrap').innerHTML  = cfg.svg;
-    document.getElementById('alertBar').className       = 'h-full rounded-full ' + cfg.bar;
-    document.getElementById('alertTitle').textContent   = title || '';
-    const sub = document.getElementById('alertSubtitle');
-    if (subtitle) { sub.textContent = subtitle; sub.classList.remove('hidden'); }
-    else           { sub.classList.add('hidden'); }
-
-    const modal    = document.getElementById('alertModal');
-    const backdrop = document.getElementById('alertBackdrop');
-    const card     = document.getElementById('alertCard');
-    modal.classList.remove('hidden'); modal.classList.add('flex');
-    requestAnimationFrame(() => {
-        backdrop.classList.remove('opacity-0');
-        card.classList.remove('scale-90','opacity-0');
-        card.classList.add('scale-100','opacity-100');
-    });
-
-    const bar = document.getElementById('alertBar');
-    bar.style.transition = 'none'; bar.style.width = '100%';
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-        bar.style.transition = 'width ' + DISMISS_MS + 'ms linear';
-        bar.style.width = '0%';
-    }));
-    clearTimeout(_dismissTimer);
-    _dismissTimer = setTimeout(() => {
-        backdrop.classList.add('opacity-0');
-        card.classList.add('scale-90','opacity-0');
-        card.classList.remove('scale-100','opacity-100');
-        setTimeout(() => { modal.classList.add('hidden'); modal.classList.remove('flex'); }, 300);
-    }, DISMISS_MS);
-}
-
-function showLoading() {
-    const m = document.getElementById('loadingModal');
-    m.classList.remove('hidden'); m.classList.add('flex');
-}
 
 // ── Warna picker helpers ──────────────────────────────────────────────────────
 function hexToRgb(hex) {
@@ -327,11 +263,33 @@ function onPickerChange(type, hex) {
     updatePreview();
 }
 function onRgbChange(type) {
-    const r = document.getElementById(type+'R').value||0;
-    const g = document.getElementById(type+'G').value||0;
-    const b = document.getElementById(type+'B').value||0;
-    document.getElementById('warna'+(type==='primer'?'Primer':'Sekunder')+'Hidden').value = `${r},${g},${b}`;
-    document.getElementById(type+'Picker').value = rgbToHex(r,g,b);
+    const rEl = document.getElementById(type+'R');
+    const gEl = document.getElementById(type+'G');
+    const bEl = document.getElementById(type+'B');
+    
+    let r = rEl.value === '' ? '' : parseInt(rEl.value);
+    let g = gEl.value === '' ? '' : parseInt(gEl.value);
+    let b = bEl.value === '' ? '' : parseInt(bEl.value);
+    
+    if (r !== '' && !isNaN(r)) {
+        if (r < 0) { r = 0; rEl.value = 0; }
+        if (r > 255) { r = 255; rEl.value = 255; }
+    }
+    if (g !== '' && !isNaN(g)) {
+        if (g < 0) { g = 0; gEl.value = 0; }
+        if (g > 255) { g = 255; gEl.value = 255; }
+    }
+    if (b !== '' && !isNaN(b)) {
+        if (b < 0) { b = 0; bEl.value = 0; }
+        if (b > 255) { b = 255; bEl.value = 255; }
+    }
+    
+    const rVal = r === '' || isNaN(r) ? 0 : r;
+    const gVal = g === '' || isNaN(g) ? 0 : g;
+    const bVal = b === '' || isNaN(b) ? 0 : b;
+    
+    document.getElementById('warna'+(type==='primer'?'Primer':'Sekunder')+'Hidden').value = `${rVal},${gVal},${bVal}`;
+    document.getElementById(type+'Picker').value = rgbToHex(rVal,gVal,bVal);
     updatePreview();
 }
 
@@ -366,38 +324,66 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('submit', function (e) {
         e.preventDefault();
-        const judulInput = document.getElementById('judul_idn');
-        if (!judulInput.value.trim()) {
-            judulInput.focus();
-            judulInput.classList.add('ring-2','ring-red-400','border-red-400');
-            setTimeout(() => judulInput.classList.remove('ring-2','ring-red-400','border-red-400'), 2000);
-            showAlert('error','Judul buku wajib diisi','Silakan isi judul buku terlebih dahulu.');
-            return;
+        
+        const fields = [
+            { id: 'judul_idn', name: 'Judul buku Indonesia' },
+            { id: 'judul_sn', name: 'Judul buku Sunda' },
+            { id: 'penulis', name: 'Penulis' },
+            { id: 'ilustrator', name: 'Ilustrator' },
+            { id: 'deskripsi_idn', name: 'Sinopsis Indonesia' },
+            { id: 'deskripsi_sn', name: 'Sinopsis Sunda' }
+        ];
+
+        for (const field of fields) {
+            const input = document.getElementById(field.id);
+            if (!input.value.trim()) {
+                input.focus();
+                input.classList.add('ring-2','ring-red-400','border-red-400');
+                setTimeout(() => input.classList.remove('ring-2','ring-red-400','border-red-400'), 2000);
+                ModalAlert.show('alertModal', { 
+                    title: `${field.name} wajib diisi`, 
+                    subtitle: `Silakan isi ${field.name.toLowerCase()} terlebih dahulu.` 
+                });
+                return;
+            }
         }
+
         if (!fileInput.files.length) {
-            showAlert('error','File PDF wajib dipilih','Silakan pilih file PDF buku terlebih dahulu.');
+            ModalAlert.show('alertModal', { title: 'File PDF wajib dipilih', subtitle: 'Silakan pilih file PDF buku terlebih dahulu.' });
             return;
         }
         if (fileInput.files[0].size > MAX_BYTES) {
-            showAlert('error','File terlalu besar','Ukuran file PDF maksimal 50MB.');
+            ModalAlert.show('alertModal', { title: 'File terlalu besar', subtitle: 'Ukuran file PDF maksimal 50MB.' });
             fileInput.value = ''; fileNameSpan.textContent = 'Belum ada file dipilih';
             fileSizeInfo.classList.add('hidden'); return;
         }
-        showLoading(); submitBtn.disabled = true; form.submit();
+        ModalAlert.loading('loadingModal'); submitBtn.disabled = true; form.submit();
     });
 
-    @if ($errors->has('duplicate_title'))
-        showAlert('error', 'Nama file PDF sudah ada', @json($errors->first('duplicate_title')));
-    @endif
-    @if ($errors->has('error'))
-        showAlert('error', 'Terjadi kesalahan', @json($errors->first('error')));
-    @endif
-    @if ($errors->has('pdf_file'))
-        showAlert('error', 'File tidak valid', @json($errors->first('pdf_file')));
-    @endif
-    @if (session('success'))
-        showAlert('success', 'Berhasil!', @json(session('success')));
-    @endif
+    const flashData = document.getElementById('flash-data');
+    if (flashData) {
+        const dupTitle = flashData.getAttribute('data-duplicate-title');
+        const dupPdf = flashData.getAttribute('data-duplicate-pdf');
+        const err = flashData.getAttribute('data-error');
+        const pdfFile = flashData.getAttribute('data-pdf-file');
+        const success = flashData.getAttribute('data-success');
+
+        if (dupTitle) {
+            ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: dupTitle });
+        }
+        if (dupPdf) {
+            ModalAlert.show('alertModal', { title: 'File PDF Sudah Ada', subtitle: dupPdf });
+        }
+        if (err) {
+            ModalAlert.show('alertModal', { title: 'Terjadi kesalahan', subtitle: err });
+        }
+        if (pdfFile) {
+            ModalAlert.show('alertModal', { title: 'File tidak valid', subtitle: pdfFile });
+        }
+        if (success) {
+            ModalAlert.show('successModal', { title: 'Berhasil!', subtitle: success });
+        }
+    }
 });
 </script>
 
