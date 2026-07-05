@@ -65,10 +65,11 @@ class BukuController extends Controller
             'deskripsi_sn'   => 'required|string',
             'warna_primer'   => 'nullable|string|max:20',
             'warna_sekunder' => 'nullable|string|max:20',
-            'pdf_file'       => 'required|file|mimes:pdf|max:51200',
+            'pdf_file'       => 'required|file|mimes:pdf|min:1|max:51200',
         ], [
             'pdf_file.max'   => 'Ukuran file PDF maksimal 50MB.',
             'pdf_file.mimes' => 'File harus berformat PDF.',
+            'pdf_file.min'   => 'File tidak boleh kosong.',
         ]);
 
         $judulIdn = $request->judul_idn;
@@ -91,10 +92,18 @@ class BukuController extends Controller
                 ->withErrors(['duplicate_title' => 'Judul buku (Bahasa Indonesia/Sunda) sudah digunakan pada buku lain. Silakan gunakan judul yang berbeda.']);
         }
 
-        $uploadedFileName = $request->file('pdf_file')->getClientOriginalName();
+        $pdfFile = $request->file('pdf_file');
+        $uploadedFileName = $pdfFile->getClientOriginalName();
         if (Buku::where('original_pdf_name', $uploadedFileName)->exists()) {
             return back()->withInput()
                 ->withErrors(['duplicate_pdf' => "File PDF \"{$uploadedFileName}\" sudah pernah diunggah. Gunakan nama file yang berbeda."]);
+        }
+
+        $pdfHash = hash_file('sha256', $pdfFile->getRealPath());
+        $duplicateHashBook = Buku::where('pdf_hash', $pdfHash)->first();
+        if ($duplicateHashBook) {
+            return back()->withInput()
+                ->withErrors(['duplicate_pdf' => "File PDF dengan isi yang sama sudah pernah diunggah pada buku \"{$duplicateHashBook->judul_idn}\"."]);
         }
 
         DB::beginTransaction();
@@ -114,6 +123,7 @@ class BukuController extends Controller
                 'path_cover'        => null,
                 'status_publikasi'  => 'Draft',
                 'original_pdf_name' => $uploadedFileName,
+                'pdf_hash'          => $pdfHash,
             ]);
 
             $pdfService->process($buku, $pdfPath);
@@ -122,7 +132,6 @@ class BukuController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             if (isset($pdfPath)) Storage::disk('public')->delete($pdfPath);
-            \Log::error('BukuController@store: ' . $e->getMessage());
             return back()->withInput()
                 ->withErrors(['error' => 'Gagal memproses PDF: ' . $e->getMessage()]);
         }
@@ -134,11 +143,57 @@ class BukuController extends Controller
 
     public function show(Buku $buku)
     {
-        $buku->load('halaman');
+        try {
+            $buku->load(['halaman.areaInteraktif', 'halaman.audioLatar']);
+            
+            $warning = null;
+            $hasMissingAssets = false;
 
-        $this->fixCoverIfMissing($buku);
+            // Validate that physical assets exist for each page
+            foreach ($buku->halaman as $page) {
+                if (empty($page->path_gambar) || !Storage::disk('public')->exists($page->path_gambar)) {
+                    $hasMissingAssets = true;
+                    break;
+                }
 
-        return view('buku.show', compact('buku'));
+                // If narration audio is set in DB but missing in storage
+                if (!empty($page->narasi_indo) && !Storage::disk('public')->exists($page->narasi_indo)) {
+                    $hasMissingAssets = true;
+                    break;
+                }
+                if (!empty($page->narasi_sunda) && !Storage::disk('public')->exists($page->narasi_sunda)) {
+                    $hasMissingAssets = true;
+                    break;
+                }
+
+                // If background audio is set in DB but missing in storage
+                if ($page->audioLatar && !Storage::disk('public')->exists($page->audioLatar->path_file)) {
+                    $hasMissingAssets = true;
+                    break;
+                }
+
+                // If area interactive audios are set in DB but missing in storage
+                foreach ($page->areaInteraktif as $area) {
+                    if (!empty($area->audio_indo) && !Storage::disk('public')->exists($area->audio_indo)) {
+                        $hasMissingAssets = true;
+                        break 2;
+                    }
+                    if (!empty($area->audio_sunda) && !Storage::disk('public')->exists($area->audio_sunda)) {
+                        $hasMissingAssets = true;
+                        break 2;
+                    }
+                }
+            }
+
+            if ($hasMissingAssets) {
+                $warning = "Aset multimedia tidak dapat dimuat, periksa kelengkapan file.";
+            }
+
+            $this->fixCoverIfMissing($buku);
+            return view('buku.show', compact('buku', 'warning'));
+        } catch (\Exception $e) {
+            return redirect()->route('buku.index')->withErrors(['error' => $e->getMessage()]);
+        }
     }
 
     private function fixCoverIfMissing(Buku $buku): void
@@ -163,7 +218,7 @@ class BukuController extends Controller
         return view('buku.edit', compact('buku'));
     }
 
-    public function update(Request $request, Buku $buku)
+    public function update(Request $request, Buku $buku, BukuBundleService $bundleService)
     {
 
         $validated = $request->validate([
@@ -213,47 +268,53 @@ class BukuController extends Controller
             if ($oldBookDir !== $newBookDir) {
                 $oldPath = 'buku/' . $oldBookDir;
                 $newPath = 'buku/' . $newBookDir;
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->move($oldPath, $newPath);
+                
+                $this->moveDirectory($oldPath, $newPath);
 
-                    // Update path_cover in database
-                    if ($buku->path_cover) {
-                        $buku->path_cover = str_replace($oldPath . '/', $newPath . '/', $buku->path_cover);
+                // Update path_cover in database
+                if ($buku->path_cover) {
+                    $buku->path_cover = str_replace($oldPath . '/', $newPath . '/', $buku->path_cover);
+                }
+                if ($buku->zip_bundle_path) {
+                    $buku->zip_bundle_path = str_replace($oldPath . '/', $newPath . '/', $buku->zip_bundle_path);
+                }
+                $buku->save();
+
+                // Update path_gambar, narasi_indo, narasi_sunda for all pages
+                foreach ($buku->halaman as $halaman) {
+                    if ($halaman->path_gambar) {
+                        $halaman->path_gambar = str_replace($oldPath . '/', $newPath . '/', $halaman->path_gambar);
                     }
-                    if ($buku->zip_bundle_path) {
-                        $buku->zip_bundle_path = str_replace($oldPath . '/', $newPath . '/', $buku->zip_bundle_path);
+                    if ($halaman->narasi_indo) {
+                        $halaman->narasi_indo = str_replace($oldPath . '/', $newPath . '/', $halaman->narasi_indo);
                     }
-                    $buku->save();
+                    if ($halaman->narasi_sunda) {
+                        $halaman->narasi_sunda = str_replace($oldPath . '/', $newPath . '/', $halaman->narasi_sunda);
+                    }
+                    $halaman->save();
 
-                    // Update path_gambar, narasi_indo, narasi_sunda for all pages
-                    foreach ($buku->halaman as $halaman) {
-                        if ($halaman->path_gambar) {
-                            $halaman->path_gambar = str_replace($oldPath . '/', $newPath . '/', $halaman->path_gambar);
+                    // Update audio_indo and audio_sunda for all interactive areas
+                    foreach ($halaman->areaInteraktif as $area) {
+                        if ($area->audio_indo) {
+                            $area->audio_indo = str_replace($oldPath . '/', $newPath . '/', $area->audio_indo);
                         }
-                        if ($halaman->narasi_indo) {
-                            $halaman->narasi_indo = str_replace($oldPath . '/', $newPath . '/', $halaman->narasi_indo);
+                        if ($area->audio_sunda) {
+                            $area->audio_sunda = str_replace($oldPath . '/', $newPath . '/', $area->audio_sunda);
                         }
-                        if ($halaman->narasi_sunda) {
-                            $halaman->narasi_sunda = str_replace($oldPath . '/', $newPath . '/', $halaman->narasi_sunda);
-                        }
-                        $halaman->save();
-
-                        // Update audio_indo and audio_sunda for all interactive areas
-                        foreach ($halaman->areaInteraktif as $area) {
-                            if ($area->audio_indo) {
-                                $area->audio_indo = str_replace($oldPath . '/', $newPath . '/', $area->audio_indo);
-                            }
-                            if ($area->audio_sunda) {
-                                $area->audio_sunda = str_replace($oldPath . '/', $newPath . '/', $area->audio_sunda);
-                            }
-                            $area->save();
-                        }
+                        $area->save();
                     }
                 }
             }
         }
 
         $buku->syncStorageStructure();
+
+        // Regenerate metadata and zip bundle to keep local storage structure in sync
+        if ($buku->status_publikasi === 'Terbit') {
+            $bundleService->generateAndPackageBundle($buku);
+        } else {
+            $bundleService->generateMetadataJson($buku);
+        }
 
         return back()->with('success', 'Informasi buku berhasil diperbarui');
     }
@@ -264,30 +325,49 @@ class BukuController extends Controller
         $newStatus = $request->status_publikasi;
 
         if ($newStatus === 'Terbit') {
-            $errors = [];
+            $errorMsgs = [];
             if (empty($buku->judul_idn)) {
-                $errors[] = 'Judul buku harus diisi';
+                $errorMsgs[] = 'Judul buku kosong';
             }
 
             $halamanList = $buku->halaman()->with('areaInteraktif')->get();
+            $halamanCount = $halamanList->count();
+
+            if ($halamanCount < 10) {
+                $errorMsgs[] = "Jumlah halaman kurang dari 10 (saat ini: {$halamanCount} halaman)";
+            }
+
+            $missingNarasi = 0;
+            $missingBacksound = 0;
+            $missingAreaAudio = 0;
 
             foreach ($halamanList as $page) {
                 if (empty($page->narasi_indo)) {
-                    $errors[] = "Halaman {$page->nomor_halaman} tidak memiliki audio narasi Indonesia.";
+                    $missingNarasi++;
                 }
                 if (empty($page->id_audio_latar)) {
-                    $errors[] = "Halaman {$page->nomor_halaman} tidak memiliki audio backsound.";
+                    $missingBacksound++;
                 }
 
                 foreach ($page->areaInteraktif as $area) {
                     if (empty($area->audio_indo)) {
-                        $errors[] = "Halaman {$page->nomor_halaman}: Area interaktif '{$area->label}' tidak memiliki file audio yang ditautkan.";
+                        $missingAreaAudio++;
                     }
                 }
             }
 
-            if (!empty($errors)) {
-                return back()->withErrors(['publication' => 'Buku belum dapat dipublikasikan. ' . implode(' | ', $errors)]);
+            if ($missingNarasi > 0) {
+                $errorMsgs[] = "Audio narasi Indonesia belum lengkap ({$missingNarasi} halaman)";
+            }
+            if ($missingBacksound > 0) {
+                $errorMsgs[] = "Audio backsound belum lengkap ({$missingBacksound} halaman)";
+            }
+            if ($missingAreaAudio > 0) {
+                $errorMsgs[] = "Audio area interaktif belum lengkap ({$missingAreaAudio} area)";
+            }
+
+            if (!empty($errorMsgs)) {
+                return back()->withErrors(['publication' => 'Buku belum dapat dipublikasikan karena: ' . implode(', ', $errorMsgs) . '.']);
             }
         }
 
@@ -431,6 +511,21 @@ class BukuController extends Controller
         $text = preg_replace('/[^a-z0-9\s_-]/u', '', $text);
         $text = preg_replace('/[\s-]+/', '_', $text);
         return trim($text, '_');
+    }
+
+    private function moveDirectory(string $oldPath, string $newPath): void
+    {
+        $files = Storage::disk('public')->allFiles($oldPath);
+
+        foreach ($files as $file) {
+            $relativePath = str_replace($oldPath . '/', '', $file);
+            $newFilePath = $newPath . '/' . $relativePath;
+
+            Storage::disk('public')->makeDirectory(dirname($newFilePath));
+            Storage::disk('public')->copy($file, $newFilePath);
+        }
+
+        Storage::disk('public')->deleteDirectory($oldPath);
     }
 
 }

@@ -65,7 +65,6 @@ class BoundingBoxController extends Controller
                 'message' => 'Area interaktif berhasil disimpan',
             ]);
         } catch (\Throwable $e) {
-            \Log::error('storeAreaInteraktif error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan server saat menyimpan area.'], 500);
         }
     }
@@ -125,7 +124,6 @@ class BoundingBoxController extends Controller
 
             return response()->json(['success' => true]);
         } catch (\Throwable $e) {
-            \Log::error('updateAreaInteraktif error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan server saat memperbarui area.'], 500);
         }
     }
@@ -146,7 +144,6 @@ class BoundingBoxController extends Controller
                 'message' => 'Area interaktif berhasil dihapus',
             ]);
         } catch (\Exception $e) {
-            \Log::error('deleteAreaInteraktif error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan server saat menghapus area.'], 500);
         }
     }

@@ -106,7 +106,7 @@
         <script>
             ModalAlert.show('loginSuccessModal', {
                 title: 'Berhasil!',
-                subtitle: '{{ session('success') }}'
+                subtitle: '{{ Session::get("success") }}'
             });
         </script>
     @endif

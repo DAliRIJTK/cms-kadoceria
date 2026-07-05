@@ -110,7 +110,7 @@
 
         <div id="colorPreview"
              class="w-full h-14 rounded-xl mb-5 border border-gray-100"
-             style="background: linear-gradient(135deg, rgb({{ $defPrimer }}) 0%, rgb({{ $defSekunder }}) 100%);">
+             {!! 'style="background: linear-gradient(135deg, rgb(' . $defPrimer . ') 0%, rgb(' . $defSekunder . ') 100%);"' !!}>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -350,6 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ModalAlert.loading('loadingModal'); submitBtn.disabled = true; form.submit();
     });
 
+    
     @if ($errors->has('duplicate_title'))
         ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: @json($errors->first('duplicate_title')) });
     @endif

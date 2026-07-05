@@ -16,11 +16,6 @@
 <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
     <div class="flex flex-wrap items-center gap-3">
         <div>
-            {{-- Judul buku sekarang ditampilkan sebagai button/badge --}}
-            <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 mb-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition-colors">
-                📖 {{ $halaman->buku->judul_idn }}
-            </a>
             <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman }}</h1>
             <p class="text-gray-500 mt-0.5 text-sm">Kelola anotasi dan audio halaman</p>
         </div>
@@ -380,7 +375,7 @@ function updateFileName(input) {
         return { x, y };
     }
 
-    const isPublished = @json($halaman->buku->status_publikasi === 'Terbit');
+    const isPublished = '{{ $halaman->buku->status_publikasi }}' === 'Terbit';
 
     canvas.addEventListener('mousedown',  onStart);
     canvas.addEventListener('touchstart', onStart, { passive: false });
@@ -470,7 +465,7 @@ function updateFileName(input) {
         btn.disabled    = true;
         btn.textContent = 'Menyimpan...';
 
-        fetch('{{ route('halaman.storeAreaInteraktif') }}', {
+        fetch("{{ route('halaman.storeAreaInteraktif') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -478,7 +473,7 @@ function updateFileName(input) {
                 'Accept': 'application/json',
             },
             body: JSON.stringify({
-                id_halaman   : {{ $halaman->id_halaman }},
+                id_halaman   : parseInt('{{ $halaman->id_halaman }}'),
                 label        : label,
                 x_pct        : currentRect.xPct,
                 y_pct        : currentRect.yPct,
