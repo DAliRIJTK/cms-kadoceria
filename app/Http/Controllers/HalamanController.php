@@ -140,7 +140,6 @@ class HalamanController extends Controller
 
             return back()->with('success', 'Halaman berhasil diperbarui');
         } catch (\Throwable $e) {
-            \Log::error('HalamanController update error: ' . $e->getMessage());
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
             }
@@ -154,8 +153,8 @@ class HalamanController extends Controller
         $buku = $halaman->buku;
 
         $currentPageCount = $buku->halaman()->count();
-        if ($currentPageCount - 1 < 1) {
-            return back()->withErrors(['delete' => 'Penghapusan halaman tidak diperbolehkan jika sisa halaman kurang dari 1.']);
+        if ($currentPageCount - 1 <= 10) {
+            return back()->withErrors(['delete' => 'Penghapusan halaman tidak diperbolehkan jika sisa halaman kurang dari 10.']);
         }
 
         try {
@@ -233,10 +232,44 @@ class HalamanController extends Controller
 
     public function flipbook(Buku $buku)
     {
-        $buku->load(['halaman' => function ($q) {
-            $q->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman');
-        }]);
+        try {
+            $buku->load(['halaman' => function ($q) {
+                $q->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman');
+            }]);
 
-        return view('halaman.flipbook', compact('buku'));
+            // Validate that physical assets exist for each page
+            foreach ($buku->halaman as $page) {
+                if (empty($page->path_gambar) || !Storage::disk('public')->exists($page->path_gambar)) {
+                    throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
+                }
+
+                // If narration audio is set in DB but missing in storage
+                if (!empty($page->narasi_indo) && !Storage::disk('public')->exists($page->narasi_indo)) {
+                    throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
+                }
+                if (!empty($page->narasi_sunda) && !Storage::disk('public')->exists($page->narasi_sunda)) {
+                    throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
+                }
+
+                // If background audio is set in DB but missing in storage
+                if ($page->audioLatar && !Storage::disk('public')->exists($page->audioLatar->path_file)) {
+                    throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
+                }
+
+                // If area interactive audios are set in DB but missing in storage
+                foreach ($page->areaInteraktif as $area) {
+                    if (!empty($area->audio_indo) && !Storage::disk('public')->exists($area->audio_indo)) {
+                        throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
+                    }
+                    if (!empty($area->audio_sunda) && !Storage::disk('public')->exists($area->audio_sunda)) {
+                        throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
+                    }
+                }
+            }
+
+            return view('halaman.flipbook', compact('buku'));
+        } catch (\Exception $e) {
+            return redirect()->route('buku.index')->withErrors(['error' => $e->getMessage()]);
+        }
     }
 }

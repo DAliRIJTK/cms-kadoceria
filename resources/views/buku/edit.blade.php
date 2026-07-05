@@ -12,6 +12,12 @@
 <x-modal-alert id="alertModal" type="error" />
 <x-modal-alert id="successModal" type="success" />
 
+<div id="flash-data" 
+     data-duplicate-title="{{ $errors->first('duplicate_title') }}"
+     data-error="{{ $errors->any() && !$errors->has('duplicate_title') ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
+
 @php
     $primerRgb   = old('warna_primer',   $buku->warna_primer   ?? '99,102,241');
     $sekunderRgb = old('warna_sekunder', $buku->warna_sekunder ?? '168,85,247');
@@ -107,7 +113,9 @@
 
         <div id="colorPreview"
              class="w-full h-14 rounded-xl mb-5 border border-gray-100 transition-all duration-300"
-             style="background: linear-gradient(135deg, rgb({{ $primerRgb }}) 0%, rgb({{ $sekunderRgb }}) 100%);">
+             @style([
+                 "background: linear-gradient(135deg, rgb($primerRgb) 0%, rgb($sekunderRgb) 100%)"
+             ])>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -276,20 +284,27 @@ function onRgbChange(type) {
             form.submit();
         });
 
-        @if ($errors->has('duplicate_title'))
-            ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: @json($errors->first('duplicate_title')) });
-        @elseif ($errors->any())
-            ModalAlert.show('alertModal', {
-                title: 'Gagal Menyimpan Perubahan',
-                subtitle: '{{ $errors->first() }}'
-            });
-        @endif
-        @if (session('success'))
-            ModalAlert.show('successModal', {
-                title: 'Berhasil!',
-                subtitle: '{{ session('success') }}'
-            });
-        @endif
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const dupTitle = flashData.getAttribute('data-duplicate-title');
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (dupTitle) {
+                ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: dupTitle });
+            } else if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Gagal Menyimpan Perubahan',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
     });
 </script>
 @endpush

@@ -79,7 +79,9 @@
                                         src="{{ asset('storage/' . $page->path_gambar) }}"
                                         alt="Halaman {{ $page->nomor_halaman }}"
                                         class="h-14 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-                                        onclick="showImageModal('{{ asset('storage/' . $page->path_gambar) }}', 'Halaman {{ $page->nomor_halaman }}')"
+                                        data-src="{{ asset('storage/' . $page->path_gambar) }}"
+                                        data-title="Halaman {{ $page->nomor_halaman }}"
+                                        onclick="showImageModal(this.dataset.src, this.dataset.title)"
                                     >
                                 @else
                                     <div class="h-14 w-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
@@ -249,7 +251,7 @@ function closeImageModal() {
 
     function saveOrder(ids) {
         showToast('Menyimpan urutan...', 'info');
-        fetch('{{ route('halaman.reorder') }}', {
+        fetch("{{ route('halaman.reorder') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -12,15 +12,15 @@
 <x-modal-alert id="alertModal" type="error" />
 <x-modal-alert id="successModal" type="success" />
 
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
+
 {{-- Header --}}
 <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
     <div class="flex flex-wrap items-center gap-3">
         <div>
-            {{-- Judul buku sekarang ditampilkan sebagai button/badge --}}
-            <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 mb-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg text-xs font-semibold transition-colors">
-                📖 {{ $halaman->buku->judul_idn }}
-            </a>
             <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman }}</h1>
             <p class="text-gray-500 mt-0.5 text-sm">Kelola anotasi dan audio halaman</p>
         </div>
@@ -54,7 +54,12 @@
                     @foreach($halaman->areaInteraktif as $area)
                         <div class="absolute border-2 border-red-500 bg-red-500/10 pointer-events-none area-overlay"
                              data-id="{{ $area->id_area }}"
-                             style="left:{{ $area->x_pct ?? 0 }}%; top:{{ $area->y_pct ?? 0 }}%; width:{{ $area->w_pct ?? 0 }}%; height:{{ $area->h_pct ?? 0 }}%;">
+                             @style([
+                                 "left: " . ($area->x_pct ?? 0) . "%",
+                                 "top: " . ($area->y_pct ?? 0) . "%",
+                                 "width: " . ($area->w_pct ?? 0) . "%",
+                                 "height: " . ($area->h_pct ?? 0) . "%",
+                             ])>
                             <span class="absolute -top-5 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap max-w-[120px] truncate">
                                 {{ $area->label ?? 'Area ' . $loop->iteration }}
                             </span>
@@ -380,7 +385,7 @@ function updateFileName(input) {
         return { x, y };
     }
 
-    const isPublished = @json($halaman->buku->status_publikasi === 'Terbit');
+    const isPublished = '{{ $halaman->buku->status_publikasi }}' === 'Terbit';
 
     canvas.addEventListener('mousedown',  onStart);
     canvas.addEventListener('touchstart', onStart, { passive: false });
@@ -470,7 +475,7 @@ function updateFileName(input) {
         btn.disabled    = true;
         btn.textContent = 'Menyimpan...';
 
-        fetch('{{ route('halaman.storeAreaInteraktif') }}', {
+        fetch("{{ route('halaman.storeAreaInteraktif') }}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -478,7 +483,7 @@ function updateFileName(input) {
                 'Accept': 'application/json',
             },
             body: JSON.stringify({
-                id_halaman   : {{ $halaman->id_halaman }},
+                id_halaman   : parseInt('{{ $halaman->id_halaman }}'),
                 label        : label,
                 x_pct        : currentRect.xPct,
                 y_pct        : currentRect.yPct,
@@ -659,18 +664,24 @@ function updateFileName(input) {
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        @if ($errors->any())
-            ModalAlert.show('alertModal', {
-                title: 'Terjadi Kesalahan',
-                subtitle: '{{ $errors->first() }}'
-            });
-        @endif
-        @if (session('success'))
-            ModalAlert.show('successModal', {
-                title: 'Berhasil!',
-                subtitle: '{{ session('success') }}'
-            });
-        @endif
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Terjadi Kesalahan',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
     });
 </script>
 @endpush

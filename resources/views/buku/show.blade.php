@@ -2,15 +2,31 @@
 
 @section('content')
 
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
+
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
+
 <div class="mb-6">
     <a href="{{ route('buku.index') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
         ← Kembali ke Daftar Buku
     </a>
 </div>
 
-{{-- Error/Success Alerts --}}
-<x-modal-alert id="alertModal" type="error" />
-<x-modal-alert id="successModal" type="success" />
+@if(isset($warning) && $warning)
+<div class="mb-6 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200 border-l-4 border-l-amber-500 rounded-r-xl p-4 shadow-sm">
+    <div class="flex items-start gap-3">
+        <div class="text-xl">⚠️</div>
+        <div>
+            <h4 class="text-sm font-bold text-amber-900">Perhatian: Aset Multimedia Tidak Lengkap</h4>
+            <p class="text-xs text-amber-700 mt-1 font-medium">{{ $warning }}</p>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Info Card + Cover --}}
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
@@ -217,7 +233,7 @@
     @endphp
 
     {{-- ── Flipbook Container ── --}}
-    <div id="fb-shell" style="
+    <div id="fb-shell" data-pages="{{ json_encode($pagesData) }}" style="
         background: #1a1a2e;
         --fb-primary: {{ $primaryHex }};
         --fb-secondary: {{ $secondaryHex }};
@@ -352,7 +368,7 @@
             scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.18) transparent;
         ">
             @foreach($halamanSorted as $loopIdx => $page)
-            <div class="fb-thumb" data-idx="{{ $loopIdx }}" onclick="fbJumpTo({{ $loopIdx }})" style="
+            <div class="fb-thumb" data-idx="{{ $loopIdx }}" onclick="fbJumpTo(parseInt(this.dataset.idx))" style="
                 flex-shrink:0; width:40px; height:54px; border-radius:3px;
                 overflow:hidden; cursor:pointer;
                 border:2px solid transparent;
@@ -419,8 +435,9 @@
     {{-- ── Flipbook JS ── --}}
     <script>
     (function(){
-        const PAGES = @json($pagesData);
-        const TOTAL = PAGES.length;
+        const shell         = document.getElementById('fb-shell');
+        const PAGES         = JSON.parse(shell.getAttribute('data-pages') || '[]');
+        const TOTAL         = PAGES.length;
 
         let fbIdx         = 0;
         let fbLang        = 'id';
@@ -430,8 +447,6 @@
         let fbNarasiChain = false;
         let fbNarasiPlaying = false;
         let fbAreaChain   = false;
-
-        const shell         = document.getElementById('fb-shell');
         const loading       = document.getElementById('fb-loading');
         const pageCard      = document.getElementById('fb-page-card');
         const pageImg       = document.getElementById('fb-page-img');
@@ -956,25 +971,27 @@
             modal.classList.remove('flex');
         }, 300);
     }
-</script>
 
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        @if ($errors->has('publication'))
-            ModalAlert.show('alertModal', {
-                title: 'Buku Belum Siap Diterbitkan',
-                subtitle: '{{ $errors->first('publication') }}'
-            });
-        @endif
-        @if (session('success'))
-            ModalAlert.show('successModal', {
-                title: 'Berhasil!',
-                subtitle: '{{ session('success') }}'
-            });
-        @endif
+    document.addEventListener('DOMContentLoaded', () => {
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Gagal Proses',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
     });
 </script>
-@endpush
 
 @endsection

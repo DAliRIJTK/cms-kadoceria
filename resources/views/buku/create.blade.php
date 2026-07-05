@@ -7,6 +7,14 @@
 <x-modal-alert id="alertModal" type="error" />
 <x-modal-alert id="successModal" type="success" />
 
+<div id="flash-data" 
+     data-duplicate-title="{{ $errors->first('duplicate_title') }}"
+     data-duplicate-pdf="{{ $errors->first('duplicate_pdf') }}"
+     data-error="{{ $errors->first('error') }}"
+     data-pdf-file="{{ $errors->first('pdf_file') }}"
+     data-success="{{ session('success') }}">
+</div>
+
 {{-- ══ HEADER ══ --}}
 <div class="mb-8">
     <a href="/buku" class="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4 inline-block">← Kembali ke Daftar Buku</a>
@@ -110,7 +118,9 @@
 
         <div id="colorPreview"
              class="w-full h-14 rounded-xl mb-5 border border-gray-100"
-             style="background: linear-gradient(135deg, rgb({{ $defPrimer }}) 0%, rgb({{ $defSekunder }}) 100%);">
+             @style([
+                 "background: linear-gradient(135deg, rgb($defPrimer) 0%, rgb($defSekunder) 100%)"
+             ])>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -350,21 +360,30 @@ document.addEventListener('DOMContentLoaded', function () {
         ModalAlert.loading('loadingModal'); submitBtn.disabled = true; form.submit();
     });
 
-    @if ($errors->has('duplicate_title'))
-        ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: @json($errors->first('duplicate_title')) });
-    @endif
-    @if ($errors->has('duplicate_pdf'))
-        ModalAlert.show('alertModal', { title: 'File PDF Sudah Ada', subtitle: @json($errors->first('duplicate_pdf')) });
-    @endif
-    @if ($errors->has('error'))
-        ModalAlert.show('alertModal', { title: 'Terjadi kesalahan', subtitle: @json($errors->first('error')) });
-    @endif
-    @if ($errors->has('pdf_file'))
-        ModalAlert.show('alertModal', { title: 'File tidak valid', subtitle: @json($errors->first('pdf_file')) });
-    @endif
-    @if (session('success'))
-        ModalAlert.show('successModal', { title: 'Berhasil!', subtitle: @json(session('success')) });
-    @endif
+    const flashData = document.getElementById('flash-data');
+    if (flashData) {
+        const dupTitle = flashData.getAttribute('data-duplicate-title');
+        const dupPdf = flashData.getAttribute('data-duplicate-pdf');
+        const err = flashData.getAttribute('data-error');
+        const pdfFile = flashData.getAttribute('data-pdf-file');
+        const success = flashData.getAttribute('data-success');
+
+        if (dupTitle) {
+            ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: dupTitle });
+        }
+        if (dupPdf) {
+            ModalAlert.show('alertModal', { title: 'File PDF Sudah Ada', subtitle: dupPdf });
+        }
+        if (err) {
+            ModalAlert.show('alertModal', { title: 'Terjadi kesalahan', subtitle: err });
+        }
+        if (pdfFile) {
+            ModalAlert.show('alertModal', { title: 'File tidak valid', subtitle: pdfFile });
+        }
+        if (success) {
+            ModalAlert.show('successModal', { title: 'Berhasil!', subtitle: success });
+        }
+    }
 });
 </script>
 
