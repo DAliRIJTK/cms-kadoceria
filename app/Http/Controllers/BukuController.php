@@ -424,7 +424,7 @@ class BukuController extends Controller
                 Storage::disk('public')->deleteDirectory($bookFolder);
             }
 
-            $metaPath = 'buku/metadata/' . $buku->id_buku . '/metadata.json';
+            $metaPath = $bookFolder . '/metadata.json';
             if (Storage::disk('public')->exists($metaPath)) {
                 Storage::disk('public')->delete($metaPath);
             }

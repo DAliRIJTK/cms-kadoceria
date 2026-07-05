@@ -16,7 +16,7 @@
 <div class="flex min-h-screen">
 
     <!-- MAIN CONTENT -->
-    <div class="flex-1 flex flex-col">
+    <div class="flex-1 min-w-0 flex flex-col">
 
         <!-- NAVBAR -->
         <div class="bg-white px-6 py-4 shadow">
@@ -38,7 +38,7 @@
         </div>
 
         <!-- CONTENT -->
-        <div class="p-6 flex-1">
+        <div class="p-6 flex-1 min-w-0">
             @yield('content')
         </div>
 
