@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use illuminate\Database\Eloquent\Factories\HasFactory;
 
 class AreaInteraktif extends Model
 {
+    use HasFactory;
     protected $table = 'area_interaktif';
     protected $primaryKey = 'id_area';
     public $timestamps = true;

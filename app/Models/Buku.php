@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Buku extends Model
 {
+    use HasFactory;
     protected $table = 'buku';
     protected $primaryKey = 'id_buku';
     public $timestamps = true;

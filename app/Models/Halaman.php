@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Halaman extends Model
 {
+    use HasFactory;
     protected $table = 'halaman';
     protected $primaryKey = 'id_halaman';
     public $timestamps = true;

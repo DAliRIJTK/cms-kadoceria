@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use illuminate\Database\Eloquent\Factories\HasFactory;
 
 class AudioLatar extends Model
 {
+    use HasFactory;
     protected $table = 'audio_latar';
     protected $primaryKey = 'id_audio_latar';
     public $timestamps = true;
