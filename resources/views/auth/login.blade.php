@@ -15,7 +15,7 @@
         <img src="{{ asset('assets/logobalai.png') }}" class="w-40 mb-6" alt="Logo Balai Bahasa">
 
         <h2 class="text-xl text-gray-700">
-            Content Management System for Bilingual Children's Books
+            Sistem Manajemen Konten untuk Buku Anak Dwibahasa
         </h2>
 
         <h1 class="text-4xl font-bold mt-2">
@@ -86,7 +86,7 @@
             <!-- Footer -->
             <p class="text-sm mt-10 text-center opacity-80">
                 Balai Bahasa Provinsi Jawa Barat<br>
-                All Right Reserved | 2026
+                Hak Cipta Dilindungi | 2026
             </p>
 
         </div>

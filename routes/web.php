@@ -13,16 +13,25 @@ Route::get('/', function () {
 
 Route::middleware(['auth'])->group(function () {
 
-    Route::get('/dashboard', [BukuController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard', [BukuController::class, 'index'])->name('dashboard');
+    Route::get('/buku', function () {
+        return redirect()->route('dashboard');
+    });
 
-    Route::resource('buku', BukuController::class);
+    // Buku Routes
+    Route::get('/buku/tambahbuku', [BukuController::class, 'create'])->name('buku.create');
+    Route::post('/buku', [BukuController::class, 'store'])->name('buku.store');
+    Route::get('/buku/{buku}', [BukuController::class, 'show'])->name('buku.show');
+    Route::get('/buku/{buku}/edit', [BukuController::class, 'edit'])->name('buku.edit');
+    Route::match(['put', 'patch'], '/buku/{buku}', [BukuController::class, 'update'])->name('buku.update');
+    Route::delete('/buku/{buku}', [BukuController::class, 'destroy'])->name('buku.destroy');
     Route::get('/buku-search', [BukuController::class, 'search'])->name('buku.search');
     Route::patch('/buku/{buku}/status', [BukuController::class, 'updateStatus'])->name('buku.updateStatus');
 
     // Halaman Management
-    Route::get('/halaman-management', [HalamanController::class, 'management'])->name('halaman.management');
-    Route::get('/halaman/{halaman}', [HalamanController::class, 'show'])->name('halaman.show');
-    Route::get('/halaman/{halaman}/edit', [HalamanController::class, 'edit'])->name('halaman.edit');
+    Route::get('/kelola-halaman', [HalamanController::class, 'management'])->name('halaman.management');
+    Route::get('/halaman/{buku:judul_idn}/halaman{nomor_halaman}', [HalamanController::class, 'show'])->name('halaman.show');
+    Route::get('/halaman/{buku:judul_idn}/halaman{nomor_halaman}/edit', [HalamanController::class, 'edit'])->name('halaman.edit');
     Route::patch('/halaman/{halaman}', [HalamanController::class, 'update'])->name('halaman.update');
     Route::delete('/halaman/{halaman}', [HalamanController::class, 'destroy'])->name('halaman.destroy');
     Route::post('/halaman-reorder', [HalamanController::class, 'reorder'])->name('halaman.reorder');

@@ -24,7 +24,7 @@
 <br/>
 
 > **Platform modern untuk mengelola buku digital interaktif dwibahasa Sunda–Indonesia,**
-> lengkap dengan narasi audio, backsound, dan hotspot interaktif berbasis koordinat.
+> lengkap dengan narasi audio, audio latar, dan hotspot interaktif berbasis koordinat.
 
 <br/>
 
@@ -66,7 +66,7 @@ Sistem ini dirancang agar konten buku menjadi lebih **hidup**, **modern**, dan *
 **Solusi yang ditawarkan:**
 - ✅ Upload PDF → otomatis menjadi halaman digital teroptimasi
 - ✅ Dukungan konten dwibahasa (Indonesia & Sunda) dalam satu platform
-- ✅ Narasi audio, backsound, dan hotspot interaktif per halaman
+- ✅ Narasi audio, audio latar, dan hotspot interaktif per halaman
 
 ---
 
@@ -86,7 +86,7 @@ Sistem ini dirancang agar konten buku menjadi lebih **hidup**, **modern**, dan *
 | Drag & Drop Reorder | Atur urutan halaman secara intuitif dengan antarmuka seret dan lepas |
 | Narasi Audio Indonesia | Upload audio narasi berbahasa Indonesia per halaman |
 | Narasi Audio Sunda | Upload audio narasi berbahasa Sunda per halaman |
-| Backsound | Tambahkan musik latar yang memperindah pengalaman membaca |
+| audio latar | Tambahkan musik latar yang memperindah pengalaman membaca |
 | Hotspot Interaktif | Definisikan area klik pada halaman dengan koordinat persentase + audio khusus |
 
 ### 🎛️ Fitur Tambahan
@@ -291,7 +291,7 @@ Setiap halaman buku mendukung lapisan audio dan interaktivitas yang kaya:
 │                                                             │
 │   🎙️  Narasi Indonesia   →  audio_id.mp3                   │
 │   🎙️  Narasi Sunda       →  audio_su.mp3                   │
-│   🎵  Backsound          →  background.mp3                  │
+│   🎵  audio latar          →  background.mp3                  │
 │                                                             │
 │   📍 Hotspot A  (x: 25%, y: 40%)  →  hotspot_a.mp3        │
 │   📍 Hotspot B  (x: 60%, y: 70%)  →  hotspot_b.mp3        │
@@ -385,7 +385,7 @@ CMS menyediakan REST API berbasis JSON untuk digunakan oleh aplikasi mobile. Sem
       "image_url": "/storage/pages/page-1.webp",
       "audio_id": "/storage/audio/narasi-id-1.mp3",
       "audio_su": "/storage/audio/narasi-su-1.mp3",
-      "backsound": "/storage/audio/backsound-1.mp3",
+      "audio latar": "/storage/audio/audio latar-1.mp3",
       "hotspots": [
         {
           "id": 1,
@@ -412,7 +412,7 @@ CMS Kadoceria dirancang sebagai **backend** untuk aplikasi mobile Android intera
 │  📖 Flipbook interaktif dengan animasi     │
 │  🎙️  Narasi audio dwibahasa               │
 │  📍 Hotspot yang dapat diklik              │
-│  🎵 Backsound otomatis per halaman         │
+│  🎵 audio latar otomatis per halaman         │
 │  🌐 Konten diambil dari CMS via API        │
 └────────────────────────────────────────────┘
                ↕  REST API (JSON)

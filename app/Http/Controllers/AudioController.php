@@ -14,7 +14,7 @@ class AudioController extends Controller
 
         $validated = $request->validate([
             'audio_type' => 'required|in:indo,sunda',
-            'audio_file' => 'required|file|mimes:mp3,m4a,mpga,mp4,x-m4a,wav|extensions:mp3,m4a|max:3024',
+            'audio_file' => 'required|file|mimes:mp3,m4a,mp4,x-m4a|extensions:mp3,m4a|max:1024',
         ], [
             'audio_file.max'   => 'Ukuran file audio maksimal 1MB.',
             'audio_file.mimes' => 'Format audio harus MP3 atau M4A.',
@@ -69,7 +69,7 @@ class AudioController extends Controller
 
         $validated = $request->validate([
             'narasi_type' => 'required|in:indo,sunda',
-            'audio_file'  => 'required|file|mimes:mp3,m4a,mpga,mp4,x-m4a,wav|extensions:mp3,m4a|max:3024',
+            'audio_file' => 'required|file|mimes:mp3,m4a,wav,mp4,x-m4a|extensions:mp3,m4a|max:1024',
         ], [
             'audio_file.max'   => 'Ukuran file audio maksimal 1MB.',
             'audio_file.mimes' => 'Format audio harus MP3 atau M4A.',

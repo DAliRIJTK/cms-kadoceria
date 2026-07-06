@@ -66,7 +66,7 @@
                             </td>
 
                             <td class="px-4 py-4">
-                                <a href="{{ route('buku.show', $page->buku->id_buku) }}"
+                                <a href="{{ route('buku.show', $page->buku) }}"
                                    class="text-blue-600 hover:text-blue-700 hover:underline font-semibold text-sm leading-tight block">
                                     {{ $page->buku->judul_idn }}
                                 </a>
@@ -124,7 +124,7 @@
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
                                     @if($page->buku->status_publikasi !== 'Terbit')
-                                        <a href="{{ route('halaman.edit', $page->id_halaman) }}"
+                                        <a href="{{ route('halaman.edit', [$page->buku, $page->nomor_halaman]) }}"
                                            class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
                                             Sunting
                                         </a>
@@ -146,15 +146,6 @@
                 </tbody>
             </table>
         </div>
-
-        @if($halaman->hasPages())
-            <div class="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                <p class="text-sm text-gray-500">
-                    Menampilkan {{ $halaman->firstItem() }} – {{ $halaman->lastItem() }} dari {{ $halaman->total() }} halaman
-                </p>
-                <div>{{ $halaman->links('pagination::tailwind') }}</div>
-            </div>
-        @endif
     </div>
 @endif
 

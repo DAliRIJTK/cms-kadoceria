@@ -7,7 +7,7 @@
 
 @props([
     'id'           => 'modalAlert',
-    'type'         => 'success',   // success | error | confirm | warning
+    'type'         => 'success',   // success | error | confirm | warning | logout
     'title'        => '',
     'subtitle'     => '',
     'autoDismiss'  => false,       // auto close default false
@@ -34,12 +34,16 @@ $iconMap = [
         'bg'    => 'bg-yellow-100',
         'svg'   => '<svg class="w-10 h-10 text-yellow-500 animate-pop" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="20" fill="currentColor" fill-opacity=".15"/><path d="M20 13v9M20 27v1" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>',
     ],
+    'logout'  => [
+        'bg'    => 'bg-red-100',
+        'svg'   => '<svg class="w-12 h-12 text-red-600 animate-pop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>',
+    ],
 ];
 $icon = $iconMap[$type] ?? $iconMap['error'];
 @endphp
 
 <div id="{{ $id }}"
-     data-auto-dismiss="{{ $autoDismiss && $type !== 'confirm' ? 'true' : 'false' }}"
+     data-auto-dismiss="{{ $autoDismiss && $type !== 'confirm' && $type !== 'logout' ? 'true' : 'false' }}"
      data-type="{{ $type }}"
      class="fixed inset-0 z-50 hidden items-center justify-center"
      aria-modal="true" role="dialog">
@@ -59,13 +63,11 @@ $icon = $iconMap[$type] ?? $iconMap['error'];
         {{-- Text --}}
         <div class="text-center">
             <p id="{{ $id }}-title" class="text-xl font-bold text-gray-900 mt-1">{{ $title }}</p>
-            @if($subtitle)
-                <p id="{{ $id }}-subtitle" class="text-sm text-gray-500 mt-1">{{ $subtitle }}</p>
-            @endif
+            <p id="{{ $id }}-subtitle" class="text-sm text-gray-500 mt-1 {{ empty($subtitle) ? 'hidden' : '' }}">{{ $subtitle }}</p>
         </div>
 
         {{-- Confirm buttons --}}
-        @if($type === 'confirm')
+        @if($type === 'confirm' || $type === 'logout')
             <div class="flex gap-3 mt-2 w-full">
                 <button type="button"
                         onclick="ModalAlert.close('{{ $id }}')"

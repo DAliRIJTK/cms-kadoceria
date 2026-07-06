@@ -97,7 +97,7 @@
             <h3 class="font-semibold text-gray-800 mb-4">Aksi</h3>
             
             <div class="space-y-2">
-                <a href="{{ route('halaman.edit', $halaman->id_halaman) }}" class="block w-full px-4 py-2 text-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm">
+                <a href="{{ route('halaman.edit', [$halaman->buku, $halaman->nomor_halaman]) }}" class="block w-full px-4 py-2 text-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm">
                     Edit
                 </a>
                 <form action="{{ route('halaman.destroy', $halaman->id_halaman) }}" method="POST" class="inline">
