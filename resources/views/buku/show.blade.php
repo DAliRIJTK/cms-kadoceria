@@ -11,7 +11,7 @@
 </div>
 
 <div class="mb-6">
-    <a href="{{ route('buku.index') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
+    <a href="{{ route('dashboard') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
         ← Kembali ke Daftar Buku
     </a>
 </div>
@@ -129,7 +129,7 @@
     </div>
 
     {{-- [FIX #2] Cover — fallback ke halaman pertama jika cover tidak ada --}}
-    <div class="lg:col-span-1">
+    <div class="lg:col-span-1 flex justify-center lg:justify-start flex-col">
         @php
             // Cari gambar cover yang valid: path_cover → halaman pertama
             $coverUrl = null;
@@ -146,9 +146,9 @@
         @if($coverUrl)
             <img src="{{ $coverUrl }}"
                  alt="{{ $buku->judul_idn }}"
-                 class="w-full rounded-xl shadow-md border border-gray-200 object-cover">
+                 class="w-full max-w-[280px] lg:max-w-full h-auto rounded-xl shadow-md border border-gray-200">
         @else
-            <div class="w-full aspect-[3/4] bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
+            <div class="w-full max-w-[280px] lg:max-w-full aspect-[3/4] bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center">
                 <span class="text-gray-400 text-sm">Tidak ada cover</span>
             </div>
         @endif
@@ -234,16 +234,8 @@
 
     {{-- ── Flipbook Container ── --}}
     <div id="fb-shell" data-pages="{{ json_encode($pagesData) }}" style="
-        background: #1a1a2e;
         --fb-primary: {{ $primaryHex }};
         --fb-secondary: {{ $secondaryHex }};
-        display: flex;
-        flex-direction: column;
-        height: 620px;
-        position: relative;
-        overflow: hidden;
-        font-family: 'Segoe UI', system-ui, sans-serif;
-        user-select: none;
     ">
         {{-- Loading overlay --}}
         <div id="fb-loading" style="
@@ -264,14 +256,7 @@
         </div>
 
         {{-- Top mini-bar --}}
-        <div style="
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            display: flex; align-items: center;
-            justify-content: space-between;
-            padding: 8px 16px; gap: 10px; flex-shrink: 0; z-index: 10;
-        ">
+        <div id="fb-top-bar">
             {{-- Lang controls --}}
             <div style="display:flex; align-items:center; gap:8px;">
                 <div style="display:flex; background:rgba(255,255,255,0.1); border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.18);">
@@ -321,8 +306,25 @@
         {{-- Stage --}}
         <div id="fb-stage" style="
             flex:1; display:flex; align-items:center; justify-content:center;
-            overflow:hidden; position:relative; padding:16px 70px;
+            overflow:hidden; position:relative;
         ">
+            {{-- Nav arrows --}}
+            <button id="fb-btn-prev" onclick="fbGoPage(-1)" style="
+                position:absolute; top:50%; transform:translateY(-50%);
+                background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
+                color:#fff; width:40px; height:40px; border-radius:50%;
+                font-size:20px; cursor:pointer; display:flex;
+                align-items:center; justify-content:center;
+                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">‹</button>
+
+            <button id="fb-btn-next" onclick="fbGoPage(1)" style="
+                position:absolute; top:50%; transform:translateY(-50%);
+                background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
+                color:#fff; width:40px; height:40px; border-radius:50%;
+                font-size:20px; cursor:pointer; display:flex;
+                align-items:center; justify-content:center;
+                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">›</button>
+
             {{-- Book wrap --}}
             <div id="fb-book-wrap" style="position:relative; display:flex; align-items:center; justify-content:center;">
 
@@ -338,23 +340,6 @@
                     ">
                     <div id="fb-areas" style="position:absolute; inset:0; pointer-events:none;"></div>
                 </div>
-
-                {{-- Nav arrows --}}
-                <button id="fb-btn-prev" onclick="fbGoPage(-1)" style="
-                    position:absolute; left:-56px; top:50%; transform:translateY(-50%);
-                    background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
-                    color:#fff; width:40px; height:40px; border-radius:50%;
-                    font-size:20px; cursor:pointer; display:flex;
-                    align-items:center; justify-content:center;
-                    backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">‹</button>
-
-                <button id="fb-btn-next" onclick="fbGoPage(1)" style="
-                    position:absolute; right:-56px; top:50%; transform:translateY(-50%);
-                    background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.2);
-                    color:#fff; width:40px; height:40px; border-radius:50%;
-                    font-size:20px; cursor:pointer; display:flex;
-                    align-items:center; justify-content:center;
-                    backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">›</button>
             </div>
         </div>
 
@@ -394,6 +379,66 @@
         @keyframes fb-spin  { to { transform: rotate(360deg); } }
         @keyframes fb-note  { 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)} }
         @keyframes fb-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,.5)} 50%{box-shadow:0 0 0 6px rgba(255,215,0,0)} }
+
+        #fb-shell {
+            background: #1a1a2e;
+            display: flex;
+            flex-direction: column;
+            height: 620px;
+            position: relative;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            user-select: none;
+        }
+
+        #fb-top-bar {
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            gap: 10px;
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        #fb-stage {
+            padding: 16px;
+        }
+        #fb-btn-prev {
+            left: 16px;
+        }
+        #fb-btn-next {
+            right: 16px;
+        }
+
+        @media (max-width: 768px) {
+            #fb-stage {
+                padding: 16px 8px;
+            }
+            #fb-btn-prev {
+                left: 8px;
+                background: rgba(0, 0, 0, 0.6) !important;
+            }
+            #fb-btn-next {
+                right: 8px;
+                background: rgba(0, 0, 0, 0.6) !important;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #fb-shell {
+                height: 480px;
+            }
+            #fb-top-bar {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 8px;
+                padding: 8px;
+            }
+        }
 
         #fb-btn-prev:hover, #fb-btn-next:hover { background: rgba(255,255,255,0.28) !important; }
         #fb-btn-prev:disabled, #fb-btn-next:disabled { opacity:.22; cursor:not-allowed; }

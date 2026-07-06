@@ -15,7 +15,7 @@
         <img src="{{ asset('assets/logobalai.png') }}" class="w-40 mb-6" alt="Logo Balai Bahasa">
 
         <h2 class="text-xl text-gray-700">
-            Sistem Manajemen Konten Buku Dwibahasa
+            Content Management System for Bilingual Children's Books
         </h2>
 
         <h1 class="text-4xl font-bold mt-2">

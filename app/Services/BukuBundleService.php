@@ -27,7 +27,6 @@ class BukuBundleService
             $this->generateZipBundle($buku);
 
         } catch (\Exception $e) {
-            \Log::error('generateAndPackageBundle error (book ' . $buku->id_buku . '): ' . $e->getMessage());
             throw $e;
         }
     }
@@ -87,7 +86,7 @@ class BukuBundleService
         ];
 
         Storage::disk('public')->put(
-            'buku/metadata/' . $buku->id_buku . '/metadata.json',
+            'buku/' . $buku->slugify($buku->judul_idn) . '/metadata.json',
             json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
     }
