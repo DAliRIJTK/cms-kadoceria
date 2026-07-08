@@ -46,7 +46,12 @@ class BukuController extends Controller
         }
 
         $buku = $query->paginate(8);
-        return view('buku.index', compact('buku'));
+        $totalBooks     = Buku::count();
+        $publishedBooks = Buku::where('status_publikasi', 'Terbit')->count();
+        $draftBooks     = Buku::where('status_publikasi', 'Draft')->count();
+        $totalPages     = Halaman::count();
+
+        return view('dashboard', compact('buku', 'totalBooks', 'publishedBooks', 'draftBooks', 'totalPages'));
     }
 
     public function create()
@@ -137,7 +142,7 @@ class BukuController extends Controller
         }
 
         // [FIX #1] Redirect ke halaman show/informasi buku, bukan ke daftar buku
-        return redirect()->route('buku.show', $buku->id_buku)
+        return redirect()->route('buku.show', $buku)
             ->with('success', 'Buku berhasil ditambahkan & diproses!');
     }
 
@@ -192,7 +197,7 @@ class BukuController extends Controller
             $this->fixCoverIfMissing($buku);
             return view('buku.show', compact('buku', 'warning'));
         } catch (\Exception $e) {
-            return redirect()->route('buku.index')->withErrors(['error' => $e->getMessage()]);
+            return redirect()->route('dashboard')->withErrors(['error' => $e->getMessage()]);
         }
     }
 
@@ -435,49 +440,10 @@ class BukuController extends Controller
             }
 
             $buku->delete();
-            return redirect('/buku')->with('success', 'Buku berhasil dihapus');
+            return redirect()->route('dashboard')->with('success', 'Buku berhasil dihapus');
         } catch (\Exception $e) {
             return back()->withErrors(['delete' => 'Gagal menghapus buku: ' . $e->getMessage()]);
         }
-    }
-
-    public function dashboard(Request $request)
-    {
-        $query = Buku::query();
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('judul_idn', 'like', "%{$search}%")
-                  ->orWhere('judul_sn', 'like', "%{$search}%")
-                  ->orWhere('penulis', 'like', "%{$search}%")
-                  ->orWhere('ilustrator', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status_publikasi', $request->status);
-        }
-
-        if ($request->filled('sort')) {
-            match ($request->sort) {
-                'title_asc'   => $query->orderBy('judul_idn', 'asc'),
-                'title_desc'  => $query->orderBy('judul_idn', 'desc'),
-                'date_newest' => $query->orderBy('created_at', 'desc'),
-                'date_oldest' => $query->orderBy('created_at', 'asc'),
-                default       => $query->orderBy('created_at', 'desc'),
-            };
-        } else {
-            $query->orderBy('created_at', 'desc');
-        }
-
-        $buku           = $query->paginate(8);
-        $totalBooks     = Buku::count();
-        $publishedBooks = Buku::where('status_publikasi', 'Terbit')->count();
-        $draftBooks     = Buku::where('status_publikasi', 'Draft')->count();
-        $totalPages     = Halaman::count();
-
-        return view('dashboard', compact('buku', 'totalBooks', 'publishedBooks', 'draftBooks', 'totalPages'));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

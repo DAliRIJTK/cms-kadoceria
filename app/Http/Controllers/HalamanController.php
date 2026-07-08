@@ -45,15 +45,18 @@ class HalamanController extends Controller
             }
         }
 
-        $halaman = $query->paginate(15);
+        $halaman = $query->get();
         $allBuku = Buku::all();
 
         return view('halaman.management', compact('halaman', 'allBuku'));
     }
 
 
-    public function edit(Halaman $halaman)
+    public function edit(Buku $buku, $nomor_halaman)
     {
+        $halaman = Halaman::where('id_buku', $buku->id_buku)
+            ->where('nomor_halaman', $nomor_halaman)
+            ->firstOrFail();
 
         $halaman->load(['areaInteraktif', 'buku', 'audioLatar']);
         $allAudioLatar = AudioLatar::orderBy('nama_audio')->get();
@@ -71,8 +74,12 @@ class HalamanController extends Controller
         return view('halaman.edit', compact('halaman', 'allAudioLatar', 'prevHalaman', 'nextHalaman'));
     }
 
-    public function show(Halaman $halaman)
+    public function show(Buku $buku, $nomor_halaman)
     {
+        $halaman = Halaman::where('id_buku', $buku->id_buku)
+            ->where('nomor_halaman', $nomor_halaman)
+            ->firstOrFail();
+
         $halaman->load(['buku', 'areaInteraktif', 'audioLatar']);
         return view('halaman.show', compact('halaman'));
     }
@@ -269,7 +276,7 @@ class HalamanController extends Controller
 
             return view('halaman.flipbook', compact('buku'));
         } catch (\Exception $e) {
-            return redirect()->route('buku.index')->withErrors(['error' => $e->getMessage()]);
+            return redirect()->route('dashboard')->withErrors(['error' => $e->getMessage()]);
         }
     }
 }

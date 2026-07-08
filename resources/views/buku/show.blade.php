@@ -92,7 +92,7 @@
             {{-- Action Buttons --}}
             <div class="flex flex-wrap gap-3 pt-2">
                 @if($buku->status_publikasi !== 'Terbit')
-                    <a href="{{ route('buku.edit', $buku->id_buku) }}"
+                    <a href="{{ route('buku.edit', $buku) }}"
                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
                         Edit Informasi
                     </a>
@@ -102,7 +102,7 @@
                         Kelola Halaman
                     </a>
 
-                    <form action="{{ route('buku.destroy', $buku->id_buku) }}" method="POST" class="inline">
+                    <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline">
                         @csrf
                         @method('DELETE')
                         <button type="submit"
@@ -181,14 +181,6 @@
     {{-- Card Header --}}
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
         <h2 class="text-lg font-bold text-gray-800">Pratinjau Flipbook</h2>
-        <div class="flex items-center gap-3">
-            @if($buku->halaman()->count() > 0 && $buku->status_publikasi !== 'Terbit')
-                <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
-                   class="px-4 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-xs transition-colors">
-                    Kelola Halaman
-                </a>
-            @endif
-        </div>
     </div>
 
     @if($buku->halaman()->count() > 0)
@@ -315,7 +307,11 @@
                 color:#fff; width:40px; height:40px; border-radius:50%;
                 font-size:20px; cursor:pointer; display:flex;
                 align-items:center; justify-content:center;
-                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">‹</button>
+                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" style="width: 20px; height: 20px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+            </button>
 
             <button id="fb-btn-next" onclick="fbGoPage(1)" style="
                 position:absolute; top:50%; transform:translateY(-50%);
@@ -323,7 +319,11 @@
                 color:#fff; width:40px; height:40px; border-radius:50%;
                 font-size:20px; cursor:pointer; display:flex;
                 align-items:center; justify-content:center;
-                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">›</button>
+                backdrop-filter:blur(4px); z-index:20; transition:background 0.2s;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" style="width: 20px; height: 20px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+            </button>
 
             {{-- Book wrap --}}
             <div id="fb-book-wrap" style="position:relative; display:flex; align-items:center; justify-content:center;">
@@ -676,10 +676,10 @@
             }
             btn.style.display = 'flex';
             if (fbBacksoundPaused) {
-                btn.innerHTML = '🔇 Backsound';
+                btn.innerHTML = '🔇 Latar';
                 btn.style.background = 'rgba(220,38,38,0.3)';
             } else {
-                btn.innerHTML = '🔊 Backsound';
+                btn.innerHTML = '🔊 Latar';
                 btn.style.background = 'var(--fb-primary)';
             }
         }
@@ -933,7 +933,7 @@
                     class="flex-1 px-6 py-3 rounded-xl border-2 border-yellow-400 text-yellow-600 font-bold text-base hover:bg-yellow-50 transition-colors">
                 Batal
             </button>
-            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="flex-1">
+            <form action="{{ route('buku.updateStatus', $buku) }}" method="POST" class="flex-1">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status_publikasi" value="Draft">
@@ -977,7 +977,7 @@
                     class="flex-1 px-6 py-3 rounded-xl border-2 border-green-400 text-green-600 font-bold text-base hover:bg-green-50 transition-colors">
                 Batal
             </button>
-            <form action="{{ route('buku.updateStatus', $buku->id_buku) }}" method="POST" class="flex-1">
+            <form action="{{ route('buku.updateStatus', $buku) }}" method="POST" class="flex-1">
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="status_publikasi" value="Terbit">

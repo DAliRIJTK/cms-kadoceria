@@ -75,7 +75,7 @@
             {{-- [DIPINDAH] Navigasi halaman sebelumnya / berikutnya, sekarang di bawah gambar --}}
             <div class="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-gray-100">
                 @if(isset($prevHalaman) && $prevHalaman)
-                    <a href="{{ route('halaman.edit', $prevHalaman->id_halaman) }}"
+                    <a href="{{ route('halaman.edit', [$prevHalaman->buku, $prevHalaman->nomor_halaman]) }}"
                        class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
                        title="Halaman {{ $prevHalaman->nomor_halaman }}">
                         ‹ Hal. {{ $prevHalaman->nomor_halaman }}
@@ -89,7 +89,7 @@
                 <span class="text-xs font-medium text-gray-400">Halaman {{ $halaman->nomor_halaman }}</span>
 
                 @if(isset($nextHalaman) && $nextHalaman)
-                    <a href="{{ route('halaman.edit', $nextHalaman->id_halaman) }}"
+                    <a href="{{ route('halaman.edit', [$nextHalaman->buku, $nextHalaman->nomor_halaman]) }}"
                        class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
                        title="Halaman {{ $nextHalaman->nomor_halaman }}">
                         Hal. {{ $nextHalaman->nomor_halaman }} ›
@@ -260,7 +260,7 @@
 
                 {{-- Backsound — menggunakan relasi AudioLatar --}}
                 <div class="border-l-4 border-yellow-500 pl-4">
-                    <p class="text-sm font-bold text-gray-800 mb-2">Backsound Halaman</p>
+                    <p class="text-sm font-bold text-gray-800 mb-2">Halaman Audio Latar</p>
 
                     {{-- Tampilkan audio aktif jika ada --}}
                     @if($halaman->audioLatar)
@@ -286,7 +286,7 @@
                         </div>
                     @else
                         @if($halaman->buku->status_publikasi === 'Terbit')
-                            <p class="text-xs text-gray-400 italic mb-2">Belum ada backsound.</p>
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada Audio Latar.</p>
                         @endif
                     @endif
 
@@ -299,7 +299,7 @@
                                 <select name="id_audio_latar"
                                         class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
                                         required>
-                                    <option value="">-- Pilih backsound --</option>
+                                    <option value="">-- Pilih Audio Latar --</option>
                                     @foreach($allAudioLatar as $al)
                                         <option value="{{ $al->id_audio_latar }}"
                                             {{ $halaman->id_audio_latar == $al->id_audio_latar ? 'selected' : '' }}>

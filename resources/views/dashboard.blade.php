@@ -38,10 +38,9 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan</label>
                 <select name="sort" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
-                    <option value="">Default</option>
+                    <option value="" @if(request('sort') === null || request('sort') === '') selected @endif>Terbaru</option>
                     <option value="title_asc" @if(request('sort') === 'title_asc') selected @endif>Judul (A-Z)</option>
                     <option value="title_desc" @if(request('sort') === 'title_desc') selected @endif>Judul (Z-A)</option>
-                    <option value="date_newest" @if(request('sort') === 'date_newest') selected @endif>Terbaru</option>
                     <option value="date_oldest" @if(request('sort') === 'date_oldest') selected @endif>Terlama</option>
                 </select>
             </div>
@@ -77,7 +76,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         @foreach($buku as $book)
-            <a href="{{ route('buku.show', $book->id_buku) }}" class="group">
+            <a href="{{ route('buku.show', $book) }}" class="group">
                 <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
 
                     <div class="relative overflow-hidden bg-gray-200 h-64">

@@ -21,10 +21,23 @@
         <!-- NAVBAR -->
         <div class="bg-white px-6 py-4 shadow">
             <div class="flex justify-between items-center">
-                <div class="flex items-center gap-6">
+                <div class="flex items-center gap-4">
                     <a href="{{ route('dashboard') }}" class="text-lg font-bold text-blue-900 hover:text-blue-700 transition-colors duration-200">
                         📚 CMS Buku Dwibahasa
                     </a>
+                    <!-- <span class="text-gray-300">|</span>
+                    <a href="{{ route('dashboard') }}" class="text-sm font-medium {{ request()->routeIs('dashboard') ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600' }} transition-colors duration-200">
+                         📝 Daftar Buku Cerita
+                    </a>
+                    <span class="text-gray-300">|</span>
+                    <a href="{{ route('buku.create') }}" class="text-sm font-medium {{ request()->routeIs('buku.create') ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600' }} transition-colors duration-200">
+                         ➕ Tambah Buku Cerita
+                    </a>
+
+                    <span class="text-gray-300">|</span>
+                    <a href="{{ route('audio-latar.index') }}" class="text-sm font-medium {{ request()->routeIs('audio-latar.*') ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600' }} transition-colors duration-200">
+                        🎵 Kelola Audio Latar
+                    </a> -->
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -48,6 +61,7 @@
 
 @stack('scripts')
 <x-modal-alert id="globalConfirmModal" type="confirm" title="Konfirmasi" subtitle="Apakah Anda yakin?" confirm-label="Ya" cancel-label="Batal" />
+<x-modal-alert id="globalLogoutModal" type="logout" title="Keluar Aplikasi" subtitle="Apakah Anda yakin?" confirm-label="Keluar" cancel-label="Batal" />
 <x-modal-scripts />
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -76,8 +90,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 title = 'Hapus Narasi';
                 subtitle = 'Apakah Anda yakin ingin menghapus audio narasi ini?';
             } else if (form.action.includes('removeBacksound')) {
-                title = 'Hapus Backsound';
-                subtitle = 'Apakah Anda yakin ingin menghapus backsound halaman ini?';
+                title = 'Hapus Audio Latar';
+                subtitle = 'Apakah Anda yakin ingin menghapus Audio Latar halaman ini?';
             } else if (form.action.includes('deleteAreaAudio')) {
                 const langVal = form.querySelector('input[name="audio_type"]')?.value;
                 const langLabel = langVal === 'sunda' ? 'Sunda' : 'Indonesia';
@@ -97,7 +111,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 subtitle = 'Apakah Anda yakin ingin menghapus audio latar ini?';
             }
 
-            ModalAlert.confirm('globalConfirmModal', { title, subtitle }, function () {
+            const modalId = isLogout ? 'globalLogoutModal' : 'globalConfirmModal';
+            ModalAlert.confirm(modalId, { title, subtitle }, function () {
                 form.dataset.confirmed = 'true';
                 form.submit();
             });
