@@ -133,7 +133,14 @@
                                                 </button>
                                             </form>
                                         @else
-                                            <span class="text-xs text-gray-400 italic">Cover Buku (Tidak dapat disunting)</span>
+                                            {{-- Cover: hanya boleh dihapus, tidak bisa disunting --}}
+                                            <span class="text-xs text-gray-400 italic">Cover Buku</span>
+                                            <button
+                                                type="button"
+                                                onclick="confirmDeleteCover('{{ route("halaman.destroy", $page->id_halaman) }}')"
+                                                class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                Hapus
+                                            </button>
                                         @endif
                                     @else
                                         <span class="text-xs text-gray-400 italic">Buku Terbit (Read-only)</span>
@@ -148,7 +155,49 @@
     </div>
 @endif
 
-{{-- Image Modal --}}
+{{-- Modal konfirmasi hapus cover --}}
+<div id="deleteCoverModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-base font-semibold text-gray-900">Hapus Cover Buku?</h3>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-3">
+            Tindakan ini akan menghapus <strong>halaman cover (halaman 1)</strong> secara permanen.
+        </p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5 text-sm text-amber-800">
+            <p class="font-semibold mb-1">⚠️ Perhatian:</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li>Halaman 2 akan otomatis menjadi <strong>Cover baru (Halaman 1)</strong>.</li>
+                <li>Semua <strong>audio</strong> (narasi, backsound, area interaktif) pada halaman 2 akan <strong>dihapus</strong>.</li>
+                <li>Semua <strong>anotasi</strong> pada halaman 2 akan <strong>dihapus</strong>.</li>
+                <li>Tindakan ini <strong>tidak dapat dibatalkan</strong>.</li>
+            </ul>
+        </div>
+
+        <form id="deleteCoverForm" method="POST" action="">
+            @csrf
+            @method('DELETE')
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeCoverModal()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                    Batal
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors">
+                    Ya, Hapus Cover
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="imageModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50" onclick="closeImageModal()">
     <div class="bg-white rounded-xl shadow-xl p-5 max-w-lg w-full mx-4 max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-3">
@@ -169,6 +218,17 @@ function showImageModal(src, title) {
 }
 function closeImageModal() {
     const modal = document.getElementById('imageModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+function confirmDeleteCover(actionUrl) {
+    document.getElementById('deleteCoverForm').action = actionUrl;
+    const modal = document.getElementById('deleteCoverModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+function closeCoverModal() {
+    const modal = document.getElementById('deleteCoverModal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }

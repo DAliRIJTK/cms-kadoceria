@@ -122,21 +122,25 @@ class BukuBundleService
         }
 
         $pagesData = [];
+        $pageIndex  = 1; // nomor urut halaman di ZIP (halaman 2 DB → page_1, dst.)
         foreach ($halaman as $page) {
-            $isCover = $page->nomor_halaman === 1;
+            // Halaman 1 adalah cover, sudah disalin sebagai cover.* — lewati
+            if ($page->nomor_halaman === 1) {
+                continue;
+            }
 
             $pageRelPath = null;
             if ($page->path_gambar) {
                 $srcImg = storage_path('app/public/' . $page->path_gambar);
                 if (file_exists($srcImg)) {
-                    $pageFilename = 'page_' . $page->nomor_halaman . '.' . pathinfo($page->path_gambar, PATHINFO_EXTENSION);
+                    $pageFilename = 'page_' . $pageIndex . '.' . pathinfo($page->path_gambar, PATHINFO_EXTENSION);
                     copy($srcImg, $tmpDir . '/images/' . $pageFilename);
                     $pageRelPath = 'images/' . $pageFilename;
                 }
             }
 
             $backsoundRelPath = null;
-            if (!$isCover && $page->audioLatar && $page->audioLatar->path_file) {
+            if ($page->audioLatar && $page->audioLatar->path_file) {
                 $srcAudio = storage_path('app/public/' . $page->audioLatar->path_file);
                 if (file_exists($srcAudio)) {
                     $bgmFilename = 'bgm_' . $page->audioLatar->id_audio_latar . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
@@ -168,38 +172,36 @@ class BukuBundleService
             }
 
             $interactiveObjects = [];
-            if (!$isCover) {
-                foreach ($page->areaInteraktif as $area) {
+            foreach ($page->areaInteraktif as $area) {
 
-                    $audioObjIdRelPath = null;
-                    if ($area->audio_indo) {
-                        $srcObjId = storage_path('app/public/' . $area->audio_indo);
-                        if (file_exists($srcObjId)) {
-                            $objIdFilename = 'objek_id_' . $area->id_area . '.' . pathinfo($area->audio_indo, PATHINFO_EXTENSION);
-                            copy($srcObjId, $tmpDir . '/audio/' . $objIdFilename);
-                            $audioObjIdRelPath = 'audio/' . $objIdFilename;
-                        }
+                $audioObjIdRelPath = null;
+                if ($area->audio_indo) {
+                    $srcObjId = storage_path('app/public/' . $area->audio_indo);
+                    if (file_exists($srcObjId)) {
+                        $objIdFilename = 'objek_id_' . $area->id_area . '.' . pathinfo($area->audio_indo, PATHINFO_EXTENSION);
+                        copy($srcObjId, $tmpDir . '/audio/' . $objIdFilename);
+                        $audioObjIdRelPath = 'audio/' . $objIdFilename;
                     }
-
-                    $audioObjSuRelPath = null;
-                    if ($area->audio_sunda) {
-                        $srcObjSu = storage_path('app/public/' . $area->audio_sunda);
-                        if (file_exists($srcObjSu)) {
-                            $objSuFilename = 'objek_su_' . $area->id_area . '.' . pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
-                            copy($srcObjSu, $tmpDir . '/audio/' . $objSuFilename);
-                            $audioObjSuRelPath = 'audio/' . $objSuFilename;
-                        }
-                    }
-
-                    $interactiveObjects[] = [
-                        'x'             => (int)   $area->x,
-                        'y'             => (int)   $area->y,
-                        'width'         => (int)   $area->lebar_area,
-                        'height'        => (int)   $area->panjang_area,
-                        'audioObjectId' => $audioObjIdRelPath,
-                        'audioObjectSd' => $audioObjSuRelPath,
-                    ];
                 }
+
+                $audioObjSuRelPath = null;
+                if ($area->audio_sunda) {
+                    $srcObjSu = storage_path('app/public/' . $area->audio_sunda);
+                    if (file_exists($srcObjSu)) {
+                        $objSuFilename = 'objek_su_' . $area->id_area . '.' . pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
+                        copy($srcObjSu, $tmpDir . '/audio/' . $objSuFilename);
+                        $audioObjSuRelPath = 'audio/' . $objSuFilename;
+                    }
+                }
+
+                $interactiveObjects[] = [
+                    'x'             => (int)   $area->x,
+                    'y'             => (int)   $area->y,
+                    'width'         => (int)   $area->lebar_area,
+                    'height'        => (int)   $area->panjang_area,
+                    'audioObjectId' => $audioObjIdRelPath,
+                    'audioObjectSd' => $audioObjSuRelPath,
+                ];
             }
 
             $pagesData[] = [
@@ -211,6 +213,8 @@ class BukuBundleService
                 'narationSd'         => $narasiSuRelPath,
                 'interactiveObjects' => $interactiveObjects,
             ];
+
+            $pageIndex++;
         }
 
         $dataJson = [

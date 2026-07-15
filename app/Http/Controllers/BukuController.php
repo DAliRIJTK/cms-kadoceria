@@ -156,44 +156,66 @@ class BukuController extends Controller
 
             // Validate that physical assets exist for each page
             foreach ($buku->halaman as $page) {
+                $iscover = $page->nomor_halaman === 1;
+
                 if (empty($page->path_gambar) || !Storage::disk('public')->exists($page->path_gambar)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
-
+                
                 // If narration audio is set in DB but missing in storage
                 if (!empty($page->narasi_indo) && !Storage::disk('public')->exists($page->narasi_indo)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
+                
                 if (!empty($page->narasi_sunda) && !Storage::disk('public')->exists($page->narasi_sunda)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
 
                 // If background audio is set in DB but missing in storage
                 if ($page->audioLatar && !Storage::disk('public')->exists($page->audioLatar->path_file)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
-
+                
                 // If area interactive audios are set in DB but missing in storage
                 foreach ($page->areaInteraktif as $area) {
                     if (!empty($area->audio_indo) && !Storage::disk('public')->exists($area->audio_indo)) {
+                        if($iscover) {
+                            break;
+                        }
                         $hasMissingAssets = true;
                         break 2;
                     }
+                    
                     if (!empty($area->audio_sunda) && !Storage::disk('public')->exists($area->audio_sunda)) {
+                        if($iscover) {
+                            break;
+                        }
                         $hasMissingAssets = true;
                         break 2;
                     }
                 }
             }
-
+            
             if ($hasMissingAssets) {
                 $warning = "Aset multimedia tidak dapat dimuat, periksa kelengkapan file.";
             }
-
+            
             $this->fixCoverIfMissing($buku);
             return view('buku.show', compact('buku', 'warning'));
         } catch (\Exception $e) {

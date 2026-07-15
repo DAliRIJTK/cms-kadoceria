@@ -158,17 +158,6 @@
                 $zipAbs  = storage_path('app/public/' . $buku->zip_bundle_path);
                 $zipSize = file_exists($zipAbs) ? round(filesize($zipAbs) / 1048576, 1) . ' MB' : null;
             @endphp
-            @if($zipSize)
-                <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-                    <p class="text-xs text-green-700 font-semibold">📦 Bundle tersedia</p>
-                    <p class="text-xs text-green-600 mt-0.5">{{ $zipSize }}</p>
-                    <a href="{{ asset('storage/' . $buku->zip_bundle_path) }}"
-                       class="mt-2 inline-block text-xs text-green-700 underline hover:text-green-900"
-                       target="_blank">
-                        Unduh ZIP
-                    </a>
-                </div>
-            @endif
         @endif
     </div>
 </div>
@@ -596,6 +585,8 @@
                 audioBar.style.pointerEvents = 'all';
             }
 
+            fbDuckBacksound(); // kurangi volume backsound saat audio interaktif mulai
+
             let curIdx = 0;
 
             function playNext() {
@@ -607,6 +598,7 @@
                     }
                     fbActiveAudio = null;
                     fbAreaChain = false;
+                    fbRestoreBacksound(); // kembalikan volume backsound setelah selesai
                     return;
                 }
 
@@ -634,6 +626,37 @@
             playNext();
         }
 
+        /* ── Audio Ducking Helpers ── */
+        const FB_DUCK_RATIO   = 0.5;  // backsound dikurangi menjadi 50% saat foreground audio aktif
+        let   fbBaseBsVolume  = 0.35; // volume dasar backsound (disinkronkan saat fbPlayBacksound dipanggil)
+        let   fbDuckInterval  = null;
+
+        function fbDuckBacksound() {
+            if (!fbBacksound || fbBacksoundPaused) return;
+            const target = fbBaseBsVolume * FB_DUCK_RATIO;
+            fbAnimateVolume(fbBacksound, target);
+        }
+
+        function fbRestoreBacksound() {
+            if (!fbBacksound || fbBacksoundPaused) return;
+            fbAnimateVolume(fbBacksound, fbBaseBsVolume);
+        }
+
+        function fbAnimateVolume(audioEl, targetVol, durationMs = 350) {
+            if (!audioEl) return;
+            clearInterval(fbDuckInterval);
+            const startVol = audioEl.volume;
+            const diff     = targetVol - startVol;
+            const steps    = 20;
+            const stepMs   = durationMs / steps;
+            let   step     = 0;
+            fbDuckInterval = setInterval(() => {
+                step++;
+                audioEl.volume = Math.min(1, Math.max(0, startVol + diff * (step / steps)));
+                if (step >= steps) clearInterval(fbDuckInterval);
+            }, stepMs);
+        }
+
         window.fbStopAudio = function(stopBack = false) {
             fbNarasiChain = false;
             fbNarasiPlaying = false;
@@ -645,6 +668,7 @@
                 audioBar.style.pointerEvents = 'none';
             }
             fbUpdateNarasiButton();
+            fbRestoreBacksound(); // kembalikan volume backsound
             if (stopBack && fbBacksound) { fbBacksound.pause(); fbBacksound = null; }
         };
 
@@ -688,9 +712,10 @@
         function fbPlayBacksound(page) {
             if (fbBacksound) { fbBacksound.pause(); fbBacksound = null; }
             if (page && page.backsound) {
+                fbBaseBsVolume = 0.35; // reset volume dasar
                 fbBacksound = new Audio(page.backsound);
                 fbBacksound.loop = true;
-                fbBacksound.volume = 0.35;
+                fbBacksound.volume = fbBaseBsVolume;
                 if (!fbBacksoundPaused) {
                     fbBacksound.play().catch(()=>{});
                 }
@@ -737,6 +762,7 @@
                 fbNarasiChain = true;
                 fbNarasiPlaying = true;
                 fbUpdateNarasiButton();
+                fbDuckBacksound(); // kurangi volume backsound saat narasi mulai
 
                 fbActiveAudio = new Audio(srcSu);
                 if (audioBar) {
@@ -758,6 +784,7 @@
                             audioBar.style.pointerEvents = 'none';
                         }
                         fbActiveAudio = null;
+                        fbRestoreBacksound(); // kembalikan volume backsound setelah narasi selesai
                     });
                 });
             } else {
@@ -766,6 +793,7 @@
 
                 fbNarasiPlaying = true;
                 fbUpdateNarasiButton();
+                fbDuckBacksound(); // kurangi volume backsound saat narasi mulai
 
                 fbActiveAudio = new Audio(src);
                 if (audioBar) {
@@ -782,6 +810,7 @@
                         audioBar.style.pointerEvents = 'none';
                     }
                     fbActiveAudio = null;
+                    fbRestoreBacksound(); // kembalikan volume backsound setelah narasi selesai
                 });
             }
         };
