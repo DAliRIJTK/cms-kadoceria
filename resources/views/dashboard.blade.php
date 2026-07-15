@@ -8,9 +8,14 @@
             <h1 class="text-3xl font-bold text-gray-800">Daftar Buku Cerita</h1>
             <p class="text-gray-500 mt-1">Kelola koleksi buku dwibahasa Anda</p>
         </div>
-        <a href="{{ route('buku.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-colors duration-200 font-medium flex items-center gap-2">
-            <span class="text-xl">+</span> Tambah Buku
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('audio-latar.index', ['ref' => url()->current()]) }}" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-6 py-3 rounded-lg shadow-sm transition-colors duration-200 font-medium flex items-center gap-2 border border-indigo-200">
+                <span class="text-lg">🎵</span> Kelola Audio Latar
+            </a>
+            <a href="{{ route('buku.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-colors duration-200 font-medium flex items-center gap-2">
+                <span class="text-xl">+</span> Tambah Buku
+            </a>
+        </div>
     </div>
 
     <form method="GET" action="{{ route('dashboard') }}" class="bg-white rounded-lg shadow-sm p-4">
