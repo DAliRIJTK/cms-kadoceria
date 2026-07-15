@@ -25,6 +25,13 @@ class BoundingBoxController extends Controller
 
         $halaman = \App\Models\Halaman::findOrFail($validated['id_halaman']);
 
+        if ($halaman->nomor_halaman === 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Halaman cover tidak boleh memiliki area interaktif.'
+            ], 422);
+        }
+
         if (($validated['x_pct'] + $validated['w_pct'] > 100) || ($validated['y_pct'] + $validated['h_pct'] > 100)) {
             return response()->json([
                 'success' => false,

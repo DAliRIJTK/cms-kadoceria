@@ -66,6 +66,9 @@ class AudioController extends Controller
 
     public function storeNarasi(Request $request, Halaman $halaman)
     {
+        if ($halaman->nomor_halaman === 1) {
+            return back()->withErrors(['audio' => 'Halaman cover tidak boleh memiliki audio narasi.']);
+        }
 
         $validated = $request->validate([
             'narasi_type' => 'required|in:indo,sunda',
@@ -130,6 +133,9 @@ class AudioController extends Controller
 
     public function deleteNarasi(Halaman $halaman, Request $request)
     {
+        if ($halaman->nomor_halaman === 1) {
+            return back()->withErrors(['delete' => 'Halaman cover tidak memiliki audio narasi untuk dihapus.']);
+        }
 
         try {
             $type = $request->input('narasi_type');

@@ -54,6 +54,11 @@ class HalamanController extends Controller
 
     public function edit(Buku $buku, $nomor_halaman)
     {
+        if ((int)$nomor_halaman === 1) {
+            return redirect()->route('halaman.management', ['id_buku' => $buku->id_buku])
+                ->withErrors(['error' => 'Halaman cover tidak dapat disunting.']);
+        }
+
         $halaman = Halaman::where('id_buku', $buku->id_buku)
             ->where('nomor_halaman', $nomor_halaman)
             ->firstOrFail();
@@ -157,6 +162,10 @@ class HalamanController extends Controller
 
     public function destroy(Halaman $halaman)
     {
+        if ($halaman->nomor_halaman === 1) {
+            return back()->withErrors(['delete' => 'Halaman cover tidak dapat dihapus.']);
+        }
+
         $buku = $halaman->buku;
 
         $currentPageCount = $buku->halaman()->count();
@@ -201,23 +210,13 @@ class HalamanController extends Controller
         }
     }
 
-    public function reorder(Request $request)
-    {
-        if ($request->filled('halaman') && count($request->halaman) > 0) {
-            $firstHalaman = Halaman::find($request->halaman[0]);
-        }
-
-        foreach ($request->halaman as $index => $id) {
-            Halaman::where('id_halaman', $id)->update(['nomor_halaman' => $index + 1]);
-        }
-        if (isset($firstHalaman)) {
-            $firstHalaman->buku->syncStorageStructure();
-        }
-        return response()->json(['success' => true]);
-    }
 
     public function setBacksound(Request $request, Halaman $halaman)
     {
+        if ($halaman->nomor_halaman === 1) {
+            return back()->withErrors(['error' => 'Halaman cover tidak boleh memiliki audio latar.']);
+        }
+
         $validated = $request->validate([
             'id_audio_latar' => 'required|exists:audio_latar,id_audio_latar',
         ]);

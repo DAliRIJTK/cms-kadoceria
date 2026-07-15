@@ -201,14 +201,15 @@
         $halamanSorted = $buku->halaman->sortBy('nomor_halaman')->values();
 
         $pagesData = $halamanSorted->map(function($page) {
+            $isCover = $page->nomor_halaman === 1;
             return [
                 'id'        => $page->id_halaman,
                 'nomor'     => $page->nomor_halaman,
                 'img'       => asset('storage/' . $page->path_gambar),
                 'narasi_id' => $page->narasi_indo  ? asset('storage/' . $page->narasi_indo)  : null,
                 'narasi_su' => $page->narasi_sunda ? asset('storage/' . $page->narasi_sunda) : null,
-                'backsound' => $page->audioLatar   ? asset('storage/' . $page->audioLatar->path_file) : null,
-                'areas'     => $page->areaInteraktif->map(function($area) {
+                'backsound' => (!$isCover && $page->audioLatar) ? asset('storage/' . $page->audioLatar->path_file) : null,
+                'areas'     => $isCover ? [] : $page->areaInteraktif->map(function($area) {
                     return [
                         'id'       => $area->id_area,
                         'label'    => $area->label,

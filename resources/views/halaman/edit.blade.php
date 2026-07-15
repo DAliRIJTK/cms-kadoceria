@@ -33,11 +33,16 @@
     {{-- ── KIRI: Gambar + Canvas ── --}}
     <div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 class="text-base font-bold text-gray-900 mb-1">Area Interaktif</h2>
-            @if($halaman->buku->status_publikasi === 'Terbit')
-                <p class="text-gray-400 text-xs mb-4">Daftar area interaktif yang terdapat pada halaman ini.</p>
+            @if($halaman->nomor_halaman !== 1)
+                <h2 class="text-base font-bold text-gray-900 mb-1">Area Interaktif</h2>
+                @if($halaman->buku->status_publikasi === 'Terbit')
+                    <p class="text-gray-400 text-xs mb-4">Daftar area interaktif yang terdapat pada halaman ini.</p>
+                @else
+                    <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+                @endif
             @else
-                <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+                <h2 class="text-base font-bold text-gray-900 mb-1">Halaman Cover</h2>
+                <p class="text-gray-400 text-xs mb-4">Pratinjau halaman cover buku.</p>
             @endif
 
             <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 select-none" id="imageWrapper">
@@ -47,6 +52,7 @@
                          alt="Halaman {{ $halaman->nomor_halaman }}"
                          class="w-full block"
                          draggable="false">
+                    @if($halaman->nomor_halaman !== 1)
                     <canvas id="drawCanvas"
                             class="absolute inset-0 w-full h-full {{ $halaman->buku->status_publikasi === 'Terbit' ? 'cursor-default' : 'cursor-crosshair' }}"
                             style="touch-action: none;"></canvas>
@@ -65,6 +71,7 @@
                             </span>
                         </div>
                     @endforeach
+                    @endif
                 @else
                     <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center rounded-lg">
                         <span class="text-3xl font-bold text-gray-400">{{ $halaman->nomor_halaman }}</span>
@@ -107,6 +114,7 @@
 
     {{-- ── KANAN: Daftar area + Audio Halaman ── --}}
     <div class="space-y-5">
+            @if($halaman->nomor_halaman !== 1)
             {{-- Area Interaktif Panel --}}
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
                 {{-- Label input (muncul setelah drag) --}}
@@ -144,7 +152,8 @@
                 </div>
                 <div class="space-y-4 hidden" id="areaList"></div>
             @endif
-        </div>
+            </div>
+            @endif
 
         {{-- Audio Halaman --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -259,9 +268,10 @@
                 </div>
 
                 {{-- Backsound — menggunakan relasi AudioLatar --}}
+                @if($halaman->nomor_halaman !== 1)
                 <div class="border-l-4 border-yellow-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Halaman Audio Latar</p>
-
+ 
                     {{-- Tampilkan audio aktif jika ada --}}
                     @if($halaman->audioLatar)
                         <div class="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between gap-3">
@@ -289,7 +299,7 @@
                             <p class="text-xs text-gray-400 italic mb-2">Belum ada Audio Latar.</p>
                         @endif
                     @endif
-
+ 
                     {{-- Pilih dari daftar AudioLatar yang sudah ada --}}
                     @if($halaman->buku->status_publikasi !== 'Terbit')
                         <form action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
@@ -322,6 +332,7 @@
                         </form>
                     @endif
                 </div>
+                @endif
 
             </div>
         </div>

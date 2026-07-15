@@ -24,8 +24,6 @@
         </a>
     </div>
 @else
-    <div id="reorderToast" class="hidden fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all"></div>
-
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
@@ -54,13 +52,10 @@
                             $anotasiCount = $page->areaInteraktif->count();
                         @endphp
 
-                        <tr class="hover:bg-gray-50 transition-colors {{ $page->buku->status_publikasi === 'Terbit' ? '' : 'sortable-row' }}" data-id="{{ $page->id_halaman }}">
+                        <tr class="hover:bg-gray-50 transition-colors">
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    @if($page->buku->status_publikasi !== 'Terbit')
-                                        <span class="drag-handle text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none text-lg leading-none" title="Seret untuk mengubah urutan">⠿</span>
-                                    @endif
                                     <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
                                 </div>
                             </td>
@@ -124,18 +119,22 @@
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
                                     @if($page->buku->status_publikasi !== 'Terbit')
-                                        <a href="{{ route('halaman.edit', [$page->buku, $page->nomor_halaman]) }}"
-                                           class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
-                                            Sunting
-                                        </a>
-                                        <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                    class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                                Hapus
-                                            </button>
-                                        </form>
+                                        @if($page->nomor_halaman !== 1)
+                                            <a href="{{ route('halaman.edit', [$page->buku, $page->nomor_halaman]) }}"
+                                               class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                Sunting
+                                            </a>
+                                            <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                    Hapus
+                                                </button>
+                                            </form>
+                                        @else
+                                            <span class="text-xs text-gray-400 italic">Cover Buku (Tidak dapat disunting)</span>
+                                        @endif
                                     @else
                                         <span class="text-xs text-gray-400 italic">Buku Terbit (Read-only)</span>
                                     @endif
@@ -173,104 +172,6 @@ function closeImageModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
-
-(function () {
-    const tbody = document.getElementById('sortableBody');
-    if (!tbody) return;
-
-    let dragRow = null;
-    let placeholder = null;
-
-    tbody.addEventListener('mousedown', function (e) {
-        const handle = e.target.closest('.drag-handle');
-        if (!handle) return;
-        dragRow = handle.closest('tr');
-        if (!dragRow) return;
-        e.preventDefault();
-
-        placeholder = document.createElement('tr');
-        placeholder.style.height = dragRow.offsetHeight + 'px';
-        placeholder.style.background = '#eff6ff';
-        placeholder.style.outline = '2px dashed #93c5fd';
-        placeholder.style.outlineOffset = '-2px';
-        const td = document.createElement('td');
-        td.colSpan = dragRow.cells.length;
-        placeholder.appendChild(td);
-
-        dragRow.style.opacity = '0.5';
-        dragRow.style.background = '#f0f9ff';
-        dragRow.classList.add('pointer-events-none');
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
-
-    function onMouseMove(e) {
-        if (!dragRow) return;
-        const rows = [...tbody.querySelectorAll('tr.sortable-row:not(.pointer-events-none)')];
-        let targetRow = null;
-        for (const row of rows) {
-            const rect = row.getBoundingClientRect();
-            if (e.clientY < rect.top + rect.height / 2) { targetRow = row; break; }
-        }
-        if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
-        targetRow ? tbody.insertBefore(placeholder, targetRow) : tbody.appendChild(placeholder);
-    }
-
-    function onMouseUp() {
-        if (!dragRow) return;
-        if (placeholder.parentNode) {
-            tbody.insertBefore(dragRow, placeholder);
-            placeholder.parentNode.removeChild(placeholder);
-        }
-        dragRow.style.opacity = '';
-        dragRow.style.background = '';
-        dragRow.classList.remove('pointer-events-none');
-
-        const rows = [...tbody.querySelectorAll('tr.sortable-row')];
-        rows.forEach((row, i) => {
-            const label = row.querySelector('.page-number-label');
-            if (label) label.textContent = 'Halaman ' + (i + 1);
-        });
-
-        saveOrder(rows.map(r => r.dataset.id));
-        dragRow = null;
-        placeholder = null;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-    }
-
-    function saveOrder(ids) {
-        showToast('Menyimpan urutan...', 'info');
-        fetch("{{ route('halaman.reorder') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({ halaman: ids }),
-        })
-        .then(r => r.json())
-        .then(data => showToast(data.success ? '✓ Urutan berhasil disimpan' : '✗ Gagal menyimpan', data.success ? 'success' : 'error'))
-        .catch(() => showToast('✗ Gagal menyimpan urutan', 'error'));
-    }
-
-    function showToast(msg, type) {
-        const toast = document.getElementById('reorderToast');
-        if (!toast) return;
-        const styles = {
-            info:    'bg-blue-50 text-blue-700 border border-blue-200',
-            success: 'bg-green-50 text-green-700 border border-green-200',
-            error:   'bg-red-50 text-red-700 border border-red-200',
-        };
-        toast.className = 'fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ' + (styles[type] || styles.info);
-        toast.textContent = msg;
-        toast.classList.remove('hidden');
-        clearTimeout(toast._timeout);
-        if (type !== 'info') toast._timeout = setTimeout(() => toast.classList.add('hidden'), 3000);
-    }
-})();
 </script>
 
 @endsection

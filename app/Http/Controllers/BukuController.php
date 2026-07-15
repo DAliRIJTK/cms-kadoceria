@@ -347,10 +347,13 @@ class BukuController extends Controller
             $missingAreaAudio = 0;
 
             foreach ($halamanList as $page) {
-                if (empty($page->narasi_indo)) {
+                if ($page->nomor_halaman === 1) {
+                    continue;
+                }
+                if (empty($page->narasi_indo) || empty($page->narasi_sunda)) {
                     $missingNarasi++;
                 }
-                if (empty($page->id_audio_latar)) {
+                if ($page->nomor_halaman !== 1 && empty($page->id_audio_latar)) {
                     $missingBacksound++;
                 }
 

@@ -83,7 +83,6 @@ Sistem ini dirancang agar konten buku menjadi lebih **hidup**, **modern**, dan *
 ### 📄 Manajemen Halaman
 | Fitur | Keterangan |
 |-------|-----------|
-| Drag & Drop Reorder | Atur urutan halaman secara intuitif dengan antarmuka seret dan lepas |
 | Narasi Audio Indonesia | Upload audio narasi berbahasa Indonesia per halaman |
 | Narasi Audio Sunda | Upload audio narasi berbahasa Sunda per halaman |
 | audio latar | Tambahkan musik latar yang memperindah pengalaman membaca |
