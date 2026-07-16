@@ -8,9 +8,14 @@
             <h1 class="text-3xl font-bold text-gray-800">Daftar Buku Cerita</h1>
             <p class="text-gray-500 mt-1">Kelola koleksi buku dwibahasa Anda</p>
         </div>
-        <a href="{{ route('buku.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-colors duration-200 font-medium flex items-center gap-2">
-            <span class="text-xl">+</span> Tambah Buku
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('audio-latar.index', ['ref' => url()->current()]) }}" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-6 py-3 rounded-lg shadow-sm transition-colors duration-200 font-medium flex items-center gap-2 border border-indigo-200">
+                <span class="text-lg">🎵</span> Kelola Audio Latar
+            </a>
+            <a href="{{ route('buku.create') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition-colors duration-200 font-medium flex items-center gap-2">
+                <span class="text-xl">+</span> Tambah Buku
+            </a>
+        </div>
     </div>
 
     <form method="GET" action="{{ route('dashboard') }}" class="bg-white rounded-lg shadow-sm p-4">
@@ -38,10 +43,9 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan</label>
                 <select name="sort" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
-                    <option value="">Default</option>
+                    <option value="" @if(request('sort') === null || request('sort') === '') selected @endif>Terbaru</option>
                     <option value="title_asc" @if(request('sort') === 'title_asc') selected @endif>Judul (A-Z)</option>
                     <option value="title_desc" @if(request('sort') === 'title_desc') selected @endif>Judul (Z-A)</option>
-                    <option value="date_newest" @if(request('sort') === 'date_newest') selected @endif>Terbaru</option>
                     <option value="date_oldest" @if(request('sort') === 'date_oldest') selected @endif>Terlama</option>
                 </select>
             </div>
@@ -77,7 +81,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         @foreach($buku as $book)
-            <a href="{{ route('buku.show', $book->id_buku) }}" class="group">
+            <a href="{{ route('buku.show', $book) }}" class="group">
                 <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
 
                     <div class="relative overflow-hidden bg-gray-200 h-64">

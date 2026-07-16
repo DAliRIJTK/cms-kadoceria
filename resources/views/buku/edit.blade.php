@@ -3,7 +3,7 @@
 @section('content')
 
 <div class="mb-8">
-    <a href="{{ route('buku.show', $buku->id_buku) }}"
+    <a href="{{ route('buku.show', $buku) }}"
        class="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4 inline-block">← Kembali ke Detail Buku</a>
     <h1 class="text-3xl font-bold text-gray-800">Edit Buku</h1>
     <p class="text-gray-500 mt-2">Perbarui informasi buku Anda</p>
@@ -27,7 +27,7 @@
     $sekunderHex = '#' . implode('', array_map(fn($v) => str_pad(dechex(intval($v)), 2, '0', STR_PAD_LEFT), $sArr));
 @endphp
 
-<form id="editBukuForm" method="POST" action="{{ route('buku.update', $buku->id_buku) }}" class="space-y-6" novalidate>
+<form id="editBukuForm" method="POST" action="{{ route('buku.update', $buku) }}" class="space-y-6" novalidate>
     @csrf
     @method('PATCH')
 
@@ -187,7 +187,7 @@
     </div>
 
     <div class="flex gap-3 justify-end">
-        <a href="{{ route('buku.show', $buku->id_buku) }}"
+        <a href="{{ route('buku.show', $buku) }}"
            class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium">
             Batal
         </a>

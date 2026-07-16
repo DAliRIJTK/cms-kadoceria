@@ -46,7 +46,12 @@ class BukuController extends Controller
         }
 
         $buku = $query->paginate(8);
-        return view('buku.index', compact('buku'));
+        $totalBooks     = Buku::count();
+        $publishedBooks = Buku::where('status_publikasi', 'Terbit')->count();
+        $draftBooks     = Buku::where('status_publikasi', 'Draft')->count();
+        $totalPages     = Halaman::count();
+
+        return view('dashboard', compact('buku', 'totalBooks', 'publishedBooks', 'draftBooks', 'totalPages'));
     }
 
     public function create()
@@ -137,7 +142,7 @@ class BukuController extends Controller
         }
 
         // [FIX #1] Redirect ke halaman show/informasi buku, bukan ke daftar buku
-        return redirect()->route('buku.show', $buku->id_buku)
+        return redirect()->route('buku.show', $buku)
             ->with('success', 'Buku berhasil ditambahkan & diproses!');
     }
 
@@ -151,48 +156,70 @@ class BukuController extends Controller
 
             // Validate that physical assets exist for each page
             foreach ($buku->halaman as $page) {
+                $iscover = $page->nomor_halaman === 1;
+
                 if (empty($page->path_gambar) || !Storage::disk('public')->exists($page->path_gambar)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
-
+                
                 // If narration audio is set in DB but missing in storage
                 if (!empty($page->narasi_indo) && !Storage::disk('public')->exists($page->narasi_indo)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
+                
                 if (!empty($page->narasi_sunda) && !Storage::disk('public')->exists($page->narasi_sunda)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
 
                 // If background audio is set in DB but missing in storage
                 if ($page->audioLatar && !Storage::disk('public')->exists($page->audioLatar->path_file)) {
+                    if($iscover) {
+                        break;
+                    }
                     $hasMissingAssets = true;
                     break;
                 }
-
+                
                 // If area interactive audios are set in DB but missing in storage
                 foreach ($page->areaInteraktif as $area) {
                     if (!empty($area->audio_indo) && !Storage::disk('public')->exists($area->audio_indo)) {
+                        if($iscover) {
+                            break;
+                        }
                         $hasMissingAssets = true;
                         break 2;
                     }
+                    
                     if (!empty($area->audio_sunda) && !Storage::disk('public')->exists($area->audio_sunda)) {
+                        if($iscover) {
+                            break;
+                        }
                         $hasMissingAssets = true;
                         break 2;
                     }
                 }
             }
-
+            
             if ($hasMissingAssets) {
                 $warning = "Aset multimedia tidak dapat dimuat, periksa kelengkapan file.";
             }
-
+            
             $this->fixCoverIfMissing($buku);
             return view('buku.show', compact('buku', 'warning'));
         } catch (\Exception $e) {
-            return redirect()->route('buku.index')->withErrors(['error' => $e->getMessage()]);
+            return redirect()->route('dashboard')->withErrors(['error' => $e->getMessage()]);
         }
     }
 
@@ -342,10 +369,13 @@ class BukuController extends Controller
             $missingAreaAudio = 0;
 
             foreach ($halamanList as $page) {
-                if (empty($page->narasi_indo)) {
+                if ($page->nomor_halaman === 1) {
+                    continue;
+                }
+                if (empty($page->narasi_indo) || empty($page->narasi_sunda)) {
                     $missingNarasi++;
                 }
-                if (empty($page->id_audio_latar)) {
+                if ($page->nomor_halaman !== 1 && empty($page->id_audio_latar)) {
                     $missingBacksound++;
                 }
 
@@ -435,49 +465,10 @@ class BukuController extends Controller
             }
 
             $buku->delete();
-            return redirect('/buku')->with('success', 'Buku berhasil dihapus');
+            return redirect()->route('dashboard')->with('success', 'Buku berhasil dihapus');
         } catch (\Exception $e) {
             return back()->withErrors(['delete' => 'Gagal menghapus buku: ' . $e->getMessage()]);
         }
-    }
-
-    public function dashboard(Request $request)
-    {
-        $query = Buku::query();
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('judul_idn', 'like', "%{$search}%")
-                  ->orWhere('judul_sn', 'like', "%{$search}%")
-                  ->orWhere('penulis', 'like', "%{$search}%")
-                  ->orWhere('ilustrator', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status_publikasi', $request->status);
-        }
-
-        if ($request->filled('sort')) {
-            match ($request->sort) {
-                'title_asc'   => $query->orderBy('judul_idn', 'asc'),
-                'title_desc'  => $query->orderBy('judul_idn', 'desc'),
-                'date_newest' => $query->orderBy('created_at', 'desc'),
-                'date_oldest' => $query->orderBy('created_at', 'asc'),
-                default       => $query->orderBy('created_at', 'desc'),
-            };
-        } else {
-            $query->orderBy('created_at', 'desc');
-        }
-
-        $buku           = $query->paginate(8);
-        $totalBooks     = Buku::count();
-        $publishedBooks = Buku::where('status_publikasi', 'Terbit')->count();
-        $draftBooks     = Buku::where('status_publikasi', 'Draft')->count();
-        $totalPages     = Halaman::count();
-
-        return view('dashboard', compact('buku', 'totalBooks', 'publishedBooks', 'draftBooks', 'totalPages'));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

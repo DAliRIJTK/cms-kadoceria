@@ -38,6 +38,22 @@ class Buku extends Model
         return $this->hasMany(Halaman::class, 'id_buku', 'id_buku');
     }
 
+    public function getRouteKeyName()
+    {
+        return 'judul_idn';
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $query = $this->where('judul_idn', $value);
+
+        if (is_numeric($value)) {
+            $query->orWhere('id_buku', $value);
+        }
+
+        return $query->firstOrFail();
+    }
+
     public function slugify(string $text): string
     {
         $text = mb_strtolower($text, 'UTF-8');

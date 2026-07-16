@@ -15,6 +15,6 @@ use App\Http\Controllers\Api\BukuApiController;
 
 Route::get('/buku', [BukuApiController::class, 'dataInformasiBuku']);
 Route::get('/get/dataInformasiBuku', [BukuApiController::class, 'dataInformasiBuku']);
-Route::get('/get/kontenBuku', [BukuApiController::class, 'kontenBuku']);
-Route::get('/get/detailBuku', [BukuApiController::class, 'detailBuku']);
+Route::get('/get/kontenBuku/{id?}', [BukuApiController::class, 'kontenBuku']);
+Route::get('/get/detailBuku/{id?}', [BukuApiController::class, 'detailBuku']);
 Route::post('/buku/{id}/generate', [BukuApiController::class, 'generateBundle']);

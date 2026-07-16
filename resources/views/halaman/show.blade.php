@@ -97,16 +97,20 @@
             <h3 class="font-semibold text-gray-800 mb-4">Aksi</h3>
             
             <div class="space-y-2">
-                <a href="{{ route('halaman.edit', $halaman->id_halaman) }}" class="block w-full px-4 py-2 text-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm">
-                    Edit
-                </a>
-                <form action="{{ route('halaman.destroy', $halaman->id_halaman) }}" method="POST" class="inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="w-full px-4 py-2 text-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm">
-                        Hapus
-                    </button>
-                </form>
+                @if($halaman->nomor_halaman !== 1)
+                    <a href="{{ route('halaman.edit', [$halaman->buku, $halaman->nomor_halaman]) }}" class="block w-full px-4 py-2 text-center bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm">
+                        Edit
+                    </a>
+                    <form action="{{ route('halaman.destroy', $halaman->id_halaman) }}" method="POST" class="inline w-full">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="w-full px-4 py-2 text-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm">
+                            Hapus
+                        </button>
+                    </form>
+                @else
+                    <span class="block text-center text-xs text-gray-400 italic py-2">Cover Buku (Tidak dapat disunting/dihapus)</span>
+                @endif
             </div>
         </div>
 

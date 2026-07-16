@@ -14,7 +14,7 @@ class AudioController extends Controller
 
         $validated = $request->validate([
             'audio_type' => 'required|in:indo,sunda',
-            'audio_file' => 'required|file|mimes:mp3,m4a,mpga,mp4,x-m4a,wav|extensions:mp3,m4a|max:3024',
+            'audio_file' => 'required|file|mimes:mp3,m4a,mp4,x-m4a|extensions:mp3,m4a|max:1024',
         ], [
             'audio_file.max'   => 'Ukuran file audio maksimal 1MB.',
             'audio_file.mimes' => 'Format audio harus MP3 atau M4A.',
@@ -29,18 +29,22 @@ class AudioController extends Controller
                 if ($area->audio_sunda && Storage::disk('public')->exists($area->audio_sunda)) {
                     $otherHash = md5_file(storage_path('app/public/' . $area->audio_sunda));
                     if ($uploadedHash === $otherHash) {
-                        return back()->withErrors([
-                            'audio' => 'File audio Indonesia tidak boleh sama dengan file audio Sunda untuk area ini.'
-                        ]);
+                        $errMsg = 'File audio Indonesia tidak boleh sama dengan file audio Sunda untuk area ini.';
+                        if ($request->wantsJson()) {
+                            return response()->json(['success' => false, 'message' => $errMsg], 422);
+                        }
+                        return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             } else {
                 if ($area->audio_indo && Storage::disk('public')->exists($area->audio_indo)) {
                     $otherHash = md5_file(storage_path('app/public/' . $area->audio_indo));
                     if ($uploadedHash === $otherHash) {
-                        return back()->withErrors([
-                            'audio' => 'File audio Sunda tidak boleh sama dengan file audio Indonesia untuk area ini.'
-                        ]);
+                        $errMsg = 'File audio Sunda tidak boleh sama dengan file audio Indonesia untuk area ini.';
+                        if ($request->wantsJson()) {
+                            return response()->json(['success' => false, 'message' => $errMsg], 422);
+                        }
+                        return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             }
@@ -58,18 +62,35 @@ class AudioController extends Controller
             $area->halaman->buku->syncStorageStructure();
 
             $lang = $validated['audio_type'] === 'indo' ? 'Indonesia' : 'Sunda';
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Audio {$lang} area berhasil diunggah",
+                    'path' => $path
+                ]);
+            }
             return back()->with('success', "Audio {$lang} area berhasil diunggah");
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Gagal menyimpan: ' . $e->getMessage()], 500);
+            }
             return back()->withErrors(['audio' => 'Gagal menyimpan audio: ' . $e->getMessage()]);
         }
     }
 
     public function storeNarasi(Request $request, Halaman $halaman)
     {
+        if ($halaman->nomor_halaman === 1) {
+            $errMsg = 'Halaman cover tidak boleh memiliki audio narasi.';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errMsg], 422);
+            }
+            return back()->withErrors(['audio' => $errMsg]);
+        }
 
         $validated = $request->validate([
             'narasi_type' => 'required|in:indo,sunda',
-            'audio_file'  => 'required|file|mimes:mp3,m4a,mpga,mp4,x-m4a,wav|extensions:mp3,m4a|max:3024',
+            'audio_file' => 'required|file|mimes:mp3,m4a,wav,mp4,x-m4a|extensions:mp3,m4a|max:1024',
         ], [
             'audio_file.max'   => 'Ukuran file audio maksimal 1MB.',
             'audio_file.mimes' => 'Format audio harus MP3 atau M4A.',
@@ -84,18 +105,22 @@ class AudioController extends Controller
                 if ($halaman->narasi_sunda && Storage::disk('public')->exists($halaman->narasi_sunda)) {
                     $otherHash = md5_file(storage_path('app/public/' . $halaman->narasi_sunda));
                     if ($uploadedHash === $otherHash) {
-                        return back()->withErrors([
-                            'audio' => 'File audio narasi Indonesia tidak boleh sama dengan file audio narasi Sunda untuk halaman ini.'
-                        ]);
+                        $errMsg = 'File audio narasi Indonesia tidak boleh sama dengan file audio narasi Sunda untuk halaman ini.';
+                        if ($request->wantsJson()) {
+                            return response()->json(['success' => false, 'message' => $errMsg], 422);
+                        }
+                        return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             } else {
                 if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
                     $otherHash = md5_file(storage_path('app/public/' . $halaman->narasi_indo));
                     if ($uploadedHash === $otherHash) {
-                        return back()->withErrors([
-                            'audio' => 'File audio narasi Sunda tidak boleh sama dengan file audio narasi Indonesia untuk halaman ini.'
-                        ]);
+                        $errMsg = 'File audio narasi Sunda tidak boleh sama dengan file audio narasi Indonesia untuk halaman ini.';
+                        if ($request->wantsJson()) {
+                            return response()->json(['success' => false, 'message' => $errMsg], 422);
+                        }
+                        return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             }
@@ -122,14 +147,27 @@ class AudioController extends Controller
 
             $halaman->save();
             $halaman->buku->syncStorageStructure();
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'path' => $path
+                ]);
+            }
             return back()->with('success', $message);
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Gagal menyimpan: ' . $e->getMessage()], 500);
+            }
             return back()->withErrors(['audio' => 'Gagal menyimpan: ' . $e->getMessage()]);
         }
     }
 
     public function deleteNarasi(Halaman $halaman, Request $request)
     {
+        if ($halaman->nomor_halaman === 1) {
+            return back()->withErrors(['delete' => 'Halaman cover tidak memiliki audio narasi untuk dihapus.']);
+        }
 
         try {
             $type = $request->input('narasi_type');

@@ -51,8 +51,18 @@ const ModalAlert = (() => {
         const modal = _el(id);
         if (!modal) return;
 
-        if (opts.title)    { const t = _el(id + '-title');    if (t) t.textContent = opts.title; }
-        if (opts.subtitle) { const s = _el(id + '-subtitle'); if (s) { s.textContent = opts.subtitle; s.classList.remove('hidden'); } }
+        if (opts.title !== undefined) { const t = _el(id + '-title'); if (t) t.textContent = opts.title; }
+        if (opts.subtitle !== undefined) {
+            const s = _el(id + '-subtitle');
+            if (s) {
+                s.textContent = opts.subtitle;
+                if (opts.subtitle) {
+                    s.classList.remove('hidden');
+                } else {
+                    s.classList.add('hidden');
+                }
+            }
+        }
 
         _animate(modal, true);
 

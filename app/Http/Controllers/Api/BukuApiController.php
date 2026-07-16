@@ -52,9 +52,9 @@ class BukuApiController extends Controller
      * URL download bundle ZIP buku.
      * GET /api/get/kontenBuku?id={id}
      */
-    public function kontenBuku(Request $request)
+    public function kontenBuku(Request $request, $id = null)
     {
-        $idBuku = $request->query('id');
+        $idBuku = $id ?? $request->input('id');
 
         if (!$idBuku) {
             return response()->json(['error' => 'Parameter id diperlukan'], 400);
@@ -99,9 +99,9 @@ class BukuApiController extends Controller
      * Detail lengkap buku beserta halaman & area interaktif (format offline bundle).
      * GET /api/get/detailBuku?id={id}
      */
-    public function detailBuku(Request $request)
+    public function detailBuku(Request $request, $id = null)
     {
-        $idBuku = $request->query('id');
+        $idBuku = $id ?? $request->input('id');
 
         if (!$idBuku) {
             return response()->json(['error' => 'Parameter id diperlukan'], 400);
@@ -128,11 +128,12 @@ class BukuApiController extends Controller
         }
 
         $pagesData = $halaman->map(function ($page) {
+            $isCover     = $page->nomor_halaman === 1;
             $pageExt     = pathinfo($page->path_gambar ?? '', PATHINFO_EXTENSION);
             $pageRelPath = $page->path_gambar ? 'images/page_' . $page->nomor_halaman . '.' . $pageExt : null;
 
             $backsoundRelPath = null;
-            if ($page->audioLatar) {
+            if (!$isCover && $page->audioLatar) {
                 $bgmExt           = pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
                 $backsoundRelPath = 'audio/bgm_' . $page->audioLatar->id_audio_latar . '.' . $bgmExt;
             }
@@ -149,7 +150,7 @@ class BukuApiController extends Controller
                 $narasiSuRelPath = 'audio/narasi_su_' . $page->id_halaman . '.' . $ext;
             }
 
-            $interactiveObjects = $page->areaInteraktif->map(function ($area) {
+            $interactiveObjects = !$isCover ? $page->areaInteraktif->map(function ($area) {
                 $audioIdRelPath = null;
                 if ($area->audio_indo) {
                     $ext            = pathinfo($area->audio_indo, PATHINFO_EXTENSION);
@@ -170,7 +171,7 @@ class BukuApiController extends Controller
                     'audioObjectId' => $audioIdRelPath,
                     'audioObjectSd' => $audioSuRelPath,
                 ];
-            })->values()->toArray();
+            })->values()->toArray() : [];
 
             return [
                 'image'              => $pageRelPath,
