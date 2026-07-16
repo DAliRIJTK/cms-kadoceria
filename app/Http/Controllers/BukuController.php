@@ -380,7 +380,7 @@ class BukuController extends Controller
                 }
 
                 foreach ($page->areaInteraktif as $area) {
-                    if (!$isFirstPage && empty($area->audio_indo)) {
+                    if (empty($area->audio_indo)) {
                         $missingAreaAudio++;
                     }
                 }
