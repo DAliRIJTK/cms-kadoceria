@@ -34,7 +34,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/halaman/{buku:judul_idn}/halaman{nomor_halaman}/edit', [HalamanController::class, 'edit'])->name('halaman.edit');
     Route::patch('/halaman/{halaman}', [HalamanController::class, 'update'])->name('halaman.update');
     Route::delete('/halaman/{halaman}', [HalamanController::class, 'destroy'])->name('halaman.destroy');
-    Route::post('/halaman-reorder', [HalamanController::class, 'reorder'])->name('halaman.reorder');
 
     // Halaman Narasi
     Route::post('/halaman/{halaman}/narasi', [AudioController::class, 'storeNarasi'])->name('halaman.storeNarasi');

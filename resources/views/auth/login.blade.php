@@ -44,7 +44,7 @@
                         type="text" 
                         name="email"
                         value="{{ old('email') }}"
-                        class="w-full p-3 rounded-lg text-black mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300 {{ $errors->has('email') ? 'ring-2 ring-red-400' : '' }}"
+                        class="w-full p-3 rounded-lg bg-white text-black mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300 {{ $errors->has('email') ? 'ring-2 ring-red-400' : '' }}"
                         placeholder="Email atau Username"
                         required
                         autofocus
@@ -58,7 +58,7 @@
                     <input 
                         type="password" 
                         name="password"
-                        class="w-full p-3 rounded-lg text-black mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300 {{ $errors->has('password') ? 'ring-2 ring-red-400' : '' }}"
+                        class="w-full p-3 rounded-lg bg-white text-black mt-1 focus:outline-none focus:ring-2 focus:ring-blue-300 {{ $errors->has('password') ? 'ring-2 ring-red-400' : '' }}"
                         placeholder="••••••••"
                         required
                     >
@@ -93,7 +93,6 @@
 
     </div>
 
-    <x-modal-scripts />
     @if ($errors->any())
         <script>
             ModalAlert.show('loginAlertModal', {

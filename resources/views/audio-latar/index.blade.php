@@ -3,7 +3,7 @@
 @section('content')
 
 <div class="mb-8">
-    <a href="{{ url()->previous() }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4 inline-block">← Kembali</a>
+    <a href="{{ $ref ? urldecode($ref) : route('dashboard') }}" class="text-blue-600 hover:text-blue-700 text-sm font-medium mb-4 inline-block">← Kembali</a>
     <h1 class="text-3xl font-bold text-gray-800">Audio Latar</h1>
     <p class="text-gray-500 mt-2">Kelola semua audio latar buku Anda</p>
 </div>
@@ -39,6 +39,7 @@
     
     <form action="{{ route('audio-latar.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
         @csrf
+        <input type="hidden" name="ref" value="{{ $ref }}">
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
@@ -80,7 +81,6 @@
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <h3 class="font-semibold text-gray-800">{{ $audio->nama_audio }}</h3>
-                        <p class="text-xs text-gray-600 mt-1">ID: {{ $audio->id_audio_latar }}</p>
                     </div>
                     @if($audio->halaman_count > 0)
                         <button type="button" 
@@ -92,17 +92,13 @@
                         <form action="{{ route('audio-latar.delete', $audio->id_audio_latar) }}" method="POST">
                             @csrf
                             @method('DELETE')
+                            <input type="hidden" name="ref" value="{{ $ref }}">
                             <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm">Hapus</button>
                         </form>
                     @endif
                 </div>
 
                 <audio controls class="w-full mb-3" src="{{ asset('storage/' . $audio->path_file) }}"></audio>
-
-                <div class="text-xs text-gray-600 space-y-1">
-                    <p><strong>Dibuat:</strong> {{ $audio->created_at->locale('id_ID')->format('d F Y') }}</p>
-                    <p><strong>Diupdate:</strong> {{ $audio->updated_at->locale('id_ID')->format('d F Y') }}</p>
-                </div>
             </div>
 
             <div class="mt-4 pt-3 border-t border-gray-100">
@@ -111,7 +107,7 @@
                 @if($audio->halaman_count > 0)
                     <div class="bg-blue-50 border border-blue-100 rounded-lg p-2.5 space-y-1">
                         <span class="text-[11px] font-semibold text-blue-700 block">
-                            Digunakan di Buku:
+                            Buku yang menggunakan audio ini:
                         </span>
 
                         <ul class="list-disc list-inside text-[11px] text-gray-600 space-y-0.5">

@@ -33,11 +33,16 @@
     {{-- ── KIRI: Gambar + Canvas ── --}}
     <div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 class="text-base font-bold text-gray-900 mb-1">Area Interaktif</h2>
-            @if($halaman->buku->status_publikasi === 'Terbit')
-                <p class="text-gray-400 text-xs mb-4">Daftar area interaktif yang terdapat pada halaman ini.</p>
+            @if($halaman->nomor_halaman !== 1)
+                <h2 class="text-base font-bold text-gray-900 mb-1">Area Interaktif</h2>
+                @if($halaman->buku->status_publikasi === 'Terbit')
+                    <p class="text-gray-400 text-xs mb-4">Daftar area interaktif yang terdapat pada halaman ini.</p>
+                @else
+                    <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+                @endif
             @else
-                <p class="text-gray-400 text-xs mb-4">Klik dan drag di halaman untuk membuat area interaktif, lalu isi label dan unggah audio</p>
+                <h2 class="text-base font-bold text-gray-900 mb-1">Halaman Cover</h2>
+                <p class="text-gray-400 text-xs mb-4">Pratinjau halaman cover buku.</p>
             @endif
 
             <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 select-none" id="imageWrapper">
@@ -47,6 +52,7 @@
                          alt="Halaman {{ $halaman->nomor_halaman }}"
                          class="w-full block"
                          draggable="false">
+                    @if($halaman->nomor_halaman !== 1)
                     <canvas id="drawCanvas"
                             class="absolute inset-0 w-full h-full {{ $halaman->buku->status_publikasi === 'Terbit' ? 'cursor-default' : 'cursor-crosshair' }}"
                             style="touch-action: none;"></canvas>
@@ -65,6 +71,7 @@
                             </span>
                         </div>
                     @endforeach
+                    @endif
                 @else
                     <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center rounded-lg">
                         <span class="text-3xl font-bold text-gray-400">{{ $halaman->nomor_halaman }}</span>
@@ -72,7 +79,7 @@
                 @endif
             </div>
 
-            {{-- [DIPINDAH] Navigasi halaman sebelumnya / berikutnya, sekarang di bawah gambar --}}
+            {{-- Navigasi halaman sebelumnya / berikutnya --}}
             <div class="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-gray-100">
                 @if(isset($prevHalaman) && $prevHalaman)
                     <a href="{{ route('halaman.edit', [$prevHalaman->buku, $prevHalaman->nomor_halaman]) }}"
@@ -107,45 +114,6 @@
 
     {{-- ── KANAN: Daftar area + Audio Halaman ── --}}
     <div class="space-y-5">
-            {{-- Area Interaktif Panel --}}
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                {{-- Label input (muncul setelah drag) --}}
-            <div id="labelInputArea" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p class="text-xs font-bold text-blue-800 mb-2">Beri label untuk area baru</p>
-                <div class="flex gap-2">
-                    <input type="text" id="newAreaLabel"
-                            placeholder="Contoh: Mata, Telinga, Pohon..."
-                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <button id="saveAreaBtn" type="button"
-                            class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
-                        💾 Simpan
-                    </button>
-                    <button type="button" id="cancelAreaBtn"
-                            class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors">
-                        Batal
-                    </button>
-                </div>
-            </div>
-            <br>
-            <h2 class="text-base font-bold text-gray-900 mb-4">
-                Area Interaktif (<span id="areaCount">{{ $halaman->areaInteraktif()->count() }}</span>)
-            </h2>
-
-            @if($halaman->areaInteraktif()->count() > 0)
-                <div class="space-y-4" id="areaList">
-                    @foreach($halaman->areaInteraktif as $area)
-                        @include('halaman.area-item', ['area' => $area, 'loop' => $loop])
-                    @endforeach
-                </div>
-            @else
-                <div class="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200" id="emptyAreaMsg">
-                    <p class="text-gray-400 text-sm">Belum ada area interaktif.</p>
-                    <p class="text-gray-400 text-xs mt-1">Klik dan drag pada gambar halaman untuk membuat area.</p>
-                </div>
-                <div class="space-y-4 hidden" id="areaList"></div>
-            @endif
-        </div>
-
         {{-- Audio Halaman --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h2 class="text-base font-bold text-gray-900 mb-5">Audio Halaman</h2>
@@ -155,120 +123,98 @@
                 {{-- Narasi Indonesia --}}
                 <div class="border-l-4 border-blue-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Narasi - Bahasa Indonesia</p>
-                    @if($halaman->narasi_indo)
-                        <div class="mb-2 flex items-center gap-2">
-                            <audio controls class="flex-1 h-8"
-                                   src="{{ asset('storage/' . $halaman->narasi_indo) }}"></audio>
-                        </div>
-                    @else
-                        @if($halaman->buku->status_publikasi === 'Terbit')
-                            <p class="text-xs text-gray-400 italic mb-2">Belum ada audio narasi.</p>
-                        @endif
-                    @endif
+                    
+                    <div class="mb-2 flex items-center gap-2 {{ !$halaman->narasi_indo ? 'hidden' : '' }}" id="audio-player-narasi-indo">
+                        <audio controls class="flex-1 h-8"
+                               src="{{ $halaman->narasi_indo ? asset('storage/' . $halaman->narasi_indo) : '' }}"></audio>
+                    </div>
 
                     @if($halaman->buku->status_publikasi !== 'Terbit')
-                        @if($halaman->narasi_indo)
-                            {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
-                            <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
-                            <form id="delete-narasi-indo-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                                  method="POST" class="hidden">
-                                @csrf @method('DELETE')
-                                <input type="hidden" name="narasi_type" value="indo">
-                            </form>
-                        @endif
-                        <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
-                              method="POST" enctype="multipart/form-data">
-                            @csrf
+                        {{-- Hidden delete form --}}
+                        <form id="delete-narasi-indo-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                              method="POST" class="hidden">
+                            @csrf @method('DELETE')
                             <input type="hidden" name="narasi_type" value="indo">
-                            <div class="flex gap-2">
-                                <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+                        </form>
+
+                        {{-- Auto-upload area: Narasi Indo --}}
+                        <div class="audio-upload-zone" 
+                             data-url="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
+                             data-extra='{"narasi_type":"indo"}'
+                             data-player-target="audio-player-narasi-indo"
+                             data-has-audio="{{ $halaman->narasi_indo ? '1' : '0' }}">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <span class="upload-label flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">
                                     {{ $halaman->narasi_indo ? 'Ganti File' : 'Pilih File' }}
-                                    <input type="file" name="audio_file" accept=".mp3,.m4a"
-                                           required class="hidden" onchange="updateFileName(this)">
-                                </label>
-                                <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+                                </span>
+                                <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
+                                <span class="upload-filename flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate">
                                     Belum ada file dipilih
                                 </span>
-                                <button type="submit"
-                                        class="px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Unggah
+                                <button type="submit" form="delete-narasi-indo-form" id="delete-btn-narasi-indo"
+                                class="mt-2 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors {{ !$halaman->narasi_indo ? 'hidden' : '' }}">
+                                    Hapus
                                 </button>
-                                @if($halaman->narasi_indo)
-                                    <button type="submit" form="delete-narasi-indo-form"
-                                            class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                        Hapus
-                                    </button>
-                                @endif
-                            </div>
+                            </label>
+                            <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
                             <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
-                        </form>
+                        </div>
                     @endif
                 </div>
 
                 {{-- Narasi Sunda --}}
                 <div class="border-l-4 border-purple-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Narasi - Bahasa Sunda</p>
-                    @if($halaman->narasi_sunda)
-                        <div class="mb-2 flex items-center gap-2">
-                            <audio controls class="flex-1 h-8"
-                                   src="{{ asset('storage/' . $halaman->narasi_sunda) }}"></audio>
-                        </div>
-                    @else
-                        @if($halaman->buku->status_publikasi === 'Terbit')
-                            <p class="text-xs text-gray-400 italic mb-2">Belum ada audio narasi.</p>
-                        @endif
-                    @endif
+                    
+                    <div class="mb-2 flex items-center gap-2 {{ !$halaman->narasi_sunda ? 'hidden' : '' }}" id="audio-player-narasi-sunda">
+                        <audio controls class="flex-1 h-8"
+                               src="{{ $halaman->narasi_sunda ? asset('storage/' . $halaman->narasi_sunda) : '' }}"></audio>
+                    </div>
 
                     @if($halaman->buku->status_publikasi !== 'Terbit')
-                        @if($halaman->narasi_sunda)
-                            {{-- [FIX #3] Label unggah berbeda jika sudah ada audio --}}
-                            <p class="text-xs text-yellow-600 font-medium mb-1">⚠️ Mengunggah file baru akan menggantikan audio yang ada</p>
-                            <form id="delete-narasi-sunda-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
-                                  method="POST" class="hidden">
-                                @csrf @method('DELETE')
-                                <input type="hidden" name="narasi_type" value="sunda">
-                            </form>
-                        @endif
-                        <form action="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
-                              method="POST" enctype="multipart/form-data">
-                            @csrf
+                        {{-- Hidden delete form --}}
+                        <form id="delete-narasi-sunda-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
+                              method="POST" class="hidden">
+                            @csrf @method('DELETE')
                             <input type="hidden" name="narasi_type" value="sunda">
-                            <div class="flex gap-2">
-                                <label class="flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+                        </form>
+
+                        {{-- Auto-upload area: Narasi Sunda --}}
+                        <div class="audio-upload-zone"
+                             data-url="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
+                             data-extra='{"narasi_type":"sunda"}'
+                             data-player-target="audio-player-narasi-sunda"
+                             data-has-audio="{{ $halaman->narasi_sunda ? '1' : '0' }}">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <span class="upload-label flex-shrink-0 px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">
                                     {{ $halaman->narasi_sunda ? 'Ganti File' : 'Pilih File' }}
-                                    <input type="file" name="audio_file" accept=".mp3,.m4a"
-                                           required class="hidden" onchange="updateFileName(this)">
-                                </label>
-                                <span class="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+                                </span>
+                                <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
+                                <span class="upload-filename flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-400 truncate">
                                     Belum ada file dipilih
                                 </span>
-                                <button type="submit"
-                                        class="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Unggah
+                                <button type="submit" form="delete-narasi-sunda-form" id="delete-btn-narasi-sunda"
+                                class="mt-2 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors {{ !$halaman->narasi_sunda ? 'hidden' : '' }}">
+                                    Hapus
                                 </button>
-                                @if($halaman->narasi_sunda)
-                                    <button type="submit" form="delete-narasi-sunda-form"
-                                            class="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                        Hapus
-                                    </button>
-                                @endif
-                            </div>
+                            </label>
+                            <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
                             <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
-                        </form>
+                        </div>
+
+
                     @endif
                 </div>
 
                 {{-- Backsound — menggunakan relasi AudioLatar --}}
+                @if($halaman->nomor_halaman !== 1)
                 <div class="border-l-4 border-yellow-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Halaman Audio Latar</p>
-
+ 
                     {{-- Tampilkan audio aktif jika ada --}}
                     @if($halaman->audioLatar)
-                        <div class="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between gap-3">
+                        <div class="mb-3 p-3 flex items-center justify-between gap-3">
                             <div class="min-w-0 flex-1">
-                                <p class="text-xs font-semibold text-yellow-800 truncate">
-                                    🎵 {{ $halaman->audioLatar->nama_audio }}
-                                </p>
                                 <audio controls class="w-full h-7 mt-1"
                                        src="{{ asset('storage/' . $halaman->audioLatar->path_file) }}"></audio>
                             </div>
@@ -289,7 +235,7 @@
                             <p class="text-xs text-gray-400 italic mb-2">Belum ada Audio Latar.</p>
                         @endif
                     @endif
-
+ 
                     {{-- Pilih dari daftar AudioLatar yang sudah ada --}}
                     @if($halaman->buku->status_publikasi !== 'Terbit')
                         <form action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
@@ -309,12 +255,12 @@
                                 </select>
                                 <button type="submit"
                                         class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Atur
+                                    Pilih
                                 </button>
                             </div>
                             <p class="text-xs text-gray-400 mt-1">
                                 Pilih dari daftar audio latar yang tersedia.
-                                <a href="{{ route('audio-latar.index') }}"
+                                <a href="{{ route('audio-latar.index', ['ref' => url()->current()]) }}"
                                    class="text-yellow-600 hover:underline">
                                     + Tambah audio latar baru
                                 </a>
@@ -322,23 +268,238 @@
                         </form>
                     @endif
                 </div>
-
-            </div>
+                @endif
         </div>
-
     </div>
+
+    @if($halaman->nomor_halaman !== 1)
+        {{-- Area Interaktif Panel --}}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            {{-- Label input (muncul setelah drag) --}}
+            <div id="labelInputArea" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p class="text-xs font-bold text-blue-800 mb-2">Beri label untuk area baru</p>
+                <div class="flex gap-2">
+                    <input type="text" id="newAreaLabel"
+                            placeholder="Contoh: Mata, Telinga, Pohon..."
+                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <button id="saveAreaBtn" type="button"
+                            class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                        Simpan
+                    </button>
+                    <button type="button" id="cancelAreaBtn"
+                            class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        <br>
+        <h2 class="text-base font-bold text-gray-900 mb-4">
+            Area Interaktif (<span id="areaCount">{{ $halaman->areaInteraktif()->count() }}</span>)
+        </h2>
+
+        @if($halaman->areaInteraktif()->count() > 0)
+            <div class="space-y-4" id="areaList">
+                @foreach($halaman->areaInteraktif as $area)
+                    @include('halaman.area-item', ['area' => $area, 'loop' => $loop])
+                @endforeach
+            </div>
+        @else
+            <div class="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200" id="emptyAreaMsg">
+                <p class="text-gray-400 text-sm">Belum ada area interaktif.</p>
+                <p class="text-gray-400 text-xs mt-1">Klik dan drag pada gambar halaman untuk membuat area.</p>
+            </div>
+            <div class="space-y-4 hidden" id="areaList"></div>
+        @endif
+    @endif
 </div>
 
 <script>
-// ── File name display ─────────────────────────────────────────────────────────
-function updateFileName(input) {
-    const span = input.closest('label').parentElement.querySelector('.file-name-display');
-    if (span && input.files.length > 0) {
-        span.textContent = input.files[0].name;
-        span.classList.remove('text-gray-400');
-        span.classList.add('text-gray-700');
-    }
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTO-UPLOAD ENGINE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Renders an inline confirmation warning inside the upload zone.
+ */
+function showOverwriteConfirm(zone, onConfirm, onCancel) {
+    // Remove any existing inline confirms in this zone
+    zone.querySelector('.confirm-overwrite-inline')?.remove();
+
+    const confirmDiv = document.createElement('div');
+    confirmDiv.className = 'confirm-overwrite-inline mt-2.5 p-2.5 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between gap-3 text-xs';
+    confirmDiv.innerHTML = `
+        <span class="text-yellow-800 font-medium flex items-center gap-1">⚠️ Audio sudah ada. Timpa?</span>
+        <div class="flex gap-1.5 flex-shrink-0">
+            <button type="button" class="btn-confirm-yes px-2.5 py-1 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded shadow-sm transition-colors">Ya</button>
+            <button type="button" class="btn-confirm-no px-2.5 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded transition-colors">Batal</button>
+        </div>
+    `;
+
+    zone.appendChild(confirmDiv);
+
+    confirmDiv.querySelector('.btn-confirm-yes').addEventListener('click', () => {
+        confirmDiv.remove();
+        onConfirm();
+    });
+
+    confirmDiv.querySelector('.btn-confirm-no').addEventListener('click', () => {
+        confirmDiv.remove();
+        onCancel();
+    });
 }
+
+/**
+ * Initializes auto-upload behavior for all `.audio-upload-zone` elements
+ * within a given container.
+ * @param {HTMLElement|HTMLDocument} container - The parent element to search within.
+ */
+function initAutoUpload(container) {
+    container.querySelectorAll('.audio-upload-zone').forEach(zone => {
+        const input    = zone.querySelector('.auto-upload-input');
+        const filename = zone.querySelector('.upload-filename');
+        const status   = zone.querySelector('.upload-status');
+        const label    = zone.querySelector('.upload-label');
+
+        if (!input || input.dataset.initialized === "1") return;
+        input.dataset.initialized = "1";
+
+        input.addEventListener('change', function () {
+            if (!this.files || !this.files[0]) return;
+
+            const file           = this.files[0];
+            const url            = zone.dataset.url;
+            const extra          = zone.dataset.extra ? JSON.parse(zone.dataset.extra) : {};
+            const csrf           = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+            const playerTargetId = zone.dataset.playerTarget;
+
+            // — Show selected filename immediately
+            if (filename) {
+                filename.textContent = file.name;
+                filename.classList.remove('text-gray-400');
+                filename.classList.add('text-gray-700');
+            }
+
+            const startUpload = () => {
+                setStatus(status, 'loading', '🔄 Mengunggah...');
+                if (label) label.style.pointerEvents = 'none';
+
+                const fd = new FormData();
+                fd.append('audio_file', file);
+                fd.append('_token', csrf);
+                for (const [k, v] of Object.entries(extra)) fd.append(k, v);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        setStatus(status, 'success', '✅ Berhasil diunggah!');
+                        
+                        // Update status to has audio
+                        zone.dataset.hasAudio = "1";
+
+                        // Update label to "Ganti File"
+                        const labelSpan = zone.querySelector('.upload-label');
+                        if (labelSpan) labelSpan.textContent = 'Ganti File';
+
+                        // Refresh/Show audio player
+                        if (data.path && playerTargetId) {
+                            refreshAudioPlayer(playerTargetId, data.path);
+                        }
+
+                        // Dynamically show separate delete button for Narasi
+                        if (playerTargetId === 'audio-player-narasi-indo') {
+                            document.getElementById('delete-btn-narasi-indo')?.classList.remove('hidden');
+                        } else if (playerTargetId === 'audio-player-narasi-sunda') {
+                            document.getElementById('delete-btn-narasi-sunda')?.classList.remove('hidden');
+                        }
+
+                        setTimeout(() => setStatus(status, 'hidden'), 3000);
+                    } else {
+                        const msg = data.message || 'Terjadi kesalahan.';
+                        setStatus(status, 'error', '❌ Gagal: ' + msg);
+                        resetDisplay();
+                    }
+                })
+                .catch(() => {
+                    setStatus(status, 'error', '❌ Gagal: Kesalahan jaringan atau server.');
+                    resetDisplay();
+                })
+                .finally(() => {
+                    if (label) label.style.pointerEvents = '';
+                    input.value = '';
+                });
+            };
+
+            const resetDisplay = () => {
+                if (filename) {
+                    filename.textContent = 'Belum ada file dipilih';
+                    filename.classList.add('text-gray-400');
+                    filename.classList.remove('text-gray-700');
+                }
+                input.value = '';
+            };
+
+            // Check if overwrite confirmation is needed
+            if (zone.dataset.hasAudio === "1") {
+                showOverwriteConfirm(zone, startUpload, resetDisplay);
+            } else {
+                startUpload();
+            }
+        });
+    });
+}
+
+/**
+ * Sets the visual state of an upload status element.
+ */
+function setStatus(el, state, text) {
+    if (!el) return;
+    el.className = 'upload-status mt-1.5 text-xs font-medium';
+
+    if (state === 'hidden') {
+        el.classList.add('hidden');
+        el.textContent = '';
+        return;
+    }
+
+    el.classList.remove('hidden');
+    el.textContent = text || '';
+
+    if (state === 'loading') el.classList.add('text-blue-600');
+    if (state === 'success') el.classList.add('text-green-600');
+    if (state === 'error')   el.classList.add('text-red-600');
+}
+
+/**
+ * Refreshes the <audio> player inside a target element by updating its src.
+ */
+function refreshAudioPlayer(targetId, path) {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    let audio = target.querySelector('audio');
+    if (!audio) {
+        audio = document.createElement('audio');
+        audio.controls = true;
+        audio.className = 'flex-1 h-8';
+        target.insertBefore(audio, target.firstChild);
+    }
+
+    const base = '{{ rtrim(asset('storage'), '/') }}/';
+    audio.src = base + path;
+    audio.load();
+    target.classList.remove('hidden');
+}
+
+// Init for static zones on load
+document.addEventListener('DOMContentLoaded', () => {
+    initAutoUpload(document);
+});
+
 
 // ── Canvas drag-to-draw ───────────────────────────────────────────────────────
 (function () {
@@ -545,9 +706,9 @@ function updateFileName(input) {
         list.insertAdjacentHTML('beforeend', buildAreaCard(area, index));
         const newCard = list.lastElementChild;
         newCard.querySelector('.btn-delete-area').addEventListener('click', handleDeleteArea);
-        newCard.querySelectorAll('input[type="file"]').forEach(inp => {
-            inp.addEventListener('change', function () { updateFileName(this); });
-        });
+        
+        // Init auto-upload trigger on newly created cards dynamically
+        initAutoUpload(newCard);
     }
 
     function buildAreaCard(area, index) {
@@ -555,6 +716,7 @@ function updateFileName(input) {
         const aId         = area.id_area;
         const uploadRoute = `{{ url('area-interaktif') }}/${aId}/audio`;
         const deleteRoute = `{{ url('area-interaktif') }}/${aId}`;
+        const deleteAudioRoute = `{{ url('area-interaktif') }}/${aId}/audio`;
         const csrf        = '{{ csrf_token() }}';
 
         return `
@@ -570,33 +732,53 @@ function updateFileName(input) {
             </div>
             <div class="bg-blue-50 rounded-lg p-3 mb-2 border border-blue-100">
                 <p class="text-xs font-bold text-blue-800 mb-2">Audio Objek - Bahasa Indonesia</p>
-                <form action="${uploadRoute}" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="_token" value="${csrf}">
-                    <input type="hidden" name="audio_type" value="indo">
-                    <div class="flex gap-2">
-                        <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                            Pilih File<input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
-                        </label>
-                        <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">Belum ada file dipilih</span>
-                        <button type="submit" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">Unggah</button>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
-                </form>
+                <div class="flex items-center gap-2 mb-2 hidden" id="audio-player-area-${aId}-indo">
+                    <audio controls class="flex-1 h-8" src=""></audio>
+                    <form action="${deleteAudioRoute}" method="POST" class="flex-shrink-0">
+                        <input type="hidden" name="_token" value="${csrf}">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <input type="hidden" name="audio_type" value="indo">
+                        <button type="submit" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">Hapus</button>
+                    </form>
+                </div>
+                <div class="audio-upload-zone"
+                     data-url="${uploadRoute}"
+                     data-extra='{"audio_type":"indo"}'
+                     data-player-target="audio-player-area-${aId}-indo"
+                     data-has-audio="0">
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <span class="upload-label flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">Pilih File</span>
+                        <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
+                        <span class="upload-filename flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate">Belum ada file dipilih</span>
+                    </label>
+                    <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
+                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
+                </div>
             </div>
             <div class="bg-purple-50 rounded-lg p-3 border border-purple-100">
                 <p class="text-xs font-bold text-purple-800 mb-2">Audio Objek - Bahasa Sunda</p>
-                <form action="${uploadRoute}" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="_token" value="${csrf}">
-                    <input type="hidden" name="audio_type" value="sunda">
-                    <div class="flex gap-2">
-                        <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                            Pilih File<input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden">
-                        </label>
-                        <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">Belum ada file dipilih</span>
-                        <button type="submit" class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">Unggah</button>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
-                </form>
+                <div class="flex items-center gap-2 mb-2 hidden" id="audio-player-area-${aId}-sunda">
+                    <audio controls class="flex-1 h-8" src=""></audio>
+                    <form action="${deleteAudioRoute}" method="POST" class="flex-shrink-0">
+                        <input type="hidden" name="_token" value="${csrf}">
+                        <input type="hidden" name="_method" value="DELETE">
+                        <input type="hidden" name="audio_type" value="sunda">
+                        <button type="submit" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">Hapus</button>
+                    </form>
+                </div>
+                <div class="audio-upload-zone"
+                     data-url="${uploadRoute}"
+                     data-extra='{"audio_type":"sunda"}'
+                     data-player-target="audio-player-area-${aId}-sunda"
+                     data-has-audio="0">
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <span class="upload-label flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">Pilih File</span>
+                        <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
+                        <span class="upload-filename flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate">Belum ada file dipilih</span>
+                    </label>
+                    <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
+                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
+                </div>
             </div>
         </div>`;
     }
@@ -653,10 +835,6 @@ function updateFileName(input) {
             });
         });
     }
-
-    document.querySelectorAll('input[type="file"]').forEach(inp => {
-        inp.addEventListener('change', function () { updateFileName(this); });
-    });
 
 })();
 </script>

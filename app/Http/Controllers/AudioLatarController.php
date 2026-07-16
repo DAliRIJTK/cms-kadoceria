@@ -7,10 +7,11 @@ use App\Models\AudioLatar;
 
 class AudioLatarController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $audioLatar = AudioLatar::withCount('halaman')->with('halaman.buku')->get();
-        return view('audio-latar.index', compact('audioLatar'));
+        $ref = $request->query('ref');
+        return view('audio-latar.index', compact('audioLatar', 'ref'));
     }
 
     public function store(Request $request)
@@ -32,13 +33,18 @@ class AudioLatarController extends Controller
             'path_file' => $path,
         ]);
 
-        return back()->with('success', 'Audio latar berhasil ditambahkan');
+        $ref = $request->input('ref');
+        $redirectUrl = route('audio-latar.index') . ($ref ? '?ref=' . urlencode($ref) : '');
+        return redirect($redirectUrl)->with('success', 'Audio latar berhasil ditambahkan');
     }
 
-    public function delete(AudioLatar $audioLatar)
+    public function delete(Request $request, AudioLatar $audioLatar)
     {
+        $ref = $request->input('ref');
+        $redirectUrl = route('audio-latar.index') . ($ref ? '?ref=' . urlencode($ref) : '');
+
         if ($audioLatar->halaman()->exists()) {
-            return back()->withErrors([
+            return redirect($redirectUrl)->withErrors([
                 'delete' => 'Gagal menghapus: Audio latar "' . $audioLatar->nama_audio . '" sedang digunakan oleh ' . $audioLatar->halaman()->count() . ' halaman.'
             ]);
         }
@@ -50,9 +56,9 @@ class AudioLatarController extends Controller
 
             $audioLatar->delete();
 
-            return back()->with('success', 'Audio latar berhasil dihapus');
+            return redirect($redirectUrl)->with('success', 'Audio latar berhasil dihapus');
         } catch (\Exception $e) {
-            return back()->withErrors([
+            return redirect($redirectUrl)->withErrors([
                 'delete' => 'Gagal menghapus audio latar: ' . $e->getMessage()
             ]);
         }

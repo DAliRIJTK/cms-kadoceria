@@ -54,6 +54,11 @@ class HalamanController extends Controller
 
     public function edit(Buku $buku, $nomor_halaman)
     {
+        if ((int)$nomor_halaman === 1) {
+            return redirect()->route('halaman.management', ['id_buku' => $buku->id_buku])
+                ->withErrors(['error' => 'Halaman cover tidak dapat disunting.']);
+        }
+
         $halaman = Halaman::where('id_buku', $buku->id_buku)
             ->where('nomor_halaman', $nomor_halaman)
             ->firstOrFail();
@@ -158,15 +163,17 @@ class HalamanController extends Controller
     public function destroy(Halaman $halaman)
     {
         $buku = $halaman->buku;
+        $isCover = $halaman->nomor_halaman === 1;
 
         $currentPageCount = $buku->halaman()->count();
-        if ($currentPageCount - 1 <= 10) {
+        if ($currentPageCount - 1 < 10) {
             return back()->withErrors(['delete' => 'Penghapusan halaman tidak diperbolehkan jika sisa halaman kurang dari 10.']);
         }
 
         try {
             $deletedPageNumber = $halaman->nomor_halaman;
 
+            // Hapus file audio dari area interaktif halaman ini
             foreach ($halaman->areaInteraktif as $area) {
                 foreach (['audio_indo', 'audio_sunda'] as $field) {
                     if ($area->$field && Storage::disk('public')->exists($area->$field)) {
@@ -176,22 +183,57 @@ class HalamanController extends Controller
             }
             $halaman->areaInteraktif()->delete();
 
-            // Delete narration audio files if they exist
+            // Hapus file narasi halaman ini
             foreach (['narasi_indo', 'narasi_sunda'] as $field) {
                 if ($halaman->$field && Storage::disk('public')->exists($halaman->$field)) {
                     Storage::disk('public')->delete($halaman->$field);
                 }
             }
 
+            // Hapus file gambar halaman ini
             if ($halaman->path_gambar && Storage::disk('public')->exists($halaman->path_gambar)) {
                 Storage::disk('public')->delete($halaman->path_gambar);
             }
 
             $halaman->delete();
 
+            // Geser nomor halaman yang lebih besar
             $buku->halaman()
                 ->where('nomor_halaman', '>', $deletedPageNumber)
                 ->decrement('nomor_halaman');
+
+            // Jika yang dihapus adalah cover (halaman 1), halaman 2 sekarang menjadi
+            // halaman 1 (cover baru). Cover tidak boleh memiliki audio dan anotasi,
+            // maka bersihkan semua data tersebut dari cover baru.
+            if ($isCover) {
+                $newCover = $buku->halaman()->where('nomor_halaman', 1)->first();
+                if ($newCover) {
+                    // Hapus file audio area interaktif cover baru
+                    $newCover->load('areaInteraktif');
+                    foreach ($newCover->areaInteraktif as $area) {
+                        foreach (['audio_indo', 'audio_sunda'] as $field) {
+                            if ($area->$field && Storage::disk('public')->exists($area->$field)) {
+                                Storage::disk('public')->delete($area->$field);
+                            }
+                        }
+                    }
+                    $newCover->areaInteraktif()->delete();
+
+                    // Hapus file narasi cover baru
+                    foreach (['narasi_indo', 'narasi_sunda'] as $field) {
+                        if ($newCover->$field && Storage::disk('public')->exists($newCover->$field)) {
+                            Storage::disk('public')->delete($newCover->$field);
+                        }
+                    }
+
+                    // Reset kolom audio & relasi audio latar pada cover baru
+                    $newCover->update([
+                        'narasi_indo'    => null,
+                        'narasi_sunda'   => null,
+                        'id_audio_latar' => null,
+                    ]);
+                }
+            }
 
             $buku->syncStorageStructure();
 
@@ -201,23 +243,13 @@ class HalamanController extends Controller
         }
     }
 
-    public function reorder(Request $request)
-    {
-        if ($request->filled('halaman') && count($request->halaman) > 0) {
-            $firstHalaman = Halaman::find($request->halaman[0]);
-        }
-
-        foreach ($request->halaman as $index => $id) {
-            Halaman::where('id_halaman', $id)->update(['nomor_halaman' => $index + 1]);
-        }
-        if (isset($firstHalaman)) {
-            $firstHalaman->buku->syncStorageStructure();
-        }
-        return response()->json(['success' => true]);
-    }
 
     public function setBacksound(Request $request, Halaman $halaman)
     {
+        if ($halaman->nomor_halaman === 1) {
+            return back()->withErrors(['error' => 'Halaman cover tidak boleh memiliki audio latar.']);
+        }
+
         $validated = $request->validate([
             'id_audio_latar' => 'required|exists:audio_latar,id_audio_latar',
         ]);

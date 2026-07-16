@@ -24,8 +24,6 @@
         </a>
     </div>
 @else
-    <div id="reorderToast" class="hidden fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all"></div>
-
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
@@ -54,13 +52,10 @@
                             $anotasiCount = $page->areaInteraktif->count();
                         @endphp
 
-                        <tr class="hover:bg-gray-50 transition-colors {{ $page->buku->status_publikasi === 'Terbit' ? '' : 'sortable-row' }}" data-id="{{ $page->id_halaman }}">
+                        <tr class="hover:bg-gray-50 transition-colors">
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    @if($page->buku->status_publikasi !== 'Terbit')
-                                        <span class="drag-handle text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing select-none text-lg leading-none" title="Seret untuk mengubah urutan">⠿</span>
-                                    @endif
                                     <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
                                 </div>
                             </td>
@@ -124,18 +119,29 @@
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
                                     @if($page->buku->status_publikasi !== 'Terbit')
-                                        <a href="{{ route('halaman.edit', [$page->buku, $page->nomor_halaman]) }}"
-                                           class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
-                                            Sunting
-                                        </a>
-                                        <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit"
-                                                    class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                        @if($page->nomor_halaman !== 1)
+                                            <a href="{{ route('halaman.edit', [$page->buku, $page->nomor_halaman]) }}"
+                                               class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                Sunting
+                                            </a>
+                                            <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit"
+                                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                    Hapus
+                                                </button>
+                                            </form>
+                                        @else
+                                            {{-- Cover: hanya boleh dihapus, tidak bisa disunting --}}
+                                            <span class="text-xs text-gray-400 italic">Cover Buku</span>
+                                            <button
+                                                type="button"
+                                                onclick="confirmDeleteCover('{{ route("halaman.destroy", $page->id_halaman) }}')"
+                                                class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
                                                 Hapus
                                             </button>
-                                        </form>
+                                        @endif
                                     @else
                                         <span class="text-xs text-gray-400 italic">Buku Terbit (Read-only)</span>
                                     @endif
@@ -149,7 +155,49 @@
     </div>
 @endif
 
-{{-- Image Modal --}}
+{{-- Modal konfirmasi hapus cover --}}
+<div id="deleteCoverModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-base font-semibold text-gray-900">Hapus Cover Buku?</h3>
+        </div>
+
+        <p class="text-sm text-gray-600 mb-3">
+            Tindakan ini akan menghapus <strong>halaman cover (halaman 1)</strong> secara permanen.
+        </p>
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-5 text-sm text-amber-800">
+            <p class="font-semibold mb-1">⚠️ Perhatian:</p>
+            <ul class="list-disc list-inside space-y-1">
+                <li>Halaman 2 akan otomatis menjadi <strong>Cover baru (Halaman 1)</strong>.</li>
+                <li>Semua <strong>audio</strong> (narasi, backsound, area interaktif) pada halaman 2 akan <strong>dihapus</strong>.</li>
+                <li>Semua <strong>anotasi</strong> pada halaman 2 akan <strong>dihapus</strong>.</li>
+                <li>Tindakan ini <strong>tidak dapat dibatalkan</strong>.</li>
+            </ul>
+        </div>
+
+        <form id="deleteCoverForm" method="POST" action="">
+            @csrf
+            @method('DELETE')
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeCoverModal()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                    Batal
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors">
+                    Ya, Hapus Cover
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="imageModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50" onclick="closeImageModal()">
     <div class="bg-white rounded-xl shadow-xl p-5 max-w-lg w-full mx-4 max-h-[90vh] overflow-auto" onclick="event.stopPropagation()">
         <div class="flex justify-between items-center mb-3">
@@ -173,104 +221,17 @@ function closeImageModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 }
-
-(function () {
-    const tbody = document.getElementById('sortableBody');
-    if (!tbody) return;
-
-    let dragRow = null;
-    let placeholder = null;
-
-    tbody.addEventListener('mousedown', function (e) {
-        const handle = e.target.closest('.drag-handle');
-        if (!handle) return;
-        dragRow = handle.closest('tr');
-        if (!dragRow) return;
-        e.preventDefault();
-
-        placeholder = document.createElement('tr');
-        placeholder.style.height = dragRow.offsetHeight + 'px';
-        placeholder.style.background = '#eff6ff';
-        placeholder.style.outline = '2px dashed #93c5fd';
-        placeholder.style.outlineOffset = '-2px';
-        const td = document.createElement('td');
-        td.colSpan = dragRow.cells.length;
-        placeholder.appendChild(td);
-
-        dragRow.style.opacity = '0.5';
-        dragRow.style.background = '#f0f9ff';
-        dragRow.classList.add('pointer-events-none');
-
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    });
-
-    function onMouseMove(e) {
-        if (!dragRow) return;
-        const rows = [...tbody.querySelectorAll('tr.sortable-row:not(.pointer-events-none)')];
-        let targetRow = null;
-        for (const row of rows) {
-            const rect = row.getBoundingClientRect();
-            if (e.clientY < rect.top + rect.height / 2) { targetRow = row; break; }
-        }
-        if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder);
-        targetRow ? tbody.insertBefore(placeholder, targetRow) : tbody.appendChild(placeholder);
-    }
-
-    function onMouseUp() {
-        if (!dragRow) return;
-        if (placeholder.parentNode) {
-            tbody.insertBefore(dragRow, placeholder);
-            placeholder.parentNode.removeChild(placeholder);
-        }
-        dragRow.style.opacity = '';
-        dragRow.style.background = '';
-        dragRow.classList.remove('pointer-events-none');
-
-        const rows = [...tbody.querySelectorAll('tr.sortable-row')];
-        rows.forEach((row, i) => {
-            const label = row.querySelector('.page-number-label');
-            if (label) label.textContent = 'Halaman ' + (i + 1);
-        });
-
-        saveOrder(rows.map(r => r.dataset.id));
-        dragRow = null;
-        placeholder = null;
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
-    }
-
-    function saveOrder(ids) {
-        showToast('Menyimpan urutan...', 'info');
-        fetch("{{ route('halaman.reorder') }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({ halaman: ids }),
-        })
-        .then(r => r.json())
-        .then(data => showToast(data.success ? '✓ Urutan berhasil disimpan' : '✗ Gagal menyimpan', data.success ? 'success' : 'error'))
-        .catch(() => showToast('✗ Gagal menyimpan urutan', 'error'));
-    }
-
-    function showToast(msg, type) {
-        const toast = document.getElementById('reorderToast');
-        if (!toast) return;
-        const styles = {
-            info:    'bg-blue-50 text-blue-700 border border-blue-200',
-            success: 'bg-green-50 text-green-700 border border-green-200',
-            error:   'bg-red-50 text-red-700 border border-red-200',
-        };
-        toast.className = 'fixed top-5 right-5 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ' + (styles[type] || styles.info);
-        toast.textContent = msg;
-        toast.classList.remove('hidden');
-        clearTimeout(toast._timeout);
-        if (type !== 'info') toast._timeout = setTimeout(() => toast.classList.add('hidden'), 3000);
-    }
-})();
+function confirmDeleteCover(actionUrl) {
+    document.getElementById('deleteCoverForm').action = actionUrl;
+    const modal = document.getElementById('deleteCoverModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+function closeCoverModal() {
+    const modal = document.getElementById('deleteCoverModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
 </script>
 
 @endsection

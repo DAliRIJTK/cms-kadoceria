@@ -17,93 +17,83 @@
         @endif
     </div>
 
+    {{-- Audio Indo --}}
     <div class="bg-blue-50 rounded-lg p-3 mb-2 border border-blue-100">
         <p class="text-xs font-bold text-blue-800 mb-2">Audio Objek - Bahasa Indonesia</p>
-        @if($area->audio_indo)
-            <div class="flex items-center gap-2 mb-2">
-                <audio controls class="flex-1 h-8" src="{{ asset('storage/' . $area->audio_indo) }}"></audio>
-                @if($area->halaman->buku->status_publikasi !== 'Terbit')
-                    <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
-                        @csrf
-                        @method('DELETE')
-                        <input type="hidden" name="audio_type" value="indo">
-                        <button type="submit"
-                                class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                            Hapus
-                        </button>
-                    </form>
-                @endif
-            </div>
-        @else
-            @if($area->halaman->buku->status_publikasi === 'Terbit')
-                <p class="text-xs text-gray-400 italic mb-1">Belum ada audio objek.</p>
+        
+        <div class="flex items-center gap-2 mb-2 {{ !$area->audio_indo ? 'hidden' : '' }}" id="audio-player-area-{{ $area->id_area }}-indo">
+            <audio controls class="flex-1 h-8" src="{{ $area->audio_indo ? asset('storage/' . $area->audio_indo) : '' }}"></audio>
+            @if($area->halaman->buku->status_publikasi !== 'Terbit')
+                <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
+                    @csrf
+                    @method('DELETE')
+                    <input type="hidden" name="audio_type" value="indo">
+                    <button type="submit"
+                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                        Hapus
+                    </button>
+                </form>
             @endif
-        @endif
+        </div>
 
         @if($area->halaman->buku->status_publikasi !== 'Terbit')
-            <form action="{{ route('halaman.storeAreaAudio', $area->id_area) }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                <input type="hidden" name="audio_type" value="indo">
-                <div class="flex gap-2">
-                    <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                        Pilih File
-                        <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden animate-file-input">
-                    </label>
-                    <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+            <div class="audio-upload-zone"
+                 data-url="{{ route('halaman.storeAreaAudio', $area->id_area) }}"
+                 data-extra='{"audio_type":"indo"}'
+                 data-player-target="audio-player-area-{{ $area->id_area }}-indo"
+                 data-has-audio="{{ $area->audio_indo ? '1' : '0' }}">
+                <label class="flex items-center gap-2 cursor-pointer group">
+                    <span class="upload-label flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">
+                        {{ $area->audio_indo ? 'Ganti File' : 'Pilih File' }}
+                    </span>
+                    <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
+                    <span class="upload-filename flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate">
                         Belum ada file dipilih
                     </span>
-                    <button type="submit"
-                            class="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                        Unggah
-                    </button>
-                </div>
+                </label>
+                <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
                 <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
-            </form>
+            </div>
         @endif
     </div>
 
+    {{-- Audio Sunda --}}
     <div class="bg-purple-50 rounded-lg p-3 border border-purple-100">
         <p class="text-xs font-bold text-purple-800 mb-2">Audio Objek - Bahasa Sunda</p>
-        @if($area->audio_sunda)
-            <div class="flex items-center gap-2 mb-2">
-                <audio controls class="flex-1 h-8" src="{{ asset('storage/' . $area->audio_sunda) }}"></audio>
-                @if($area->halaman->buku->status_publikasi !== 'Terbit')
-                    <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
-                        @csrf
-                        @method('DELETE')
-                        <input type="hidden" name="audio_type" value="sunda">
-                        <button type="submit"
-                                class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                            Hapus
-                        </button>
-                    </form>
-                @endif
-            </div>
-        @else
-            @if($area->halaman->buku->status_publikasi === 'Terbit')
-                <p class="text-xs text-gray-400 italic mb-1">Belum ada audio objek.</p>
+        
+        <div class="flex items-center gap-2 mb-2 {{ !$area->audio_sunda ? 'hidden' : '' }}" id="audio-player-area-{{ $area->id_area }}-sunda">
+            <audio controls class="flex-1 h-8" src="{{ $area->audio_sunda ? asset('storage/' . $area->audio_sunda) : '' }}"></audio>
+            @if($area->halaman->buku->status_publikasi !== 'Terbit')
+                <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
+                    @csrf
+                    @method('DELETE')
+                    <input type="hidden" name="audio_type" value="sunda">
+                    <button type="submit"
+                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                        Hapus
+                    </button>
+                </form>
             @endif
-        @endif
+        </div>
 
         @if($area->halaman->buku->status_publikasi !== 'Terbit')
-            <form action="{{ route('halaman.storeAreaAudio', $area->id_area) }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                <input type="hidden" name="audio_type" value="sunda">
-                <div class="flex gap-2">
-                    <label class="flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium cursor-pointer hover:bg-gray-50 transition-colors">
-                        Pilih File
-                        <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden animate-file-input">
-                    </label>
-                    <span class="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate self-center file-name-display">
+            <div class="audio-upload-zone"
+                 data-url="{{ route('halaman.storeAreaAudio', $area->id_area) }}"
+                 data-extra='{"audio_type":"sunda"}'
+                 data-player-target="audio-player-area-{{ $area->id_area }}-sunda"
+                 data-has-audio="{{ $area->audio_sunda ? '1' : '0' }}">
+                <label class="flex items-center gap-2 cursor-pointer group">
+                    <span class="upload-label flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">
+                        {{ $area->audio_sunda ? 'Ganti File' : 'Pilih File' }}
+                    </span>
+                    <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
+                    <span class="upload-filename flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate">
                         Belum ada file dipilih
                     </span>
-                    <button type="submit"
-                            class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold transition-colors">
-                        Unggah
-                    </button>
-                </div>
+                </label>
+                <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
                 <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
-            </form>
+            </div>
         @endif
     </div>
 </div>

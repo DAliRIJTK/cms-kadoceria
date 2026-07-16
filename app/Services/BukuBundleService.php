@@ -58,14 +58,15 @@ class BukuBundleService
             'tanggal_publikasi' => $buku->updated_at->toIso8601String(),
             'total_halaman'     => $halaman->count(),
             'halaman'           => $halaman->map(function ($page) use ($buku) {
+                $isCover = $page->nomor_halaman === 1;
                 return [
                     'id'           => (string) $page->id_halaman,
                     'nomor'        => $page->nomor_halaman,
                     'gambar'       => asset('storage/' . $page->path_gambar),
                     'narasi_indo'  => $page->narasi_indo  ? asset('storage/' . $page->narasi_indo)  : null,
                     'narasi_sunda' => $page->narasi_sunda ? asset('storage/' . $page->narasi_sunda) : null,
-                    'backsound'    => $page->audioLatar   ? asset('storage/buku/' . $buku->slugify($buku->judul_idn) . '/audio backsound/' . $buku->slugify($page->audioLatar->nama_audio) . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION)) : null,
-                    'area_interaktif' => $page->areaInteraktif->map(function ($area) {
+                    'backsound'    => $isCover ? null : ($page->audioLatar ? asset('storage/buku/' . $buku->slugify($buku->judul_idn) . '/audio backsound/' . $buku->slugify($page->audioLatar->nama_audio) . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION)) : null),
+                    'area_interaktif' => $isCover ? [] : $page->areaInteraktif->map(function ($area) {
                         return [
                             'id'          => (string) $area->id_area,
                             'label'       => $area->label        ?? null,
@@ -121,13 +122,18 @@ class BukuBundleService
         }
 
         $pagesData = [];
+        $pageIndex  = 1; // nomor urut halaman di ZIP (halaman 2 DB → page_1, dst.)
         foreach ($halaman as $page) {
+            // Halaman 1 adalah cover, sudah disalin sebagai cover.* — lewati
+            if ($page->nomor_halaman === 1) {
+                continue;
+            }
 
             $pageRelPath = null;
             if ($page->path_gambar) {
                 $srcImg = storage_path('app/public/' . $page->path_gambar);
                 if (file_exists($srcImg)) {
-                    $pageFilename = 'page_' . $page->nomor_halaman . '.' . pathinfo($page->path_gambar, PATHINFO_EXTENSION);
+                    $pageFilename = 'page_' . $pageIndex . '.' . pathinfo($page->path_gambar, PATHINFO_EXTENSION);
                     copy($srcImg, $tmpDir . '/images/' . $pageFilename);
                     $pageRelPath = 'images/' . $pageFilename;
                 }
@@ -207,6 +213,8 @@ class BukuBundleService
                 'narationSd'         => $narasiSuRelPath,
                 'interactiveObjects' => $interactiveObjects,
             ];
+
+            $pageIndex++;
         }
 
         $dataJson = [
