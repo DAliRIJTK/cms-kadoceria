@@ -1,67 +1,86 @@
 # STAGE 1: Frontend Build (Node.js)
-FROM node:20 AS frontend
+FROM node:20-alpine AS frontend
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install && npm cache clean --force
 COPY . .
 RUN npm run build
 
-# STAGE 2: Backend Setup (PHP 8.3 Apache)
-FROM php:8.3-apache
+# STAGE 2: PHP Dependencies (Composer)
+FROM composer:latest AS dependencies
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs --no-scripts
 
-# 1. Instal dependensi sistem Linux (TAMBAHAN: git dan libzip-dev)
-RUN apt-get update && apt-get install -y \
-    git \
+# STAGE 3: Backend Production (PHP 8.3 Apache)
+FROM php:8.3-apache-bullseye
+
+# Set production environment variables early
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    PHP_OPCACHE_ENABLE=1
+
+# Install system dependencies (consolidated, minimal set)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
     libzip-dev \
-    zip \
-    unzip \
     libpq-dev \
     ghostscript \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# 2. Instal ekstensi PHP native (TAMBAHAN: zip)
-RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd zip
+# Install PHP extensions
+RUN docker-php-ext-install -j$(nproc) pdo_pgsql mbstring exif pcntl bcmath gd zip
 
-# 3. Instal ekstensi Imagick menggunakan script mlocati (Lebih stabil untuk PHP 8.3)
+# Install Imagick extension
 ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 RUN chmod +x /usr/local/bin/install-php-extensions && \
-    install-php-extensions imagick
+    install-php-extensions imagick && \
+    rm /usr/local/bin/install-php-extensions
 
-# 4. FIX KRITIKAL: Ubah policy ImageMagick agar diizinkan membaca & menulis PDF
+# Fix ImageMagick PDF policy
 RUN sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true
 
-# Aktifkan mod_rewrite Apache
+# Enable Apache modules
 RUN a2enmod rewrite
+
+# Configure Apache VirtualHost
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf && \
+    sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# Set working directory
 WORKDIR /var/www/html
 
-# Salin seluruh source code
+# Copy application source
 COPY . .
 
-# Salin hasil build Vite dari Stage 1
+# Copy Composer binaries and dependencies from builder
+COPY --from=dependencies /usr/bin/composer /usr/bin/composer
+COPY --from=dependencies /app/vendor ./vendor
+
+# Copy frontend build artifacts
 COPY --from=frontend /app/public/build ./public/build
 
-ENV COMPOSER_ALLOW_SUPERUSER=1
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Set permissions
+RUN mkdir -p /var/www/html/storage/logs /var/www/html/storage/framework/cache \
+               /var/www/html/storage/framework/sessions /var/www/html/storage/framework/views \
+               /var/www/html/bootstrap/cache && \
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs
-
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# Skrip entrypoint container
+# Create entrypoint script
 RUN echo "#!/bin/bash" > /usr/local/bin/start-container && \
+    echo "set -e" >> /usr/local/bin/start-container && \
     echo "php artisan package:discover --ansi" >> /usr/local/bin/start-container && \
-    echo "php artisan config:clear" >> /usr/local/bin/start-container && \
-    echo "php artisan cache:clear" >> /usr/local/bin/start-container && \
-    echo "php artisan migrate --force" >> /usr/local/bin/start-container && \
-    echo "chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache" >> /usr/local/bin/start-container && \
-    echo "apache2-foreground" >> /usr/local/bin/start-container
+    echo "php artisan config:cache --ansi" >> /usr/local/bin/start-container && \
+    echo "php artisan route:cache --ansi" >> /usr/local/bin/start-container && \
+    echo "php artisan view:cache --ansi" >> /usr/local/bin/start-container && \
+    echo "php artisan migrate --force --ansi" >> /usr/local/bin/start-container && \
+    echo "apache2-foreground" >> /usr/local/bin/start-container && \
+    chmod +x /usr/local/bin/start-container
 
-RUN chmod +x /usr/local/bin/start-container
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
 CMD ["start-container"]
