@@ -103,14 +103,14 @@ class Buku extends Model
         // Pass 1: Move to temporary names to avoid collision
         foreach ($halamanList as $page) {
             $uniq = uniqid();
+            $pageUpdates = [];
 
             // 1. Page image
             if ($page->path_gambar && Storage::disk('s3')->exists($page->path_gambar)) {
                 $ext = pathinfo($page->path_gambar, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/halaman/temp_' . $uniq . '.' . $ext;
                 Storage::disk('s3')->move($page->path_gambar, $tempPath);
-                $page->path_gambar = $tempPath;
-                $page->save();
+                $pageUpdates['path_gambar'] = $tempPath;
                 $tempFiles['image'][$page->id_halaman] = [
                     'ext' => $ext,
                     'temp_path' => $tempPath,
@@ -123,8 +123,7 @@ class Buku extends Model
                 $ext = pathinfo($page->narasi_indo, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/audio narasi indonesia/temp_' . $uniq . '.' . $ext;
                 Storage::disk('s3')->move($page->narasi_indo, $tempPath);
-                $page->narasi_indo = $tempPath;
-                $page->save();
+                $pageUpdates['narasi_indo'] = $tempPath;
                 $tempFiles['narasi_indo'][$page->id_halaman] = [
                     'ext' => $ext,
                     'temp_path' => $tempPath,
@@ -137,8 +136,7 @@ class Buku extends Model
                 $ext = pathinfo($page->narasi_sunda, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/audio narasi sunda/temp_' . $uniq . '.' . $ext;
                 Storage::disk('s3')->move($page->narasi_sunda, $tempPath);
-                $page->narasi_sunda = $tempPath;
-                $page->save();
+                $pageUpdates['narasi_sunda'] = $tempPath;
                 $tempFiles['narasi_sunda'][$page->id_halaman] = [
                     'ext' => $ext,
                     'temp_path' => $tempPath,
@@ -163,13 +161,13 @@ class Buku extends Model
             foreach ($page->areaInteraktif as $area) {
                 $safeLabel = $this->slugify($area->label ?? 'objek');
                 $areaUniq = uniqid();
+                $areaUpdates = [];
 
                 if ($area->audio_indo && Storage::disk('s3')->exists($area->audio_indo)) {
                     $ext = pathinfo($area->audio_indo, PATHINFO_EXTENSION);
-                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_' . $areaUniq . '.' . $ext;
+                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_indo_' . $areaUniq . '.' . $ext;
                     Storage::disk('s3')->move($area->audio_indo, $tempPath);
-                    $area->audio_indo = $tempPath;
-                    $area->save();
+                    $areaUpdates['audio_indo'] = $tempPath;
                     $tempFiles['area_indo'][$area->id_area] = [
                         'ext' => $ext,
                         'temp_path' => $tempPath,
@@ -179,32 +177,38 @@ class Buku extends Model
 
                 if ($area->audio_sunda && Storage::disk('s3')->exists($area->audio_sunda)) {
                     $ext = pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
-                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_' . $areaUniq . '.' . $ext;
+                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_sunda_' . $areaUniq . '.' . $ext;
                     Storage::disk('s3')->move($area->audio_sunda, $tempPath);
-                    $area->audio_sunda = $tempPath;
-                    $area->save();
+                    $areaUpdates['audio_sunda'] = $tempPath;
                     $tempFiles['area_sunda'][$area->id_area] = [
                         'ext' => $ext,
                         'temp_path' => $tempPath,
                         'final_path' => $this->buildPageAssetPath($page, 'audio objek', $ext, $safeLabel . '_sunda')
                     ];
                 }
+
+                if (!empty($areaUpdates)) {
+                    $area->update($areaUpdates);
+                }
+            }
+
+            if (!empty($pageUpdates)) {
+                $page->update($pageUpdates);
             }
         }
 
         // Pass 2: Rename from temp names to final clean names
         foreach ($halamanList as $page) {
+            $pageUpdates = [];
+
             // Finalize page image
             if (isset($tempFiles['image'][$page->id_halaman])) {
                 $info = $tempFiles['image'][$page->id_halaman];
                 $finalPath = $info['final_path'];
                 if (Storage::disk('s3')->exists($info['temp_path'])) {
-                    if (Storage::disk('s3')->exists($finalPath)) {
-                        Storage::disk('s3')->delete($finalPath);
-                    }
+                    if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
                     Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                    $page->path_gambar = $finalPath;
-                    $page->save();
+                    $pageUpdates['path_gambar'] = $finalPath;
                 }
             }
 
@@ -213,12 +217,9 @@ class Buku extends Model
                 $info = $tempFiles['narasi_indo'][$page->id_halaman];
                 $finalPath = $info['final_path'];
                 if (Storage::disk('s3')->exists($info['temp_path'])) {
-                    if (Storage::disk('s3')->exists($finalPath)) {
-                        Storage::disk('s3')->delete($finalPath);
-                    }
+                    if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
                     Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                    $page->narasi_indo = $finalPath;
-                    $page->save();
+                    $pageUpdates['narasi_indo'] = $finalPath;
                 }
             }
 
@@ -227,27 +228,23 @@ class Buku extends Model
                 $info = $tempFiles['narasi_sunda'][$page->id_halaman];
                 $finalPath = $info['final_path'];
                 if (Storage::disk('s3')->exists($info['temp_path'])) {
-                    if (Storage::disk('s3')->exists($finalPath)) {
-                        Storage::disk('s3')->delete($finalPath);
-                    }
+                    if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
                     Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                    $page->narasi_sunda = $finalPath;
-                    $page->save();
+                    $pageUpdates['narasi_sunda'] = $finalPath;
                 }
             }
 
             // Finalize Area Interaktif
             foreach ($page->areaInteraktif as $area) {
+                $areaUpdates = [];
+
                 if (isset($tempFiles['area_indo'][$area->id_area])) {
                     $info = $tempFiles['area_indo'][$area->id_area];
                     $finalPath = $info['final_path'];
                     if (Storage::disk('s3')->exists($info['temp_path'])) {
-                        if (Storage::disk('s3')->exists($finalPath)) {
-                            Storage::disk('s3')->delete($finalPath);
-                        }
+                        if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
                         Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                        $area->audio_indo = $finalPath;
-                        $area->save();
+                        $areaUpdates['audio_indo'] = $finalPath;
                     }
                 }
 
@@ -255,14 +252,19 @@ class Buku extends Model
                     $info = $tempFiles['area_sunda'][$area->id_area];
                     $finalPath = $info['final_path'];
                     if (Storage::disk('s3')->exists($info['temp_path'])) {
-                        if (Storage::disk('s3')->exists($finalPath)) {
-                            Storage::disk('s3')->delete($finalPath);
-                        }
+                        if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
                         Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                        $area->audio_sunda = $finalPath;
-                        $area->save();
+                        $areaUpdates['audio_sunda'] = $finalPath;
                     }
                 }
+
+                if (!empty($areaUpdates)) {
+                    $area->update($areaUpdates);
+                }
+            }
+
+            if (!empty($pageUpdates)) {
+                $page->update($pageUpdates);
             }
         }
 
