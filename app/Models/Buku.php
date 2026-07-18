@@ -162,11 +162,11 @@ class Buku extends Model
             // 5. Area Interaktif
             foreach ($page->areaInteraktif as $area) {
                 $safeLabel = $this->slugify($area->label ?? 'objek');
-                $areaUniq = uniqid();
 
                 if ($area->audio_indo && Storage::disk('s3')->exists($area->audio_indo)) {
                     $ext = pathinfo($area->audio_indo, PATHINFO_EXTENSION);
-                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_' . $areaUniq . '.' . $ext;
+                    $areaUniqIndo = uniqid('indo_');
+                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_' . $areaUniqIndo . '.' . $ext;
                     Storage::disk('s3')->move($area->audio_indo, $tempPath);
                     $area->audio_indo = $tempPath;
                     $area->save();
@@ -179,7 +179,8 @@ class Buku extends Model
 
                 if ($area->audio_sunda && Storage::disk('s3')->exists($area->audio_sunda)) {
                     $ext = pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
-                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_' . $areaUniq . '.' . $ext;
+                    $areaUniqSunda = uniqid('sunda_');
+                    $tempPath = 'buku/' . $bookDir . '/audio objek/temp_' . $areaUniqSunda . '.' . $ext;
                     Storage::disk('s3')->move($area->audio_sunda, $tempPath);
                     $area->audio_sunda = $tempPath;
                     $area->save();
