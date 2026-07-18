@@ -98,7 +98,7 @@
                     @endif
                 </div>
 
-                <audio controls class="w-full mb-3" src="{{ asset('storage/' . $audio->path_file) }}"></audio>
+                <audio controls class="w-full mb-3" src="{{ $audio->path_file ? Storage::disk(config('filesystems.default'))->url($audio->path_file) : '' }}"></audio>
             </div>
 
             <div class="mt-4 pt-3 border-t border-gray-100">

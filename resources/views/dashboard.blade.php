@@ -85,9 +85,9 @@
                 <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
 
                     <div class="relative overflow-hidden bg-gray-200 h-64">
-                        @if($book->path_cover && file_exists(storage_path('app/public/' . $book->path_cover)))
+                        @if($book->path_cover)
                             <img 
-                                src="{{ asset('storage/' . $book->path_cover) }}"
+                                src="{{ Storage::disk(config('filesystems.default'))->url($book->path_cover) }}"
                                 alt="{{ $book->judul_idn }}"
                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             >

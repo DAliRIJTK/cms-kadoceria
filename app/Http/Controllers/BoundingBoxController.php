@@ -140,8 +140,8 @@ class BoundingBoxController extends Controller
 
         try {
             foreach (['audio_indo', 'audio_sunda'] as $field) {
-                if ($area->$field && Storage::disk('public')->exists($area->$field)) {
-                    Storage::disk('public')->delete($area->$field);
+                if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
+                    Storage::disk('s3')->delete($area->$field);
                 }
             }
             $area->delete();

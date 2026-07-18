@@ -53,7 +53,7 @@ class BukuBundleService
             'deskripsi_sn'      => $buku->deskripsi_sn,
             'warna_primer'      => $this->rgbToHex($buku->warna_primer,   '#FFFFFF'),
             'warna_sekunder'    => $this->rgbToHex($buku->warna_sekunder, '#FFFFFF'),
-            'cover'             => $buku->path_cover ? asset('storage/' . $buku->path_cover) : null,
+            'cover'             => $this->storageUrl($buku->path_cover),
             'status_publikasi'  => $buku->status_publikasi,
             'tanggal_publikasi' => $buku->updated_at->toIso8601String(),
             'total_halaman'     => $halaman->count(),
@@ -62,10 +62,10 @@ class BukuBundleService
                 return [
                     'id'           => (string) $page->id_halaman,
                     'nomor'        => $page->nomor_halaman,
-                    'gambar'       => asset('storage/' . $page->path_gambar),
-                    'narasi_indo'  => $page->narasi_indo  ? asset('storage/' . $page->narasi_indo)  : null,
-                    'narasi_sunda' => $page->narasi_sunda ? asset('storage/' . $page->narasi_sunda) : null,
-                    'backsound'    => $isCover ? null : ($page->audioLatar ? asset('storage/buku/' . $buku->slugify($buku->judul_idn) . '/audio backsound/' . $buku->slugify($page->audioLatar->nama_audio) . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION)) : null),
+                    'gambar'       => $this->storageUrl($page->path_gambar),
+                    'narasi_indo'  => $this->storageUrl($page->narasi_indo),
+                    'narasi_sunda' => $this->storageUrl($page->narasi_sunda),
+                    'backsound'    => $isCover ? null : ($page->audioLatar ? $this->storageUrl($page->audioLatar->path_file) : null),
                     'area_interaktif' => $isCover ? [] : $page->areaInteraktif->map(function ($area) {
                         return [
                             'id'          => (string) $area->id_area,
@@ -78,15 +78,15 @@ class BukuBundleService
                             'h_pct'       => $area->h_pct        ?? null,
                             'lebar'       => $area->lebar_area,
                             'tinggi'      => $area->panjang_area,
-                            'audio_indo'  => $area->audio_indo   ? asset('storage/' . $area->audio_indo)  : null,
-                            'audio_sunda' => $area->audio_sunda  ? asset('storage/' . $area->audio_sunda) : null,
+                            'audio_indo'  => $this->storageUrl($area->audio_indo),
+                            'audio_sunda' => $this->storageUrl($area->audio_sunda),
                         ];
                     })->toArray(),
                 ];
             })->toArray(),
         ];
 
-        Storage::disk('public')->put(
+        Storage::disk('s3')->put(
             'buku/' . $buku->slugify($buku->judul_idn) . '/metadata.json',
             json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
@@ -113,10 +113,8 @@ class BukuBundleService
 
         $coverRelPath = null;
         if ($buku->path_cover) {
-            $srcCover = storage_path('app/public/' . $buku->path_cover);
-            if (file_exists($srcCover)) {
-                $coverFilename = 'cover' . '.' . pathinfo($buku->path_cover, PATHINFO_EXTENSION);
-                copy($srcCover, $tmpDir . '/images/' . $coverFilename);
+            $coverFilename = 'cover' . '.' . pathinfo($buku->path_cover, PATHINFO_EXTENSION);
+            if ($this->copyFromStorageToLocal($buku->path_cover, $tmpDir . '/images/' . $coverFilename)) {
                 $coverRelPath = 'images/' . $coverFilename;
             }
         }
@@ -131,42 +129,32 @@ class BukuBundleService
 
             $pageRelPath = null;
             if ($page->path_gambar) {
-                $srcImg = storage_path('app/public/' . $page->path_gambar);
-                if (file_exists($srcImg)) {
-                    $pageFilename = 'page_' . $pageIndex . '.' . pathinfo($page->path_gambar, PATHINFO_EXTENSION);
-                    copy($srcImg, $tmpDir . '/images/' . $pageFilename);
+                $pageFilename = 'page_' . $pageIndex . '.' . pathinfo($page->path_gambar, PATHINFO_EXTENSION);
+                if ($this->copyFromStorageToLocal($page->path_gambar, $tmpDir . '/images/' . $pageFilename)) {
                     $pageRelPath = 'images/' . $pageFilename;
                 }
             }
 
             $backsoundRelPath = null;
             if ($page->audioLatar && $page->audioLatar->path_file) {
-                $srcAudio = storage_path('app/public/' . $page->audioLatar->path_file);
-                if (file_exists($srcAudio)) {
-                    $bgmFilename = 'bgm_' . $page->audioLatar->id_audio_latar . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
-                    if (!file_exists($tmpDir . '/audio/' . $bgmFilename)) {
-                        copy($srcAudio, $tmpDir . '/audio/' . $bgmFilename);
-                    }
+                $bgmFilename = 'bgm_' . $page->audioLatar->id_audio_latar . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
+                if (!file_exists($tmpDir . '/audio/' . $bgmFilename) && $this->copyFromStorageToLocal($page->audioLatar->path_file, $tmpDir . '/audio/' . $bgmFilename)) {
                     $backsoundRelPath = 'audio/' . $bgmFilename;
                 }
             }
 
             $narasiIdRelPath = null;
             if ($page->narasi_indo) {
-                $srcNarasi = storage_path('app/public/' . $page->narasi_indo);
-                if (file_exists($srcNarasi)) {
-                    $narasiIdFilename = 'narasi_id_' . $page->id_halaman . '.' . pathinfo($page->narasi_indo, PATHINFO_EXTENSION);
-                    copy($srcNarasi, $tmpDir . '/audio/' . $narasiIdFilename);
+                $narasiIdFilename = 'narasi_id_' . $page->id_halaman . '.' . pathinfo($page->narasi_indo, PATHINFO_EXTENSION);
+                if ($this->copyFromStorageToLocal($page->narasi_indo, $tmpDir . '/audio/' . $narasiIdFilename)) {
                     $narasiIdRelPath = 'audio/' . $narasiIdFilename;
                 }
             }
 
             $narasiSuRelPath = null;
             if ($page->narasi_sunda) {
-                $srcNarasiSu = storage_path('app/public/' . $page->narasi_sunda);
-                if (file_exists($srcNarasiSu)) {
-                    $narasiSuFilename = 'narasi_su_' . $page->id_halaman . '.' . pathinfo($page->narasi_sunda, PATHINFO_EXTENSION);
-                    copy($srcNarasiSu, $tmpDir . '/audio/' . $narasiSuFilename);
+                $narasiSuFilename = 'narasi_su_' . $page->id_halaman . '.' . pathinfo($page->narasi_sunda, PATHINFO_EXTENSION);
+                if ($this->copyFromStorageToLocal($page->narasi_sunda, $tmpDir . '/audio/' . $narasiSuFilename)) {
                     $narasiSuRelPath = 'audio/' . $narasiSuFilename;
                 }
             }
@@ -176,20 +164,16 @@ class BukuBundleService
 
                 $audioObjIdRelPath = null;
                 if ($area->audio_indo) {
-                    $srcObjId = storage_path('app/public/' . $area->audio_indo);
-                    if (file_exists($srcObjId)) {
-                        $objIdFilename = 'objek_id_' . $area->id_area . '.' . pathinfo($area->audio_indo, PATHINFO_EXTENSION);
-                        copy($srcObjId, $tmpDir . '/audio/' . $objIdFilename);
+                    $objIdFilename = 'objek_id_' . $area->id_area . '.' . pathinfo($area->audio_indo, PATHINFO_EXTENSION);
+                    if ($this->copyFromStorageToLocal($area->audio_indo, $tmpDir . '/audio/' . $objIdFilename)) {
                         $audioObjIdRelPath = 'audio/' . $objIdFilename;
                     }
                 }
 
                 $audioObjSuRelPath = null;
                 if ($area->audio_sunda) {
-                    $srcObjSu = storage_path('app/public/' . $area->audio_sunda);
-                    if (file_exists($srcObjSu)) {
-                        $objSuFilename = 'objek_su_' . $area->id_area . '.' . pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
-                        copy($srcObjSu, $tmpDir . '/audio/' . $objSuFilename);
+                    $objSuFilename = 'objek_su_' . $area->id_area . '.' . pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
+                    if ($this->copyFromStorageToLocal($area->audio_sunda, $tmpDir . '/audio/' . $objSuFilename)) {
                         $audioObjSuRelPath = 'audio/' . $objSuFilename;
                     }
                 }
@@ -239,15 +223,12 @@ class BukuBundleService
             json_encode($dataJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
 
-        $zipDir      = storage_path('app/public/buku/bundle');
         $zipFilename = $buku->id_buku . '_v' . ($buku->updated_at->timestamp) . '.zip';
-        $zipPath     = $zipDir . '/' . $zipFilename;
-
-        if (!file_exists($zipDir)) mkdir($zipDir, 0777, true);
+        $zipTempPath = $tmpDir . '/' . $zipFilename;
 
         $zip = new ZipArchive();
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new \Exception('Tidak dapat membuat file ZIP: ' . $zipPath);
+        if ($zip->open($zipTempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new \Exception('Tidak dapat membuat file ZIP: ' . $zipTempPath);
         }
 
         $files = new \RecursiveIteratorIterator(
@@ -263,13 +244,13 @@ class BukuBundleService
         }
 
         $zip->close();
-
-        $oldFiles = glob($zipDir . '/' . $buku->id_buku . '_v*.zip');
-        foreach ((array) $oldFiles as $oldFile) {
-            if (realpath($oldFile) !== realpath($zipPath)) {
-                @unlink($oldFile);
-            }
+        $zipContent = file_get_contents($zipTempPath);
+        if ($zipContent === false) {
+            throw new \Exception('Tidak dapat membaca file ZIP yang dihasilkan');
         }
+
+        Storage::disk('s3')->put('buku/bundle/' . $zipFilename, $zipContent);
+        @unlink($zipTempPath);
 
         $buku->update(['zip_bundle_path' => 'buku/bundle/' . $zipFilename]);
 
@@ -299,6 +280,31 @@ class BukuBundleService
         $b = max(0, min(255, (int) $parts[2]));
 
         return sprintf('#%02X%02X%02X', $r, $g, $b);
+    }
+
+    private function storageUrl(?string $path): ?string
+    {
+        return $path ? Storage::disk('s3')->url($path) : null;
+    }
+
+    private function copyFromStorageToLocal(?string $path, string $destPath): bool
+    {
+        if (!$path) {
+            return false;
+        }
+
+        try {
+            $contents = Storage::disk('s3')->get($path);
+        } catch (\Exception $e) {
+            return false;
+        }
+
+        if ($contents === null || $contents === false) {
+            return false;
+        }
+
+        file_put_contents($destPath, $contents);
+        return true;
     }
 
     /**

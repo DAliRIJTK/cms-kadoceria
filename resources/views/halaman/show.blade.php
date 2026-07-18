@@ -11,8 +11,8 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-            @if($halaman->path_gambar && file_exists(storage_path('app/public/' . $halaman->path_gambar)))
-                <img src="{{ asset('storage/' . $halaman->path_gambar) }}" alt="Halaman {{ $halaman->nomor_halaman }}" class="w-full">
+            @if($halaman->path_gambar)
+                <img src="{{ Storage::disk(config('filesystems.default'))->url($halaman->path_gambar) }}" alt="Halaman {{ $halaman->nomor_halaman }}" class="w-full">
             @else
                 <div class="w-full aspect-square bg-gray-200 flex items-center justify-center">
                     <span class="text-2xl font-bold text-gray-600">{{ $halaman->nomor_halaman }}</span>
@@ -29,7 +29,7 @@
                     @if($halaman->narasi_indo)
                         <div class="flex items-center gap-3 bg-gray-100 p-3 rounded-lg">
                             <span class="text-sm text-gray-700">Audio tersimpan</span>
-                            <audio controls class="flex-1 h-8" src="{{ asset('storage/' . $halaman->narasi_indo) }}"></audio>
+                            <audio controls class="flex-1 h-8" src="{{ $halaman->narasi_indo ? Storage::disk(config('filesystems.default'))->url($halaman->narasi_indo) : '' }}"></audio>
                         </div>
                     @else
                         <p class="text-sm text-gray-600 italic">Belum ada narasi Indonesia</p>
@@ -41,7 +41,7 @@
                     @if($halaman->narasi_sunda)
                         <div class="flex items-center gap-3 bg-gray-100 p-3 rounded-lg">
                             <span class="text-sm text-gray-700">Audio tersimpan</span>
-                            <audio controls class="flex-1 h-8" src="{{ asset('storage/' . $halaman->narasi_sunda) }}"></audio>
+                            <audio controls class="flex-1 h-8" src="{{ $halaman->narasi_sunda ? Storage::disk(config('filesystems.default'))->url($halaman->narasi_sunda) : '' }}"></audio>
                         </div>
                     @else
                         <p class="text-sm text-gray-600 italic">Belum ada narasi Sunda</p>
@@ -73,13 +73,13 @@
                                 @if($area->audio_indo)
                                     <div>
                                         <p class="font-medium text-gray-700 mb-1">Audio Indo</p>
-                                        <audio controls class="w-full h-6" src="{{ asset('storage/' . $area->audio_indo) }}"></audio>
+                                        <audio controls class="w-full h-6" src="{{ $area->audio_indo ? Storage::disk(config('filesystems.default'))->url($area->audio_indo) : '' }}"></audio>
                                     </div>
                                 @endif
                                 @if($area->audio_sunda)
                                     <div>
                                         <p class="font-medium text-gray-700 mb-1">Audio Sunda</p>
-                                        <audio controls class="w-full h-6" src="{{ asset('storage/' . $area->audio_sunda) }}"></audio>
+                                        <audio controls class="w-full h-6" src="{{ $area->audio_sunda ? Storage::disk(config('filesystems.default'))->url($area->audio_sunda) : '' }}"></audio>
                                     </div>
                                 @endif
                             </div>

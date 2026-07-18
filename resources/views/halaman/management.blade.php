@@ -69,12 +69,12 @@
                             </td>
 
                             <td class="px-4 py-4 whitespace-nowrap">
-                                @if($page->path_gambar && file_exists(storage_path('app/public/' . $page->path_gambar)))
+                                @if($page->path_gambar)
                                     <img
-                                        src="{{ asset('storage/' . $page->path_gambar) }}"
+                                        src="{{ Storage::disk(config('filesystems.default'))->url($page->path_gambar) }}"
                                         alt="Halaman {{ $page->nomor_halaman }}"
                                         class="h-14 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-                                        data-src="{{ asset('storage/' . $page->path_gambar) }}"
+                                        data-src="{{ Storage::disk(config('filesystems.default'))->url($page->path_gambar) }}"
                                         data-title="Halaman {{ $page->nomor_halaman }}"
                                         onclick="showImageModal(this.dataset.src, this.dataset.title)"
                                     >

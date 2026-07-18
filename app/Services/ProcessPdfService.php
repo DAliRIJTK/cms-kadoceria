@@ -19,36 +19,48 @@ class ProcessPdfService
      */
     public function process(Buku $buku, string $pdfPath): void
     {
-        $fullPdfPath = storage_path('app/public/' . $pdfPath);
-
-        if (!file_exists($fullPdfPath)) {
-            throw new \Exception("File PDF tidak ditemukan: {$fullPdfPath}");
+        $tempPdfPath = tempnam(sys_get_temp_dir(), 'pdf_');
+        if ($tempPdfPath === false) {
+            throw new \Exception('Tidak dapat membuat file temporer untuk PDF');
         }
+
+        $pdfContents = Storage::disk('s3')->get($pdfPath);
+        if ($pdfContents === null || $pdfContents === false) {
+            throw new \Exception("File PDF tidak ditemukan: {$pdfPath}");
+        }
+
+        file_put_contents($tempPdfPath, $pdfContents);
 
         $imagick = new \Imagick();
         try {
             $imagick->setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 256);
             $imagick->setResolution(120, 120);
-            $imagick->readImage($fullPdfPath);
+            $imagick->readImage($tempPdfPath);
 
             foreach ($imagick as $index => $page) {
                 $page->setImageFormat('webp');
                 $page->setImageCompressionQuality(80);
 
                 $fileName = 'buku/halaman/' . uniqid() . '_halaman_' . ($index + 1) . '.webp';
-                $fullPath = storage_path('app/public/' . $fileName);
-
-                $dir = dirname($fullPath);
-                if (!file_exists($dir)) {
-                    mkdir($dir, 0777, true);
+                $tempImagePath = tempnam(sys_get_temp_dir(), 'page_');
+                if ($tempImagePath === false) {
+                    throw new \Exception('Tidak dapat membuat file temporer untuk gambar halaman');
                 }
 
-                if (!$page->writeImage($fullPath) || !file_exists($fullPath)) {
+                if (!$page->writeImage($tempImagePath) || !file_exists($tempImagePath)) {
                     throw new \Exception('Gagal menyimpan gambar halaman ke-' . ($index + 1));
                 }
 
+                $imageContents = file_get_contents($tempImagePath);
+                if ($imageContents === false) {
+                    throw new \Exception('Gagal membaca gambar halaman ke-' . ($index + 1));
+                }
+
+                Storage::disk('s3')->put($fileName, $imageContents);
+                unlink($tempImagePath);
+
                 // Get page image dimensions
-                list($width, $height) = getimagesize($fullPath);
+                list($width, $height) = getimagesizefromstring($imageContents);
 
                 Halaman::create([
                     'id_buku'       => $buku->id_buku,
@@ -79,7 +91,7 @@ class ProcessPdfService
             }
             throw $e;
         } finally {
-            Storage::disk('public')->delete($pdfPath);
+            Storage::disk('s3')->delete($pdfPath);
         }
     }
 }

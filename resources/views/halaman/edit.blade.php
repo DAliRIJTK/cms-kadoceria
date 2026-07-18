@@ -46,9 +46,9 @@
             @endif
 
             <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 select-none" id="imageWrapper">
-                @if($halaman->path_gambar && file_exists(storage_path('app/public/' . $halaman->path_gambar)))
+                @if($halaman->path_gambar)
                     <img id="pageImage"
-                         src="{{ asset('storage/' . $halaman->path_gambar) }}"
+                         src="{{ Storage::disk(config('filesystems.default'))->url($halaman->path_gambar) }}"
                          alt="Halaman {{ $halaman->nomor_halaman }}"
                          class="w-full block"
                          draggable="false">
@@ -126,7 +126,7 @@
                     
                     <div class="mb-2 flex items-center gap-2 {{ !$halaman->narasi_indo ? 'hidden' : '' }}" id="audio-player-narasi-indo">
                         <audio controls class="flex-1 h-8"
-                               src="{{ $halaman->narasi_indo ? asset('storage/' . $halaman->narasi_indo) : '' }}"></audio>
+                               src="{{ $halaman->narasi_indo ? Storage::disk('s3')->url($halaman->narasi_indo) : '' }}"></audio>
                     </div>
 
                     @if($halaman->buku->status_publikasi !== 'Terbit')
@@ -168,7 +168,7 @@
                     
                     <div class="mb-2 flex items-center gap-2 {{ !$halaman->narasi_sunda ? 'hidden' : '' }}" id="audio-player-narasi-sunda">
                         <audio controls class="flex-1 h-8"
-                               src="{{ $halaman->narasi_sunda ? asset('storage/' . $halaman->narasi_sunda) : '' }}"></audio>
+                               src="{{ $halaman->narasi_sunda ? Storage::disk('s3')->url($halaman->narasi_sunda) : '' }}"></audio>
                     </div>
 
                     @if($halaman->buku->status_publikasi !== 'Terbit')
@@ -216,7 +216,7 @@
                         <div class="mb-3 p-3 flex items-center justify-between gap-3">
                             <div class="min-w-0 flex-1">
                                 <audio controls class="w-full h-7 mt-1"
-                                       src="{{ asset('storage/' . $halaman->audioLatar->path_file) }}"></audio>
+                                       src="{{ $halaman->audioLatar && $halaman->audioLatar->path_file ? Storage::disk(config('filesystems.default'))->url($halaman->audioLatar->path_file) : '' }}"></audio>
                             </div>
                             {{-- Hapus: lepas relasi saja (set id_audio_latar = null) --}}
                             @if($halaman->buku->status_publikasi !== 'Terbit')
@@ -368,7 +368,12 @@ function initAutoUpload(container) {
 
             const file           = this.files[0];
             const url            = zone.dataset.url;
-            const extra          = zone.dataset.extra ? JSON.parse(zone.dataset.extra) : {};
+            const extra          = zone.dataset.audioType ? { audio_type: zone.dataset.audioType } : {};
+
+            // Backward compatibility: if data-extra exists, parse it too
+            if (!Object.keys(extra).length && zone.dataset.extra) {
+                Object.assign(extra, JSON.parse(zone.dataset.extra));
+            }
             const csrf           = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
             const playerTargetId = zone.dataset.playerTarget;
 
@@ -406,8 +411,8 @@ function initAutoUpload(container) {
                         if (labelSpan) labelSpan.textContent = 'Ganti File';
 
                         // Refresh/Show audio player
-                        if (data.path && playerTargetId) {
-                            refreshAudioPlayer(playerTargetId, data.path);
+                        if (data.url && playerTargetId) {
+                            refreshAudioPlayer(playerTargetId, data.url);
                         }
 
                         // Dynamically show separate delete button for Narasi
@@ -477,7 +482,7 @@ function setStatus(el, state, text) {
 /**
  * Refreshes the <audio> player inside a target element by updating its src.
  */
-function refreshAudioPlayer(targetId, path) {
+function refreshAudioPlayer(targetId, url) {
     const target = document.getElementById(targetId);
     if (!target) return;
 
@@ -489,8 +494,7 @@ function refreshAudioPlayer(targetId, path) {
         target.insertBefore(audio, target.firstChild);
     }
 
-    const base = '{{ rtrim(asset('storage'), '/') }}/';
-    audio.src = base + path;
+    audio.src = url;
     audio.load();
     target.classList.remove('hidden');
 }
@@ -743,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="audio-upload-zone"
                      data-url="${uploadRoute}"
-                     data-extra='{"audio_type":"indo"}'
+                     data-audio-type="indo"
                      data-player-target="audio-player-area-${aId}-indo"
                      data-has-audio="0">
                     <label class="flex items-center gap-2 cursor-pointer group">
@@ -768,7 +772,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="audio-upload-zone"
                      data-url="${uploadRoute}"
-                     data-extra='{"audio_type":"sunda"}'
+                     data-audio-type="sunda"
                      data-player-target="audio-player-area-${aId}-sunda"
                      data-has-audio="0">
                     <label class="flex items-center gap-2 cursor-pointer group">

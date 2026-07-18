@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Halaman;
 use App\Models\AreaInteraktif;
+use Illuminate\Support\Facades\Log;
 
 class AudioController extends Controller
 {
@@ -25,10 +26,17 @@ class AudioController extends Controller
         try {
             $uploadedHash = md5_file($request->file('audio_file')->getRealPath());
 
+            Log::info('audio_area_upload_received', [
+                'area_id' => $area->id_area,
+                'audio_type' => $request->input('audio_type'),
+                'before_audio_indo' => $area->audio_indo,
+                'before_audio_sunda' => $area->audio_sunda,
+            ]);
+
             // Check duplicate against opposite language
             if ($validated['audio_type'] === 'indo') {
-                if ($area->audio_sunda && Storage::disk('public')->exists($area->audio_sunda)) {
-                    $otherHash = md5_file(storage_path('app/public/' . $area->audio_sunda));
+                if ($area->audio_sunda && Storage::disk('s3')->exists($area->audio_sunda)) {
+                    $otherHash = md5((string) Storage::disk('s3')->get($area->audio_sunda));
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio Indonesia tidak boleh sama dengan file audio Sunda untuk area ini.';
                         if ($request->wantsJson()) {
@@ -38,8 +46,8 @@ class AudioController extends Controller
                     }
                 }
             } else {
-                if ($area->audio_indo && Storage::disk('public')->exists($area->audio_indo)) {
-                    $otherHash = md5_file(storage_path('app/public/' . $area->audio_indo));
+                if ($area->audio_indo && Storage::disk('s3')->exists($area->audio_indo)) {
+                    $otherHash = md5((string) Storage::disk('s3')->get($area->audio_indo));
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio Sunda tidak boleh sama dengan file audio Indonesia untuk area ini.';
                         if ($request->wantsJson()) {
@@ -52,11 +60,23 @@ class AudioController extends Controller
 
             $field = 'audio_' . $validated['audio_type'];
 
-            if ($area->$field && Storage::disk('public')->exists($area->$field)) {
-                Storage::disk('public')->delete($area->$field);
+            Log::info('audio_area_upload_will_delete', [
+                'area_id' => $area->id_area,
+                'audio_type' => $validated['audio_type'],
+                'field' => $field,
+                'target_path' => $area->$field,
+            ]);
+
+            if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
+                Storage::disk('s3')->delete($area->$field);
             }
 
-            $path       = $request->file('audio_file')->store('buku/audio', 'public');
+            $file = $request->file('audio_file');
+            $path = Storage::disk('s3')->putFile('buku/audio', $file, [
+                'visibility' => 'public',
+                'ContentType' => $file->getMimeType()
+            ]);
+
             $area->$field = $path;
             $area->save();
 
@@ -67,7 +87,7 @@ class AudioController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => "Audio {$lang} area berhasil diunggah",
-                    'path' => $path
+                    'url' => Storage::disk('s3')->url($path)
                 ]);
             }
             return back()->with('success', "Audio {$lang} area berhasil diunggah");
@@ -104,8 +124,8 @@ class AudioController extends Controller
 
             // Check duplicate against opposite language
             if ($validated['narasi_type'] === 'indo') {
-                if ($halaman->narasi_sunda && Storage::disk('public')->exists($halaman->narasi_sunda)) {
-                    $otherHash = md5_file(storage_path('app/public/' . $halaman->narasi_sunda));
+                if ($halaman->narasi_sunda && Storage::disk('s3')->exists($halaman->narasi_sunda)) {
+                    $otherHash = md5((string) Storage::disk('s3')->get($halaman->narasi_sunda));
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio narasi Indonesia tidak boleh sama dengan file audio narasi Sunda untuk halaman ini.';
                         if ($request->wantsJson()) {
@@ -115,8 +135,8 @@ class AudioController extends Controller
                     }
                 }
             } else {
-                if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
-                    $otherHash = md5_file(storage_path('app/public/' . $halaman->narasi_indo));
+                if ($halaman->narasi_indo && Storage::disk('s3')->exists($halaman->narasi_indo)) {
+                    $otherHash = md5((string) Storage::disk('s3')->get($halaman->narasi_indo));
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio narasi Sunda tidak boleh sama dengan file audio narasi Indonesia untuk halaman ini.';
                         if ($request->wantsJson()) {
@@ -127,20 +147,24 @@ class AudioController extends Controller
                 }
             }
 
-            $path = $request->file('audio_file')->store('buku/narasi', 'public');
+            $file = $request->file('audio_file');
+            $path = Storage::disk('s3')->putFile('buku/narasi', $file, [
+                'visibility' => 'public',
+                'ContentType' => $file->getMimeType()
+            ]);
 
             switch ($validated['narasi_type']) {
                 case 'indo':
-                    if ($halaman->narasi_indo && Storage::disk('public')->exists($halaman->narasi_indo)) {
-                        Storage::disk('public')->delete($halaman->narasi_indo);
+                    if ($halaman->narasi_indo && Storage::disk('s3')->exists($halaman->narasi_indo)) {
+                        Storage::disk('s3')->delete($halaman->narasi_indo);
                     }
                     $halaman->narasi_indo = $path;
                     $message = 'Narasi Indonesia berhasil diperbarui';
                     break;
 
                 case 'sunda':
-                    if ($halaman->narasi_sunda && Storage::disk('public')->exists($halaman->narasi_sunda)) {
-                        Storage::disk('public')->delete($halaman->narasi_sunda);
+                    if ($halaman->narasi_sunda && Storage::disk('s3')->exists($halaman->narasi_sunda)) {
+                        Storage::disk('s3')->delete($halaman->narasi_sunda);
                     }
                     $halaman->narasi_sunda = $path;
                     $message = 'Narasi Sunda berhasil diperbarui';
@@ -153,7 +177,7 @@ class AudioController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => $message,
-                    'path' => $path
+                    'url' => Storage::disk('s3')->url($path)
                 ]);
             }
             return back()->with('success', $message);
@@ -186,8 +210,8 @@ class AudioController extends Controller
             $field = $fieldMap[$type]['field'];
             $label = $fieldMap[$type]['label'];
 
-            if ($halaman->$field && Storage::disk('public')->exists($halaman->$field)) {
-                Storage::disk('public')->delete($halaman->$field);
+            if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
+                Storage::disk('s3')->delete($halaman->$field);
             }
             $halaman->$field = null;
             $halaman->save();
@@ -216,8 +240,8 @@ class AudioController extends Controller
             $field = $fieldMap[$type]['field'];
             $label = $fieldMap[$type]['label'];
 
-            if ($area->$field && Storage::disk('public')->exists($area->$field)) {
-                Storage::disk('public')->delete($area->$field);
+            if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
+                Storage::disk('s3')->delete($area->$field);
             }
             $area->$field = null;
             $area->save();

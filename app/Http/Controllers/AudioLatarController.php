@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\AudioLatar;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class AudioLatarController extends Controller
 {
@@ -26,16 +28,57 @@ class AudioLatarController extends Controller
             'path_file.min'   => 'File audio latar tidak boleh kosong.',
         ]);
 
-        $path = $request->file('path_file')->store('buku/audio-latar', 'public');
+        try {
+            $file = $request->file('path_file');
+            $disk = 's3';
+            config(['filesystems.disks.s3.throw' => true]);
 
-        AudioLatar::create([
-            'nama_audio' => $validated['nama_audio'],
-            'path_file' => $path,
-        ]);
+            $path = Storage::disk($disk)->putFile('buku/audio-latar', $file, [
+                'visibility' => 'public',
+                'ContentType' => $file->getMimeType()
+            ]);
+            
+            if (!is_string($path) || trim($path) === '') {
+                throw new \RuntimeException('S3 mengembalikan path upload yang kosong. Periksa konfigurasi bucket, kredensial AWS, dan izin akses.');
+            }
 
-        $ref = $request->input('ref');
-        $redirectUrl = route('audio-latar.index') . ($ref ? '?ref=' . urlencode($ref) : '');
-        return redirect($redirectUrl)->with('success', 'Audio latar berhasil ditambahkan');
+            $storage = Storage::disk($disk);
+            $url = null;
+            try {
+                $url = $storage->url($path);
+            } catch (Throwable $e) {
+                $url = null;
+            }
+
+            \Log::info('audio_latar_upload', [
+                'disk' => $disk,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'size' => $file->getSize(),
+                'mime' => $file->getMimeType(),
+                'bucket' => config('filesystems.disks.s3.bucket'),
+                'region' => config('filesystems.disks.s3.region'),
+                'url' => $url,
+            ]);
+
+            AudioLatar::create([
+                'nama_audio' => $validated['nama_audio'],
+                'path_file' => $path,
+            ]);
+
+            $ref = $request->input('ref');
+            $redirectUrl = route('audio-latar.index') . ($ref ? '?ref=' . urlencode($ref) : '');
+            return redirect($redirectUrl)->with('success', 'Audio latar berhasil ditambahkan');
+        } catch (Throwable $e) {
+            \Log::error('audio_latar_upload_failed', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()
+                ->withErrors(['path_file' => 'Gagal mengunggah audio latar: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
     public function delete(Request $request, AudioLatar $audioLatar)
@@ -50,8 +93,15 @@ class AudioLatarController extends Controller
         }
 
         try {
-            if ($audioLatar->path_file && \Illuminate\Support\Facades\Storage::disk('public')->exists($audioLatar->path_file)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($audioLatar->path_file);
+            if ($audioLatar->path_file) {
+                try {
+                    Storage::disk('s3')->delete($audioLatar->path_file);
+                } catch (Throwable $e) {
+                    \Log::warning('audio_latar_delete_storage_failed', [
+                        'path' => $audioLatar->path_file,
+                        'message' => $e->getMessage(),
+                    ]);
+                }
             }
 
             $audioLatar->delete();

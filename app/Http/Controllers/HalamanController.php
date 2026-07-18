@@ -110,7 +110,7 @@ class HalamanController extends Controller
         }
 
         $bookDir = $buku->slugify($buku->judul_idn);
-        $path = $request->file('path_gambar')->storeAs('buku/' . $bookDir . '/halaman', $filename, 'public');
+        $path = $request->file('path_gambar')->storeAs('buku/' . $bookDir . '/halaman', $filename, 's3');
 
         Halaman::create([
             'id_buku'       => $validated['id_buku'],
@@ -176,8 +176,8 @@ class HalamanController extends Controller
             // Hapus file audio dari area interaktif halaman ini
             foreach ($halaman->areaInteraktif as $area) {
                 foreach (['audio_indo', 'audio_sunda'] as $field) {
-                    if ($area->$field && Storage::disk('public')->exists($area->$field)) {
-                        Storage::disk('public')->delete($area->$field);
+                    if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
+                        Storage::disk('s3')->delete($area->$field);
                     }
                 }
             }
@@ -185,14 +185,14 @@ class HalamanController extends Controller
 
             // Hapus file narasi halaman ini
             foreach (['narasi_indo', 'narasi_sunda'] as $field) {
-                if ($halaman->$field && Storage::disk('public')->exists($halaman->$field)) {
-                    Storage::disk('public')->delete($halaman->$field);
+                if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
+                    Storage::disk('s3')->delete($halaman->$field);
                 }
             }
 
             // Hapus file gambar halaman ini
-            if ($halaman->path_gambar && Storage::disk('public')->exists($halaman->path_gambar)) {
-                Storage::disk('public')->delete($halaman->path_gambar);
+            if ($halaman->path_gambar && Storage::disk('s3')->exists($halaman->path_gambar)) {
+                Storage::disk('s3')->delete($halaman->path_gambar);
             }
 
             $halaman->delete();
@@ -212,8 +212,8 @@ class HalamanController extends Controller
                     $newCover->load('areaInteraktif');
                     foreach ($newCover->areaInteraktif as $area) {
                         foreach (['audio_indo', 'audio_sunda'] as $field) {
-                            if ($area->$field && Storage::disk('public')->exists($area->$field)) {
-                                Storage::disk('public')->delete($area->$field);
+                            if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
+                                Storage::disk('s3')->delete($area->$field);
                             }
                         }
                     }
@@ -221,8 +221,8 @@ class HalamanController extends Controller
 
                     // Hapus file narasi cover baru
                     foreach (['narasi_indo', 'narasi_sunda'] as $field) {
-                        if ($newCover->$field && Storage::disk('public')->exists($newCover->$field)) {
-                            Storage::disk('public')->delete($newCover->$field);
+                        if ($newCover->$field && Storage::disk('s3')->exists($newCover->$field)) {
+                            Storage::disk('s3')->delete($newCover->$field);
                         }
                     }
 
@@ -278,29 +278,29 @@ class HalamanController extends Controller
 
             // Validate that physical assets exist for each page
             foreach ($buku->halaman as $page) {
-                if (empty($page->path_gambar) || !Storage::disk('public')->exists($page->path_gambar)) {
+                if (empty($page->path_gambar) || !Storage::disk('s3')->exists($page->path_gambar)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
 
                 // If narration audio is set in DB but missing in storage
-                if (!empty($page->narasi_indo) && !Storage::disk('public')->exists($page->narasi_indo)) {
+                if (!empty($page->narasi_indo) && !Storage::disk('s3')->exists($page->narasi_indo)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
-                if (!empty($page->narasi_sunda) && !Storage::disk('public')->exists($page->narasi_sunda)) {
+                if (!empty($page->narasi_sunda) && !Storage::disk('s3')->exists($page->narasi_sunda)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
 
                 // If background audio is set in DB but missing in storage
-                if ($page->audioLatar && !Storage::disk('public')->exists($page->audioLatar->path_file)) {
+                if ($page->audioLatar && !Storage::disk('s3')->exists($page->audioLatar->path_file)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
 
                 // If area interactive audios are set in DB but missing in storage
                 foreach ($page->areaInteraktif as $area) {
-                    if (!empty($area->audio_indo) && !Storage::disk('public')->exists($area->audio_indo)) {
+                    if (!empty($area->audio_indo) && !Storage::disk('s3')->exists($area->audio_indo)) {
                         throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                     }
-                    if (!empty($area->audio_sunda) && !Storage::disk('public')->exists($area->audio_sunda)) {
+                    if (!empty($area->audio_sunda) && !Storage::disk('s3')->exists($area->audio_sunda)) {
                         throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                     }
                 }

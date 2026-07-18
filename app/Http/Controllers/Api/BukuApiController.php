@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Buku;
 use App\Services\BukuBundleService;
 
@@ -19,12 +20,9 @@ class BukuApiController extends Controller
 
         $result = $bukuList->map(function ($buku) {
             $fileSize = null;
-            if (!empty($buku->zip_bundle_path)) {
-                $zipAbsPath = storage_path('app/public/' . $buku->zip_bundle_path);
-                if (file_exists($zipAbsPath)) {
-                    $bytes = filesize($zipAbsPath);
-                    $fileSize = round($bytes / 1048576, 1) . ' MB';
-                }
+            if (!empty($buku->zip_bundle_path) && Storage::disk('s3')->exists($buku->zip_bundle_path)) {
+                $bytes = Storage::disk('s3')->size($buku->zip_bundle_path);
+                $fileSize = round($bytes / 1048576, 1) . ' MB';
             }
 
             return [
@@ -34,7 +32,7 @@ class BukuApiController extends Controller
                 'penulis'              => $buku->penulis,
                 'illustrator'          => $buku->ilustrator,
                 'coverImagePath'       => $buku->path_cover
-                                            ? asset('storage/' . $buku->path_cover)
+                                            ? Storage::disk('s3')->url($buku->path_cover)
                                             : null,
                 'descriptionsIndonesia' => $buku->deskripsi_idn,
                 'descriptionsSunda'    => $buku->deskripsi_sn,
@@ -70,20 +68,16 @@ class BukuApiController extends Controller
 
         $zipRelPath = null;
 
-        if (!empty($buku->zip_bundle_path)) {
-            $abs = storage_path('app/public/' . $buku->zip_bundle_path);
-            if (file_exists($abs)) {
-                $zipRelPath = $buku->zip_bundle_path;
-            }
+        if (!empty($buku->zip_bundle_path) && Storage::disk('s3')->exists($buku->zip_bundle_path)) {
+            $zipRelPath = $buku->zip_bundle_path;
         }
 
         if (!$zipRelPath) {
-            $pattern = storage_path('app/public/buku/bundle/' . $buku->id_buku . '_v*.zip');
-            $files   = glob($pattern);
-            if (!empty($files)) {
-                usort($files, fn($a, $b) => filemtime($b) - filemtime($a));
-                $abs        = $files[0];
-                $zipRelPath = 'buku/bundle/' . basename($abs);
+            $files = Storage::disk('s3')->files('buku/bundle');
+            $bundleFiles = array_values(array_filter($files, fn($path) => preg_match('/^buku\/bundle\/' . preg_quote($buku->id_buku, '/') . '_v.*\.zip$/', $path) === 1));
+            if (!empty($bundleFiles)) {
+                usort($bundleFiles, fn($a, $b) => Storage::disk('s3')->lastModified($b) <=> Storage::disk('s3')->lastModified($a));
+                $zipRelPath = $bundleFiles[0];
             }
         }
 
@@ -91,7 +85,7 @@ class BukuApiController extends Controller
             return response()->json(['error' => 'Bundle buku belum tersedia. Coba publikasikan ulang.'], 404);
         }
 
-        $downloadUrl = asset('storage/' . $zipRelPath);
+        $downloadUrl = $zipRelPath ? Storage::disk('s3')->url($zipRelPath) : null;
         return response()->json(['downloadUrl' => $downloadUrl]);
     }
 
@@ -224,18 +218,15 @@ class BukuApiController extends Controller
             $bundleService->generateAndPackageBundle($buku);
 
             $fileSize = null;
-            if (!empty($buku->zip_bundle_path)) {
-                $zipAbsPath = storage_path('app/public/' . $buku->zip_bundle_path);
-                if (file_exists($zipAbsPath)) {
-                    $bytes = filesize($zipAbsPath);
-                    $fileSize = round($bytes / 1048576, 1) . ' MB';
-                }
+            if (!empty($buku->zip_bundle_path) && Storage::disk('s3')->exists($buku->zip_bundle_path)) {
+                $bytes = Storage::disk('s3')->size($buku->zip_bundle_path);
+                $fileSize = round($bytes / 1048576, 1) . ' MB';
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Bundle dan metadata buku berhasil di-generate',
-                'downloadUrl' => $buku->zip_bundle_path ? asset('storage/' . $buku->zip_bundle_path) : null,
+                'downloadUrl' => $buku->zip_bundle_path ? Storage::disk('s3')->url($buku->zip_bundle_path) : null,
                 'fileSize' => $fileSize,
             ]);
         } catch (\Exception $e) {

@@ -22,7 +22,7 @@
         <p class="text-xs font-bold text-blue-800 mb-2">Audio Objek - Bahasa Indonesia</p>
         
         <div class="flex items-center gap-2 mb-2 {{ !$area->audio_indo ? 'hidden' : '' }}" id="audio-player-area-{{ $area->id_area }}-indo">
-            <audio controls class="flex-1 h-8" src="{{ $area->audio_indo ? asset('storage/' . $area->audio_indo) : '' }}"></audio>
+            <audio controls class="flex-1 h-8" src="{{ $area->audio_indo ? Storage::disk(config('filesystems.default'))->url($area->audio_indo) : '' }}"></audio>
             @if($area->halaman->buku->status_publikasi !== 'Terbit')
                 <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
                     @csrf
@@ -62,7 +62,7 @@
         <p class="text-xs font-bold text-purple-800 mb-2">Audio Objek - Bahasa Sunda</p>
         
         <div class="flex items-center gap-2 mb-2 {{ !$area->audio_sunda ? 'hidden' : '' }}" id="audio-player-area-{{ $area->id_area }}-sunda">
-            <audio controls class="flex-1 h-8" src="{{ $area->audio_sunda ? asset('storage/' . $area->audio_sunda) : '' }}"></audio>
+            <audio controls class="flex-1 h-8" src="{{ $area->audio_sunda ? Storage::disk(config('filesystems.default'))->url($area->audio_sunda) : '' }}"></audio>
             @if($area->halaman->buku->status_publikasi !== 'Terbit')
                 <form action="{{ route('halaman.deleteAreaAudio', $area->id_area) }}" method="POST" class="flex-shrink-0">
                     @csrf

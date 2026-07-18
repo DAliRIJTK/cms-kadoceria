@@ -131,14 +131,14 @@
     {{-- [FIX #2] Cover — fallback ke halaman pertama jika cover tidak ada --}}
     <div class="lg:col-span-1 flex justify-center lg:justify-start flex-col">
         @php
-            // Cari gambar cover yang valid: path_cover → halaman pertama
             $coverUrl = null;
-            if ($buku->path_cover && file_exists(storage_path('app/public/' . $buku->path_cover))) {
-                $coverUrl = asset('storage/' . $buku->path_cover);
-            } else {
+            if ($buku->path_cover) {
+                $coverUrl = Storage::disk(config('filesystems.default'))->url($buku->path_cover);
+            }
+            if (!$coverUrl) {
                 $firstPage = $buku->halaman->sortBy('nomor_halaman')->first();
-                if ($firstPage && $firstPage->path_gambar && file_exists(storage_path('app/public/' . $firstPage->path_gambar))) {
-                    $coverUrl = asset('storage/' . $firstPage->path_gambar);
+                if ($firstPage && $firstPage->path_gambar) {
+                    $coverUrl = Storage::disk(config('filesystems.default'))->url($firstPage->path_gambar);
                 }
             }
         @endphp
@@ -194,10 +194,10 @@
             return [
                 'id'        => $page->id_halaman,
                 'nomor'     => $page->nomor_halaman,
-                'img'       => asset('storage/' . $page->path_gambar),
-                'narasi_id' => $page->narasi_indo  ? asset('storage/' . $page->narasi_indo)  : null,
-                'narasi_su' => $page->narasi_sunda ? asset('storage/' . $page->narasi_sunda) : null,
-                'backsound' => (!$isCover && $page->audioLatar) ? asset('storage/' . $page->audioLatar->path_file) : null,
+                'img'       => $page->path_gambar ? Storage::disk(config('filesystems.default'))->url($page->path_gambar) : null,
+                'narasi_id' => $page->narasi_indo  ? Storage::disk(config('filesystems.default'))->url($page->narasi_indo)  : null,
+                'narasi_su' => $page->narasi_sunda ? Storage::disk(config('filesystems.default'))->url($page->narasi_sunda) : null,
+                'backsound' => (!$isCover && $page->audioLatar && $page->audioLatar->path_file) ? Storage::disk(config('filesystems.default'))->url($page->audioLatar->path_file) : null,
                 'areas'     => $isCover ? [] : $page->areaInteraktif->map(function($area) {
                     return [
                         'id'       => $area->id_area,
@@ -206,8 +206,8 @@
                         'y_pct'   => $area->y_pct,
                         'w_pct'   => $area->w_pct,
                         'h_pct'   => $area->h_pct,
-                        'audio_id' => $area->audio_indo  ? asset('storage/' . $area->audio_indo)  : null,
-                        'audio_su' => $area->audio_sunda ? asset('storage/' . $area->audio_sunda) : null,
+                        'audio_id' => $area->audio_indo  ? Storage::disk(config('filesystems.default'))->url($area->audio_indo)  : null,
+                        'audio_su' => $area->audio_sunda ? Storage::disk(config('filesystems.default'))->url($area->audio_sunda) : null,
                     ];
                 })->values()->toArray(),
             ];
@@ -350,7 +350,7 @@
                 transition:border-color 0.2s, transform 0.2s;
                 position:relative;
             ">
-                <img src="{{ asset('storage/' . $page->path_gambar) }}"
+                <img src="{{ $page->path_gambar ? Storage::disk(config('filesystems.default'))->url($page->path_gambar) : '' }}"
                      alt="Hal {{ $page->nomor_halaman }}"
                      loading="lazy"
                      style="width:100%;height:100%;object-fit:cover;">
@@ -508,7 +508,10 @@
         /* ── Render ── */
         function fbRender() {
             const page = PAGES[fbIdx];
-            pageImg.src = page ? page.img : '';
+            const src = page && page.img ? page.img : '';
+            console.log('fbRender', { idx: fbIdx, pageId: page && page.id, src });
+            pageImg.src = src;
+            pageImg.alt = page ? `Halaman ${page.nomor}` : '';
             fbRenderAreas(page);
 
             counter.textContent = `${page ? page.nomor : fbIdx + 1} / ${TOTAL}`;

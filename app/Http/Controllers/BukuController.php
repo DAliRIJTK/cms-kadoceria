@@ -113,7 +113,7 @@ class BukuController extends Controller
 
         DB::beginTransaction();
         try {
-            $pdfPath = $request->file('pdf_file')->store('buku/pdf', 'public');
+            $pdfPath = $request->file('pdf_file')->store('buku/pdf', 's3');
 
             $buku = Buku::create([
                 'id_pengelola'      => Auth::id(),
@@ -136,7 +136,9 @@ class BukuController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            if (isset($pdfPath)) Storage::disk('public')->delete($pdfPath);
+            if (isset($pdfPath) && Storage::disk('s3')->exists($pdfPath)) {
+                Storage::disk('s3')->delete($pdfPath);
+            }
             return back()->withInput()
                 ->withErrors(['error' => 'Gagal memproses PDF: ' . $e->getMessage()]);
         }
@@ -158,7 +160,7 @@ class BukuController extends Controller
             foreach ($buku->halaman as $page) {
                 $iscover = $page->nomor_halaman === 1;
 
-                if (empty($page->path_gambar) || !Storage::disk('public')->exists($page->path_gambar)) {
+                if (empty($page->path_gambar) || !Storage::disk('s3')->exists($page->path_gambar)) {
                     if($iscover) {
                         break;
                     }
@@ -167,7 +169,7 @@ class BukuController extends Controller
                 }
                 
                 // If narration audio is set in DB but missing in storage
-                if (!empty($page->narasi_indo) && !Storage::disk('public')->exists($page->narasi_indo)) {
+                if (!empty($page->narasi_indo) && !Storage::disk('s3')->exists($page->narasi_indo)) {
                     if($iscover) {
                         break;
                     }
@@ -175,7 +177,7 @@ class BukuController extends Controller
                     break;
                 }
                 
-                if (!empty($page->narasi_sunda) && !Storage::disk('public')->exists($page->narasi_sunda)) {
+                if (!empty($page->narasi_sunda) && !Storage::disk('s3')->exists($page->narasi_sunda)) {
                     if($iscover) {
                         break;
                     }
@@ -184,7 +186,7 @@ class BukuController extends Controller
                 }
 
                 // If background audio is set in DB but missing in storage
-                if ($page->audioLatar && !Storage::disk('public')->exists($page->audioLatar->path_file)) {
+                if ($page->audioLatar && !Storage::disk('s3')->exists($page->audioLatar->path_file)) {
                     if($iscover) {
                         break;
                     }
@@ -194,7 +196,7 @@ class BukuController extends Controller
                 
                 // If area interactive audios are set in DB but missing in storage
                 foreach ($page->areaInteraktif as $area) {
-                    if (!empty($area->audio_indo) && !Storage::disk('public')->exists($area->audio_indo)) {
+                    if (!empty($area->audio_indo) && !Storage::disk('s3')->exists($area->audio_indo)) {
                         if($iscover) {
                             break;
                         }
@@ -202,7 +204,7 @@ class BukuController extends Controller
                         break 2;
                     }
                     
-                    if (!empty($area->audio_sunda) && !Storage::disk('public')->exists($area->audio_sunda)) {
+                    if (!empty($area->audio_sunda) && !Storage::disk('s3')->exists($area->audio_sunda)) {
                         if($iscover) {
                             break;
                         }
@@ -226,7 +228,7 @@ class BukuController extends Controller
     private function fixCoverIfMissing(Buku $buku): void
     {
         $needsFix = empty($buku->path_cover)
-            || !Storage::disk('public')->exists($buku->path_cover);
+            || !Storage::disk('s3')->exists($buku->path_cover);
 
         if (!$needsFix) return;
 
@@ -234,7 +236,7 @@ class BukuController extends Controller
             ->orderBy('nomor_halaman', 'asc')
             ->first();
 
-        if ($firstPage && $firstPage->path_gambar && Storage::disk('public')->exists($firstPage->path_gambar)) {
+        if ($firstPage && $firstPage->path_gambar && Storage::disk('s3')->exists($firstPage->path_gambar)) {
             $buku->path_cover = $firstPage->path_gambar;
             $buku->save();
         }
@@ -430,38 +432,40 @@ class BukuController extends Controller
             foreach ($buku->halaman as $halaman) {
                 foreach ($halaman->areaInteraktif as $area) {
                     foreach (['audio_indo', 'audio_sunda'] as $field) {
-                        if ($area->$field && Storage::disk('public')->exists($area->$field)) {
-                            Storage::disk('public')->delete($area->$field);
+                        if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
+                            Storage::disk('s3')->delete($area->$field);
                         }
                     }
                 }
                 // Delete narration audio files if they exist
                 foreach (['narasi_indo', 'narasi_sunda'] as $field) {
-                    if ($halaman->$field && Storage::disk('public')->exists($halaman->$field)) {
-                        Storage::disk('public')->delete($halaman->$field);
+                    if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
+                        Storage::disk('s3')->delete($halaman->$field);
                     }
                 }
-                if ($halaman->path_gambar && Storage::disk('public')->exists($halaman->path_gambar)) {
-                    Storage::disk('public')->delete($halaman->path_gambar);
+                if ($halaman->path_gambar && Storage::disk('s3')->exists($halaman->path_gambar)) {
+                    Storage::disk('s3')->delete($halaman->path_gambar);
                 }
             }
 
-            if ($buku->path_cover && Storage::disk('public')->exists($buku->path_cover)) {
-                Storage::disk('public')->delete($buku->path_cover);
+            if ($buku->path_cover && Storage::disk('s3')->exists($buku->path_cover)) {
+                Storage::disk('s3')->delete($buku->path_cover);
             }
 
-            if (Storage::disk('public')->exists($bookFolder)) {
-                Storage::disk('public')->deleteDirectory($bookFolder);
+            if (Storage::disk('s3')->exists($bookFolder)) {
+                Storage::disk('s3')->deleteDirectory($bookFolder);
             }
 
             $metaPath = $bookFolder . '/metadata.json';
-            if (Storage::disk('public')->exists($metaPath)) {
-                Storage::disk('public')->delete($metaPath);
+            if (Storage::disk('s3')->exists($metaPath)) {
+                Storage::disk('s3')->delete($metaPath);
             }
 
-            $zipDir = storage_path('app/public/buku/bundle');
-            foreach ((array) glob($zipDir . '/' . $buku->id_buku . '_v*.zip') as $f) {
-                @unlink($f);
+            $bundleFiles = Storage::disk('s3')->files('buku/bundle');
+            foreach ($bundleFiles as $file) {
+                if (preg_match('/^buku\/bundle\/' . preg_quote($buku->id_buku, '/') . '_v.*\.zip$/', $file) === 1) {
+                    Storage::disk('s3')->delete($file);
+                }
             }
 
             $buku->delete();
@@ -506,17 +510,17 @@ class BukuController extends Controller
 
     private function moveDirectory(string $oldPath, string $newPath): void
     {
-        $files = Storage::disk('public')->allFiles($oldPath);
+        $files = Storage::disk('s3')->allFiles($oldPath);
 
         foreach ($files as $file) {
             $relativePath = str_replace($oldPath . '/', '', $file);
             $newFilePath = $newPath . '/' . $relativePath;
 
-            Storage::disk('public')->makeDirectory(dirname($newFilePath));
-            Storage::disk('public')->copy($file, $newFilePath);
+            Storage::disk('s3')->makeDirectory(dirname($newFilePath));
+            Storage::disk('s3')->copy($file, $newFilePath);
         }
 
-        Storage::disk('public')->deleteDirectory($oldPath);
+        Storage::disk('s3')->deleteDirectory($oldPath);
     }
 
 }
