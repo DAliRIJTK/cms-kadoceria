@@ -24,63 +24,65 @@ class AudioController extends Controller
         ]);
 
         try {
-            $uploadedHash = md5_file($request->file('audio_file')->getRealPath());
+            $file = $request->file('audio_file');
+            $uploadedHash = md5_file($file->getRealPath());
+            
+            // Inisialisasi S3 Client untuk mengambil metadata tanpa download
+            $s3Client = Storage::disk('s3')->getClient();
+            $bucket = config('filesystems.disks.s3.bucket');
 
-            Log::info('audio_area_upload_received', [
-                'area_id' => $area->id_area,
-                'audio_type' => $request->input('audio_type'),
-                'before_audio_indo' => $area->audio_indo,
-                'before_audio_sunda' => $area->audio_sunda,
-            ]);
-
-            // Check duplicate against opposite language
+            // Cek duplikasi menggunakan ETag (S3 Checksum/MD5)
             if ($validated['audio_type'] === 'indo') {
                 if ($area->audio_sunda && Storage::disk('s3')->exists($area->audio_sunda)) {
-                    $otherHash = md5((string) Storage::disk('s3')->get($area->audio_sunda));
+                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $area->audio_sunda]);
+                    $otherHash = trim($meta['ETag'], '"');
+                    
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio Indonesia tidak boleh sama dengan file audio Sunda untuk area ini.';
-                        if ($request->wantsJson()) {
-                            return response()->json(['success' => false, 'message' => $errMsg], 422);
-                        }
+                        if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             } else {
                 if ($area->audio_indo && Storage::disk('s3')->exists($area->audio_indo)) {
-                    $otherHash = md5((string) Storage::disk('s3')->get($area->audio_indo));
+                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $area->audio_indo]);
+                    $otherHash = trim($meta['ETag'], '"');
+                    
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio Sunda tidak boleh sama dengan file audio Indonesia untuk area ini.';
-                        if ($request->wantsJson()) {
-                            return response()->json(['success' => false, 'message' => $errMsg], 422);
-                        }
+                        if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             }
 
-            $field = 'audio_' . $validated['audio_type'];
+            $buku = $area->halaman->buku;
 
-            Log::info('audio_area_upload_will_delete', [
-                'area_id' => $area->id_area,
-                'audio_type' => $validated['audio_type'],
-                'field' => $field,
-                'target_path' => $area->$field,
-            ]);
+            $field = 'audio_' . $validated['audio_type'];
 
             if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
                 Storage::disk('s3')->delete($area->$field);
             }
 
             $file = $request->file('audio_file');
-            $path = Storage::disk('s3')->putFile('buku/audio', $file, [
-                'visibility' => 'public',
-                'ContentType' => $file->getMimeType()
-            ]);
+            $ext = $file->getClientOriginalExtension() ?: 'mp3';
 
-            $area->$field = $path;
+            $safeLabel = $buku->slugify($area->label ?? 'objek');
+            $langSuffix = $validated['audio_type'] === 'indo' ? 'indonesia' : 'sunda';
+            $finalPath = $buku->buildPageAssetPath($area->halaman, 'audio objek', $ext, $safeLabel . '_' . $langSuffix);
+            
+            Storage::disk('s3')->putFileAs(
+                dirname($finalPath), 
+                $file, 
+                basename($finalPath), 
+                [
+                    'visibility' => 'public',
+                    'ContentType' => $file->getMimeType()
+                ]
+            );
+
+            $area->$field = $finalPath;
             $area->save();
-
-            $area->halaman->buku->syncStorageStructure();
 
             $lang = $validated['audio_type'] === 'indo' ? 'Indonesia' : 'Sunda';
             if ($request->wantsJson()) {
@@ -120,59 +122,66 @@ class AudioController extends Controller
         ]);
 
         try {
-            $uploadedHash = md5_file($request->file('audio_file')->getRealPath());
+            $file = $request->file('audio_file');
+            $uploadedHash = md5_file($file->getRealPath());
+            
+            // Inisialisasi S3 Client
+            $s3Client = Storage::disk('s3')->getClient();
+            $bucket = config('filesystems.disks.s3.bucket');
 
-            // Check duplicate against opposite language
+            // Cek duplikasi menggunakan ETag
             if ($validated['narasi_type'] === 'indo') {
                 if ($halaman->narasi_sunda && Storage::disk('s3')->exists($halaman->narasi_sunda)) {
-                    $otherHash = md5((string) Storage::disk('s3')->get($halaman->narasi_sunda));
+                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $halaman->narasi_sunda]);
+                    $otherHash = trim($meta['ETag'], '"');
+                    
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio narasi Indonesia tidak boleh sama dengan file audio narasi Sunda untuk halaman ini.';
-                        if ($request->wantsJson()) {
-                            return response()->json(['success' => false, 'message' => $errMsg], 422);
-                        }
+                        if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             } else {
                 if ($halaman->narasi_indo && Storage::disk('s3')->exists($halaman->narasi_indo)) {
-                    $otherHash = md5((string) Storage::disk('s3')->get($halaman->narasi_indo));
+                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $halaman->narasi_indo]);
+                    $otherHash = trim($meta['ETag'], '"');
+                    
                     if ($uploadedHash === $otherHash) {
                         $errMsg = 'File audio narasi Sunda tidak boleh sama dengan file audio narasi Indonesia untuk halaman ini.';
-                        if ($request->wantsJson()) {
-                            return response()->json(['success' => false, 'message' => $errMsg], 422);
-                        }
+                        if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             }
 
-            $file = $request->file('audio_file');
-            $path = Storage::disk('s3')->putFile('buku/narasi', $file, [
-                'visibility' => 'public',
-                'ContentType' => $file->getMimeType()
-            ]);
+            $buku = $halaman->buku;
+            $field = 'narasi_' . $validated['narasi_type'];
 
-            switch ($validated['narasi_type']) {
-                case 'indo':
-                    if ($halaman->narasi_indo && Storage::disk('s3')->exists($halaman->narasi_indo)) {
-                        Storage::disk('s3')->delete($halaman->narasi_indo);
-                    }
-                    $halaman->narasi_indo = $path;
-                    $message = 'Narasi Indonesia berhasil diperbarui';
-                    break;
-
-                case 'sunda':
-                    if ($halaman->narasi_sunda && Storage::disk('s3')->exists($halaman->narasi_sunda)) {
-                        Storage::disk('s3')->delete($halaman->narasi_sunda);
-                    }
-                    $halaman->narasi_sunda = $path;
-                    $message = 'Narasi Sunda berhasil diperbarui';
-                    break;
+            // Hapus file lama jika ada
+            if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
+                Storage::disk('s3')->delete($halaman->$field);
             }
 
+            $ext = $file->getClientOriginalExtension() ?: 'mp3';
+            $dirName = $validated['narasi_type'] === 'indo' ? 'audio narasi indonesia' : 'audio narasi sunda';
+            $finalPath = $buku->buildPageAssetPath($halaman, $dirName, $ext);
+
+            Storage::disk('s3')->putFileAs(
+                dirname($finalPath), 
+                $file, 
+                basename($finalPath), 
+                [
+                    'visibility' => 'public',
+                    'ContentType' => $file->getMimeType()
+                ]
+            );
+
+            $halaman->$field = $finalPath;
             $halaman->save();
-            $halaman->buku->syncStorageStructure();
+            $message = $validated['narasi_type'] === 'indo' 
+                ? 'Narasi Indonesia berhasil diperbarui' 
+                : 'Narasi Sunda berhasil diperbarui';
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
@@ -245,8 +254,6 @@ class AudioController extends Controller
             }
             $area->$field = null;
             $area->save();
-
-            $area->halaman->buku->syncStorageStructure();
 
             return back()->with('success', "{$label} berhasil dihapus");
         } catch (\Exception $e) {

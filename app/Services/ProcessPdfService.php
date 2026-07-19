@@ -37,27 +37,17 @@ class ProcessPdfService
             $imagick->setResolution(120, 120);
             $imagick->readImage($tempPdfPath);
 
+            $bookDir = $buku->slugify($buku->judul_idn);
+
             foreach ($imagick as $index => $page) {
                 $page->setImageFormat('webp');
                 $page->setImageCompressionQuality(80);
 
-                $fileName = 'buku/halaman/' . uniqid() . '_halaman_' . ($index + 1) . '.webp';
-                $tempImagePath = tempnam(sys_get_temp_dir(), 'page_');
-                if ($tempImagePath === false) {
-                    throw new \Exception('Tidak dapat membuat file temporer untuk gambar halaman');
-                }
+                $imageContents = $page->getImageBlob();
 
-                if (!$page->writeImage($tempImagePath) || !file_exists($tempImagePath)) {
-                    throw new \Exception('Gagal menyimpan gambar halaman ke-' . ($index + 1));
-                }
-
-                $imageContents = file_get_contents($tempImagePath);
                 if ($imageContents === false) {
                     throw new \Exception('Gagal membaca gambar halaman ke-' . ($index + 1));
                 }
-
-                Storage::disk('s3')->put($fileName, $imageContents);
-                unlink($tempImagePath);
 
                 // Get page image dimensions
                 list($width, $height) = getimagesizefromstring($imageContents);
@@ -65,10 +55,19 @@ class ProcessPdfService
                 Halaman::create([
                     'id_buku'       => $buku->id_buku,
                     'nomor_halaman' => $index + 1,
-                    'path_gambar'   => $fileName,
+                    'path_gambar'   => '',
                     'panjang_halaman' => $height,
                     'lebar_halaman'   => $width,
                 ]);
+
+                // Menyiapkan path final S3 tanpa harus memanggil syncStorageStructure()
+                $fileName = 'buku/' . $bookDir . '/halaman/page-' . $halaman->id_halaman . '.webp';
+
+                // Mengunggah langsung ke S3 ke tujuan final
+                Storage::disk('s3')->put($fileName, $imageContents);
+
+                // Update kembali path final ke database
+                $halaman->update(['path_gambar' => $fileName]);
 
                 if ($index === 0) {
                     $buku->path_cover = $fileName;
@@ -81,9 +80,6 @@ class ProcessPdfService
             $imagick->clear();
             $imagick->destroy();
 
-            // Organize storage layout
-            $buku->syncStorageStructure();
-
         } catch (\Exception $e) {
             if (isset($imagick)) {
                 $imagick->clear();
@@ -91,6 +87,9 @@ class ProcessPdfService
             }
             throw $e;
         } finally {
+            if (file_exists($tempPdfPath)) {
+                @unlink($tempPdfPath);
+            }
             Storage::disk('s3')->delete($pdfPath);
         }
     }
