@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use ZipArchive;
 use App\Services\BukuBundleService;
 use App\Services\ProcessPdfService;
+use App\Jobs\ProcessPdfJob;
+use App\Jobs\GenerateBundleJob;
 
 class BukuController extends Controller
 {
@@ -131,7 +133,7 @@ class BukuController extends Controller
                 'pdf_hash'          => $pdfHash,
             ]);
 
-            $pdfService->process($buku, $pdfPath);
+            ProcessPdfJob::dispatch($buku, $pdfPath);
 
             DB::commit();
         } catch (\Exception $e) {
@@ -340,7 +342,7 @@ class BukuController extends Controller
 
         // Regenerate metadata and zip bundle to keep local storage structure in sync
         if ($buku->status_publikasi === 'Terbit') {
-            $bundleService->generateAndPackageBundle($buku);
+            GenerateBundleJob::dispatch($buku);
         } else {
             $bundleService->generateMetadataJson($buku);
         }
@@ -412,7 +414,7 @@ class BukuController extends Controller
         $buku->update(['status_publikasi' => $newStatus]);
 
         if ($newStatus === 'Terbit') {
-            $bundleService->generateAndPackageBundle($buku);
+            GenerateBundleJob::dispatch($buku);
         }
 
         $statusLabel = $newStatus === 'Terbit' ? 'dipublikasikan' : 'disimpan sebagai draft';

@@ -215,7 +215,7 @@ class BukuApiController extends Controller
         }
 
         try {
-            $bundleService->generateAndPackageBundle($buku);
+            GenerateBundleJob::dispatch($buku);
 
             $fileSize = null;
             if (!empty($buku->zip_bundle_path) && Storage::disk('s3')->exists($buku->zip_bundle_path)) {
@@ -228,7 +228,7 @@ class BukuApiController extends Controller
                 'message' => 'Bundle dan metadata buku berhasil di-generate',
                 'downloadUrl' => $buku->zip_bundle_path ? Storage::disk('s3')->url($buku->zip_bundle_path) : null,
                 'fileSize' => $fileSize,
-            ]);
+            ], 202);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Gagal memproses bundle: ' . $e->getMessage()
