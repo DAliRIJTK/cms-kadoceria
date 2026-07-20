@@ -69,14 +69,15 @@ class BukuBundleService
                     'narationSd'         => $this->storageUrl($page->narasi_sunda),
                     'widthImage'         => (float) ($page->lebar_halaman ?? 0),
                     'heightImage'        => (float) ($page->panjang_halaman ?? 0),
-                    'interactiveObjects' => $isCover ? [] : $page->areaInteraktif->map(function ($area) {
+                    'interactiveObjects' => $isCover ? [] : $page->areaInteraktif->map(function ($area) use ($page) {
                         return [
                             'audioObjectId' => $this->storageUrl($area->audio_indo),
                             'audioObjectSd' => $this->storageUrl($area->audio_sunda),
-                            'x'             => (float) $area->x,
-                            'y'             => (float) $area->y,
-                            'width'         => (float) $area->lebar_area,
-                            'height'        => (float) $area->panjang_area,
+                            // Hitung persentase dikali dimensi halaman asli
+                            'x'             => (float) (($area->x_pct / 100) * $page->lebar_halaman),
+                            'y'             => (float) (($area->y_pct / 100) * $page->panjang_halaman),
+                            'width'         => (float) (($area->w_pct / 100) * $page->lebar_halaman),
+                            'height'        => (float) (($area->h_pct / 100) * $page->panjang_halaman),
                         ];
                     })->toArray(),
                 ];
@@ -181,10 +182,10 @@ class BukuBundleService
                 }
 
                 $interactiveObjects[] = [
-                    'x'             => (int)   $area->x,
-                    'y'             => (int)   $area->y,
-                    'width'         => (int)   $area->lebar_area,
-                    'height'        => (int)   $area->panjang_area,
+                    'x'             => (float) (($area->x_pct / 100) * $page->lebar_halaman),
+                    'y'             => (float) (($area->y_pct / 100) * $page->panjang_halaman),
+                    'width'         => (float) (($area->w_pct / 100) * $page->lebar_halaman),
+                    'height'        => (float) (($area->h_pct / 100) * $page->panjang_halaman), 
                     'audioObjectId' => $audioObjIdRelPath,
                     'audioObjectSd' => $audioObjSuRelPath,
                 ];
