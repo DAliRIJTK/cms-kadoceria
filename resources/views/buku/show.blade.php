@@ -111,38 +111,48 @@
 
             {{-- Action Buttons --}}
             <div class="flex flex-wrap gap-3 pt-2">
-                @if($buku->status_publikasi !== 'Terbit')
-                    <a href="{{ route('buku.edit', $buku) }}"
-                       class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                        Edit Informasi
-                    </a>
-
-                    <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
-                       class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                        Kelola Halaman
-                    </a>
-
-                    <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit"
-                                class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                            Hapus Buku
-                        </button>
-                    </form>
-                @endif
-
-                @if($buku->status_publikasi === 'Draft')
-                    <button onclick="openPublishModal('modal-publish')"
-                            class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors">
-                        🚀 Publikasikan
+                @if($buku->halaman()->count() === 0)
+                    {{-- Kondisi jika SQS masih memproses PDF --}}
+                    <button disabled class="px-5 py-2 bg-gray-400 text-white rounded-lg font-semibold text-sm cursor-not-allowed">
+                        <svg class="animate-spin inline-block w-4 h-4 mr-2 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Buku Sedang Diproses...
                     </button>
                 @else
-                    <button
-                        onclick="openPublishModal('modal-unpublish')"
-                        class="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
-                        📋 Kembalikan ke Draft
-                    </button>
+                    {{-- Kondisi normal setelah proses SQS selesai --}}
+                    @if($buku->status_publikasi !== 'Terbit')
+                        <a href="{{ route('buku.edit', $buku) }}"
+                        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Edit Informasi
+                        </a>
+                        <a href="{{ route('halaman.management', ['id_buku' => $buku->id_buku]) }}"
+                        class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Kelola Halaman
+                        </a>
+                        <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                                Hapus Buku
+                            </button>
+                        </form>
+                    @endif
+
+                    @if($buku->status_publikasi === 'Draft')
+                        <button onclick="openPublishModal('modal-publish')"
+                                class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Publikasikan
+                        </button>
+                    @else
+                        <button
+                            onclick="openPublishModal('modal-unpublish')"
+                            class="px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Kembalikan ke Draft
+                        </button>
+                    @endif
                 @endif
             </div>
         </div>
