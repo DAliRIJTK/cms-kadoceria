@@ -56,7 +56,14 @@
 
                             <td class="px-4 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
+                                    @if($page->nomor_halaman === 1)
+                                        <div>
+                                            <p class="font-semibold text-gray-900 text-sm page-number-label">Sampul Halaman</p>
+                                            <p class="text-[10px] text-gray-500 mt-0.5 whitespace-normal max-w-[250px] leading-tight">halaman ini tidak akan ditampilkan pada aplikasi mobile Kado Ceria</p>
+                                        </div>
+                                    @else
+                                        <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman }}</p>
+                                    @endif
                                 </div>
                             </td>
 
