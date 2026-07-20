@@ -34,6 +34,9 @@ ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/do
 RUN chmod +x /usr/local/bin/install-php-extensions && \
     install-php-extensions pdo_pgsql mbstring exif pcntl bcmath gd zip imagick redis
 
+# Tingkatkan limit upload PHP menjadi 50MB
+RUN echo "upload_max_filesize = 50M\npost_max_size = 50M\nmemory_limit = 256M" > /usr/local/etc/php/conf.d/custom-uploads.ini    
+
 # Fix ImageMagick PDF policy
 RUN sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true
 
