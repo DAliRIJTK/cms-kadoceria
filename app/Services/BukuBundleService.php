@@ -43,43 +43,40 @@ class BukuBundleService
             ? $buku->halaman
             : $buku->halaman()->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman')->get();
 
+        $folderName = $buku->slugify($buku->judul_idn);
+
         $metadata = [
-            'id'                => (string) $buku->id_buku,
-            'judul_idn'         => $buku->judul_idn,
-            'judul_sn'          => $buku->judul_sn,
-            'penulis'           => $buku->penulis,
-            'ilustrator'        => $buku->ilustrator,
-            'deskripsi_idn'     => $buku->deskripsi_idn,
-            'deskripsi_sn'      => $buku->deskripsi_sn,
-            'warna_primer'      => $this->rgbToHex($buku->warna_primer,   '#FFFFFF'),
-            'warna_sekunder'    => $this->rgbToHex($buku->warna_sekunder, '#FFFFFF'),
-            'cover'             => $this->storageUrl($buku->path_cover),
-            'status_publikasi'  => $buku->status_publikasi,
-            'tanggal_publikasi' => $buku->updated_at->toIso8601String(),
-            'total_halaman'     => $halaman->count(),
-            'halaman'           => $halaman->map(function ($page) use ($buku) {
+            'id'             => (string) $buku->id_buku,
+            'title_id'       => $buku->judul_idn,
+            'title_su'       => $buku->judul_sn,
+            'description_id' => $buku->deskripsi_idn,
+            'description_su' => $buku->deskripsi_sn,
+            'author'         => $buku->penulis,
+            'illustrator'    => $buku->ilustrator,
+            'coverImage'     => $this->storageUrl($buku->path_cover),
+            'folderName'     => $folderName,
+            'theme'          => [
+                'primary'   => $this->rgbToHex($buku->warna_primer,   '#FFFFFF'),
+                'secondary' => $this->rgbToHex($buku->warna_sekunder, '#FFFFFF'),
+            ],
+            'pages'          => $halaman->map(function ($page) {
                 $isCover = $page->nomor_halaman === 1;
+                
                 return [
-                    'id'           => (string) $page->id_halaman,
-                    'nomor'        => $page->nomor_halaman,
-                    'gambar'       => $this->storageUrl($page->path_gambar),
-                    'narasi_indo'  => $this->storageUrl($page->narasi_indo),
-                    'narasi_sunda' => $this->storageUrl($page->narasi_sunda),
-                    'backsound'    => $isCover ? null : ($page->audioLatar ? $this->storageUrl($page->audioLatar->path_file) : null),
-                    'area_interaktif' => $isCover ? [] : $page->areaInteraktif->map(function ($area) {
+                    'image'              => $this->storageUrl($page->path_gambar),
+                    'backsound'          => $isCover ? null : ($page->audioLatar ? $this->storageUrl($page->audioLatar->path_file) : null),
+                    'narationId'         => $this->storageUrl($page->narasi_indo),
+                    'narationSd'         => $this->storageUrl($page->narasi_sunda),
+                    'widthImage'         => (float) ($page->lebar_halaman ?? 0),
+                    'heightImage'        => (float) ($page->panjang_halaman ?? 0),
+                    'interactiveObjects' => $isCover ? [] : $page->areaInteraktif->map(function ($area) {
                         return [
-                            'id'          => (string) $area->id_area,
-                            'label'       => $area->label        ?? null,
-                            'x'           => $area->x,
-                            'y'           => $area->y,
-                            'x_pct'       => $area->x_pct        ?? null,
-                            'y_pct'       => $area->y_pct        ?? null,
-                            'w_pct'       => $area->w_pct        ?? null,
-                            'h_pct'       => $area->h_pct        ?? null,
-                            'lebar'       => $area->lebar_area,
-                            'tinggi'      => $area->panjang_area,
-                            'audio_indo'  => $this->storageUrl($area->audio_indo),
-                            'audio_sunda' => $this->storageUrl($area->audio_sunda),
+                            'audioObjectId' => $this->storageUrl($area->audio_indo),
+                            'audioObjectSd' => $this->storageUrl($area->audio_sunda),
+                            'x'             => (float) $area->x,
+                            'y'             => (float) $area->y,
+                            'width'         => (float) $area->lebar_area,
+                            'height'        => (float) $area->panjang_area,
                         ];
                     })->toArray(),
                 ];
@@ -87,7 +84,7 @@ class BukuBundleService
         ];
 
         Storage::disk('s3')->put(
-            'buku/' . $buku->slugify($buku->judul_idn) . '/metadata.json',
+            'buku/' . $folderName . '/metadata.json',
             json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
     }
@@ -138,8 +135,13 @@ class BukuBundleService
             $backsoundRelPath = null;
             if ($page->audioLatar && $page->audioLatar->path_file) {
                 $bgmFilename = 'bgm_' . $page->audioLatar->id_audio_latar . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
-                if (!file_exists($tmpDir . '/audio/' . $bgmFilename) && $this->copyFromStorageToLocal($page->audioLatar->path_file, $tmpDir . '/audio/' . $bgmFilename)) {
-                    $backsoundRelPath = 'audio/' . $bgmFilename;
+                
+                // Pastikan path untuk JSON diatur terlepas apakah filenya sudah ada atau belum
+                $backsoundRelPath = 'audio/' . $bgmFilename;
+
+                // Hanya salin file fisik jika belum ada di folder temporer
+                if (!file_exists($tmpDir . '/audio/' . $bgmFilename)) {
+                    $this->copyFromStorageToLocal($page->audioLatar->path_file, $tmpDir . '/audio/' . $bgmFilename);
                 }
             }
 
