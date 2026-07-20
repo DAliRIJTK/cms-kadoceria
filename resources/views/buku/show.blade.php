@@ -1072,4 +1072,21 @@
     });
 </script>
 
+{{-- Komponen dan Script untuk mendeteksi SQS Loading --}}
+    @if($buku->halaman()->count() === 0)
+        <x-modal-loading id="sqsProcessModal" message="Sistem sedang mengonversi PDF Anda. Mohon tunggu..." />
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                // Tampilkan popup loading (mengunci layar agar tidak bisa di-klik)
+                ModalAlert.loading('sqsProcessModal');
+                
+                // Lakukan pengecekan berkala dengan me-refresh halaman setiap 4 detik
+                // Proses refresh tidak akan terasa mengganggu karena tertutup oleh popup loading
+                setTimeout(() => {
+                    window.location.reload();
+                }, 4000);
+            });
+        </script>
+    @endif
+
 @endsection
