@@ -329,7 +329,6 @@ class HalamanController extends Controller
         ]);
 
         $halaman->update(['id_audio_latar' => $validated['id_audio_latar']]);
-        $halaman->buku->syncStorageStructure();
 
         return back()->with('success', 'Backsound halaman berhasil diatur');
     }
@@ -338,7 +337,6 @@ class HalamanController extends Controller
     {
 
         $halaman->update(['id_audio_latar' => null]);
-        $halaman->buku->syncStorageStructure();
 
         return back()->with('success', 'Backsound halaman berhasil dihapus');
     }
