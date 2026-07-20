@@ -79,6 +79,7 @@ class ProcessPdfService
             // as syncing might rename/move the generated images.
             $imagick->clear();
             $imagick->destroy();
+            $buku->update(['is_processing' => false]);
 
         } catch (\Exception $e) {
             if (isset($imagick)) {

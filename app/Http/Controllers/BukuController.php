@@ -126,6 +126,7 @@ class BukuController extends Controller
                 'status_publikasi'  => 'Draft',
                 'original_pdf_name' => $uploadedFileName,
                 'pdf_hash'          => $pdfHash,
+                'is_processing'     => true,
             ]);
 
             ProcessPdfJob::dispatch($buku, $pdfPath);
@@ -241,7 +242,7 @@ class BukuController extends Controller
 
     public function edit(Buku $buku)
     {
-        if ($buku->halaman()->count() === 0) {
+        if ($buku->is_processing) {
             return redirect()->route('buku.show', $buku)
                 ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
         }
@@ -353,7 +354,7 @@ class BukuController extends Controller
     {
         $request->validate(['status_publikasi' => 'required|in:Draft,Terbit']);
 
-        if ($buku->halaman()->count() === 0) {
+        if ($buku->is_processing) {
             return redirect()->route('buku.show', $buku)
                 ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
         }
@@ -428,7 +429,7 @@ class BukuController extends Controller
 
     public function destroy(Buku $buku)
     {
-        if ($buku->halaman()->count() === 0) {
+        if ($buku->is_processing) {
             return redirect()->route('buku.show', $buku)
                 ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
         }
