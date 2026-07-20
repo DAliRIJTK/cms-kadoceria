@@ -33,6 +33,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/halaman/{buku:judul_idn}/halaman{nomor_halaman}', [HalamanController::class, 'show'])->name('halaman.show');
     Route::get('/halaman/{buku:judul_idn}/halaman{nomor_halaman}/edit', [HalamanController::class, 'edit'])->name('halaman.edit');
     Route::patch('/halaman/{halaman}', [HalamanController::class, 'update'])->name('halaman.update');
+    Route::delete('/halaman/bulk', [HalamanController::class, 'bulkDestroy'])->name('halaman.bulkDestroy');
     Route::delete('/halaman/{halaman}', [HalamanController::class, 'destroy'])->name('halaman.destroy');
 
     // Halaman Narasi

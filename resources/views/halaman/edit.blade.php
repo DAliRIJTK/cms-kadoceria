@@ -21,7 +21,7 @@
 <div class="flex flex-wrap justify-between items-start gap-4 mb-6">
     <div class="flex flex-wrap items-center gap-3">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman }}</h1>
+            <h1 class="text-3xl font-bold text-gray-900">Halaman {{ $halaman->nomor_halaman - 1 }}</h1>
             <p class="text-gray-500 mt-0.5 text-sm">Kelola anotasi dan audio halaman</p>
         </div>
     </div>

@@ -20,146 +20,160 @@
         <p class="text-gray-400 mb-6 text-sm">Halaman dibuat secara otomatis saat Anda mengunggah PDF ke buku baru</p>
         <a href="{{ route('buku.create') }}"
            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-colors font-semibold text-sm">
-            + Buat Buku Baru
+             + Buat Buku Baru
         </a>
     </div>
 @else
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Halaman</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Buku</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Pratinjau</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Anotasi</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Audio</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
-                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
-                    </tr>
-                </thead>
+    <form action="{{ route('halaman.bulkDestroy') }}" method="POST" id="bulkDeleteForm">
+        @csrf
+        @method('DELETE')
+        
+        <div class="mb-4 flex justify-end">
+            <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm">
+                Hapus Halaman Terpilih
+            </button>
+        </div>
 
-                <tbody id="sortableBody" class="divide-y divide-gray-100">
-                    @foreach($halaman as $page)
-                        @php
-                            $audioAreaIndo  = $page->areaInteraktif->whereNotNull('audio_indo')->count();
-                            $audioAreaSunda = $page->areaInteraktif->whereNotNull('audio_sunda')->count();
-                            $audioCount = ($page->narasi_indo    ? 1 : 0)
-                                        + ($page->narasi_sunda   ? 1 : 0)
-                                        + ($page->id_audio_latar ? 1 : 0)
-                                        + $audioAreaIndo
-                                        + $audioAreaSunda;
-                            $anotasiCount = $page->areaInteraktif->count();
-                        @endphp
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Halaman</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Buku</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Pratinjau</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Anotasi</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Audio</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
 
-                        <tr class="hover:bg-gray-50 transition-colors">
+                    <tbody id="sortableBody" class="divide-y divide-gray-100">
+                        @foreach($halaman as $page)
+                            @php
+                                $audioAreaIndo  = $page->areaInteraktif->whereNotNull('audio_indo')->count();
+                                $audioAreaSunda = $page->areaInteraktif->whereNotNull('audio_sunda')->count();
+                                $audioCount = ($page->narasi_indo    ? 1 : 0)
+                                            + ($page->narasi_sunda   ? 1 : 0)
+                                            + ($page->id_audio_latar ? 1 : 0)
+                                            + $audioAreaIndo
+                                            + $audioAreaSunda;
+                                $anotasiCount = $page->areaInteraktif->count();
+                            @endphp
 
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <div class="flex items-center gap-2">
-                                    @if($page->nomor_halaman === 1)
-                                        <div>
-                                            <p class="font-semibold text-gray-900 text-sm page-number-label">Sampul Halaman</p>
-                                            <p class="text-[10px] text-gray-500 mt-0.5 whitespace-normal max-w-[250px] leading-tight">halaman ini tidak akan ditampilkan pada aplikasi mobile Kado Ceria</p>
-                                        </div>
-                                    @else
-                                        <p class="font-semibold text-gray-900 text-sm page-number-label">Halaman {{ $page->nomor_halaman - 1 }}</p>
-                                    @endif
-                                </div>
-                            </td>
-
-                            <td class="px-4 py-4">
-                                <a href="{{ route('buku.show', $page->buku) }}"
-                                   class="text-blue-600 hover:text-blue-700 hover:underline font-semibold text-sm leading-tight block">
-                                    {{ $page->buku->judul_idn }}
-                                </a>
-                                <p class="text-xs text-gray-400">{{ $page->buku->penulis ?? '-' }}</p>
-                            </td>
-
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                @if($page->path_gambar)
-                                    <img
-                                        src="{{ Storage::disk(config('filesystems.default'))->url($page->path_gambar) }}"
-                                        alt="Halaman {{ $page->nomor_halaman }}"
-                                        class="h-14 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-                                        data-src="{{ Storage::disk(config('filesystems.default'))->url($page->path_gambar) }}"
-                                        data-title="Halaman {{ $page->nomor_halaman }}"
-                                        onclick="showImageModal(this.dataset.src, this.dataset.title)"
-                                    >
-                                @else
-                                    <div class="h-14 w-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
-                                        <span class="text-xs text-gray-400">-</span>
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        @if($page->nomor_halaman === 1)
+                                            <div>
+                                                <p class="font-semibold text-gray-900 text-sm page-number-label">Sampul Halaman</p>
+                                                <p class="text-[10px] text-gray-500 mt-0.5 whitespace-normal max-w-[250px] leading-tight">halaman ini tidak akan ditampilkan pada aplikasi mobile Kado Ceria</p>
+                                            </div>
+                                        @else
+                                            <div class="flex items-center gap-2">
+                                                <input type="checkbox" name="selected_pages[]" value="{{ $page->id_halaman }}" id="page-{{ $page->id_halaman }}" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                                                <label for="page-{{ $page->id_halaman }}" class="font-semibold text-gray-900 text-sm page-number-label cursor-pointer select-none">
+                                                    Halaman {{ $page->nomor_halaman }}
+                                                </label>
+                                            </div>
+                                        @endif
                                     </div>
-                                @endif
-                            </td>
+                                </td>
 
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center justify-center w-8 h-7 rounded-full text-xs font-bold
-                                    {{ $anotasiCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-orange-50 text-orange-400' }}">
-                                    {{ $anotasiCount }}
-                                </span>
-                            </td>
+                                <td class="px-4 py-4">
+                                    <a href="{{ route('buku.show', $page->buku) }}"
+                                       class="text-blue-600 hover:text-blue-700 hover:underline font-semibold text-sm leading-tight block">
+                                        {{ $page->buku->judul_idn }}
+                                    </a>
+                                    <p class="text-xs text-gray-400">{{ $page->buku->penulis ?? '-' }}</p>
+                                </td>
 
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                @php
-                                    $tooltipParts = [
-                                        'Narasi ID: '    . ($page->narasi_indo    ? '✓' : '✗'),
-                                        'Narasi Sunda: ' . ($page->narasi_sunda   ? '✓' : '✗'),
-                                        'Backsound: '    . ($page->id_audio_latar ? '✓' : '✗'),
-                                        'Audio Area ID: '    . $audioAreaIndo,
-                                        'Audio Area Sunda: ' . $audioAreaSunda,
-                                    ];
-                                    $tooltip = implode(' | ', $tooltipParts);
-                                @endphp
-                                <span
-                                    class="inline-flex items-center justify-center w-8 h-7 rounded-full text-xs font-bold cursor-default
-                                        {{ $audioCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-blue-50 text-blue-400' }}"
-                                    title="{{ $tooltip }}"
-                                >
-                                    {{ $audioCount }}
-                                </span>
-                            </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    @if($page->path_gambar)
+                                        <img
+                                            src="{{ Storage::disk(config('filesystems.default'))->url($page->path_gambar) }}"
+                                            alt="Halaman {{ $page->nomor_halaman }}"
+                                            class="h-14 w-10 object-cover rounded border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+                                            data-src="{{ Storage::disk(config('filesystems.default'))->url($page->path_gambar) }}"
+                                            data-title="Halaman {{ $page->nomor_halaman }}"
+                                            onclick="showImageModal(this.dataset.src, this.dataset.title)"
+                                        >
+                                    @else
+                                        <div class="h-14 w-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+                                            <span class="text-xs text-gray-400">-</span>
+                                        </div>
+                                    @endif
+                                </td>
 
-                            <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $page->created_at->locale('id_ID')->format('d M Y') }}
-                            </td>
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center justify-center w-8 h-7 rounded-full text-xs font-bold
+                                        {{ $anotasiCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-orange-50 text-orange-400' }}">
+                                        {{ $anotasiCount }}
+                                    </span>
+                                </td>
 
-                            <td class="px-4 py-4 whitespace-nowrap">
-                                <div class="flex items-center gap-2">
-                                    @if($page->buku->status_publikasi !== 'Terbit')
-                                        @if($page->nomor_halaman !== 1)
-                                            <a href="{{ route('halaman.edit', [$page->buku, $page->nomor_halaman]) }}"
-                                               class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
-                                                Sunting
-                                            </a>
-                                            <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit"
-                                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    @php
+                                        $tooltipParts = [
+                                            'Narasi ID: '    . ($page->narasi_indo    ? '✓' : '✗'),
+                                            'Narasi Sunda: ' . ($page->narasi_sunda   ? '✓' : '✗'),
+                                            'Backsound: '    . ($page->id_audio_latar ? '✓' : '✗'),
+                                            'Audio Area ID: '    . $audioAreaIndo,
+                                            'Audio Area Sunda: ' . $audioAreaSunda,
+                                        ];
+                                        $tooltip = implode(' | ', $tooltipParts);
+                                    @endphp
+                                    <span
+                                        class="inline-flex items-center justify-center w-8 h-7 rounded-full text-xs font-bold cursor-default
+                                            {{ $audioCount > 0 ? 'bg-blue-100 text-blue-700' : 'bg-blue-50 text-blue-400' }}"
+                                        title="{{ $tooltip }}"
+                                    >
+                                        {{ $audioCount }}
+                                    </span>
+                                </td>
+
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $page->created_at->locale('id_ID')->format('d M Y') }}
+                                </td>
+
+                                <td class="px-4 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        @if($page->buku->status_publikasi !== 'Terbit')
+                                            @if($page->nomor_halaman !== 1)
+                                                <a href="{{ route('halaman.edit', [$page->buku, $page->nomor_halaman]) }}"
+                                                   class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                    Sunting
+                                                </a>
+                                                <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                        Hapus
+                                                    </button>
+                                                </form>
+                                            @else
+                                                <span class="text-xs text-gray-400 italic">Cover Buku</span>
+                                                <button
+                                                    type="button"
+                                                    onclick="confirmDeleteCover('{{ route("halaman.destroy", $page->id_halaman) }}')"
+                                                    class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
                                                     Hapus
                                                 </button>
-                                            </form>
+                                            @endif
                                         @else
-                                            {{-- Cover: hanya boleh dihapus, tidak bisa disunting --}}
-                                            <span class="text-xs text-gray-400 italic">Cover Buku</span>
-                                            <button
-                                                type="button"
-                                                onclick="confirmDeleteCover('{{ route("halaman.destroy", $page->id_halaman) }}')"
-                                                class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                                Hapus
-                                            </button>
+                                            <span class="text-xs text-gray-400 italic">Buku Terbit (Read-only)</span>
                                         @endif
-                                    @else
-                                        <span class="text-xs text-gray-400 italic">Buku Terbit (Read-only)</span>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    </form>
 @endif
 
 {{-- Modal konfirmasi hapus cover --}}

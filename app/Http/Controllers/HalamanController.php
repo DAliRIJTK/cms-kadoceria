@@ -248,6 +248,75 @@ class HalamanController extends Controller
         }
     }
 
+    public function bulkDestroy(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'selected_pages' => 'required|array|min:1',
+            'selected_pages.*' => 'exists:halaman,id_halaman'
+        ]);
+
+        $ids = $request->selected_pages;
+        $pagesToDelete = Halaman::with('areaInteraktif', 'buku')->whereIn('id_halaman', $ids)->get();
+
+        if ($pagesToDelete->isEmpty()) {
+            return back()->withErrors(['delete' => 'Tidak ada halaman valid yang dipilih.']);
+        }
+
+        $buku = $pagesToDelete->first()->buku;
+
+        // Validasi: Cover tidak boleh ikut dihapus
+        if ($pagesToDelete->contains('nomor_halaman', 1)) {
+            return back()->withErrors(['delete' => 'Halaman cover tidak dapat dihapus melalui fitur ini.']);
+        }
+
+        // Validasi: Sisa halaman buku tidak boleh kurang dari 10 (termasuk cover)
+        $currentTotal = $buku->halaman()->count();
+        if (($currentTotal - $pagesToDelete->count()) - 1 < 10) {
+            return back()->withErrors(['delete' => 'Penghapusan dibatalkan. Sisa halaman tidak boleh kurang dari 10.']);
+        }
+
+        try {
+            // Hapus file aset fisik dari S3 secara iteratif
+            foreach ($pagesToDelete as $halaman) {
+                foreach ($halaman->areaInteraktif as $area) {
+                    foreach (['audio_indo', 'audio_sunda'] as $field) {
+                        if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
+                            Storage::disk('s3')->delete($area->$field);
+                        }
+                    }
+                }
+                foreach (['narasi_indo', 'narasi_sunda'] as $field) {
+                    if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
+                        Storage::disk('s3')->delete($halaman->$field);
+                    }
+                }
+                if ($halaman->path_gambar && Storage::disk('s3')->exists($halaman->path_gambar)) {
+                    Storage::disk('s3')->delete($halaman->path_gambar);
+                }
+            }
+
+            // Hapus record database sekaligus
+            Halaman::whereIn('id_halaman', $ids)->delete();
+
+            // Re-order nomor halaman yang tersisa (mulai dari halaman 2, karena halaman 1 adalah cover)
+            $remainingPages = $buku->halaman()->where('nomor_halaman', '>', 1)->orderBy('nomor_halaman', 'asc')->get();
+            $newNomor = 2;
+            foreach ($remainingPages as $page) {
+                if ($page->nomor_halaman !== $newNomor) {
+                    $page->update(['nomor_halaman' => $newNomor]);
+                }
+                $newNomor++;
+            }
+
+            // Panggil syncStorageStructure HANYA SATU KALI untuk memperbarui struktur folder di S3
+            $buku->syncStorageStructure();
+
+            return back()->with('success', 'Halaman yang dipilih berhasil dihapus');
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['delete' => 'Gagal menghapus halaman secara massal: ' . $e->getMessage()]);
+        }
+    }
 
     public function setBacksound(Request $request, Halaman $halaman)
     {

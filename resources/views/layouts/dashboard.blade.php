@@ -60,6 +60,8 @@
 </div>
 
 @stack('scripts')
+<x-modal-loading id="globalLoadingModal" message="Sistem sedang memproses. Mohon tunggu..." />
+<x-modal-alert id="globalConfirmModal" type="confirm" title="Konfirmasi" subtitle="Apakah Anda yakin?" confirm-label="Ya" cancel-label="Batal" />
 <x-modal-alert id="globalConfirmModal" type="confirm" title="Konfirmasi" subtitle="Apakah Anda yakin?" confirm-label="Ya" cancel-label="Batal" />
 <x-modal-alert id="globalLogoutModal" type="logout" title="Keluar Aplikasi" subtitle="Apakah Anda yakin?" confirm-label="Keluar" cancel-label="Batal" />
 <x-modal-scripts />
@@ -114,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const modalId = isLogout ? 'globalLogoutModal' : 'globalConfirmModal';
             ModalAlert.confirm(modalId, { title, subtitle }, function () {
                 form.dataset.confirmed = 'true';
+                ModalAlert.loading('globalLoadingModal');
                 form.submit();
             });
         }
