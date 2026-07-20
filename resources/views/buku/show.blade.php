@@ -7,7 +7,7 @@
 
 <div id="flash-data" 
      data-error="{{ $errors->any() ? $errors->first() : '' }}"
-     data-success="{{ session('success') }}">
+     data-success="{{ !$buku->is_processing ? session('success') : '' }}">
 </div>
 
 <div class="mb-6">
@@ -1084,7 +1084,7 @@
 
 {{-- Komponen dan Script untuk mendeteksi SQS Loading --}}
     @if($buku->is_processing)
-        <x-modal-loading id="sqsProcessModal" message="Sistem sedang mengonversi PDF Anda. Mohon tunggu..." />
+        <x-modal-loading id="sqsProcessModal" message="Buku berhasil diunggah! Sistem sedang mengonversi PDF Anda. Mohon tunggu..." />
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 // Tampilkan popup loading (mengunci layar agar tidak bisa di-klik)
