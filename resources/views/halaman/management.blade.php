@@ -74,7 +74,7 @@
                                             <div class="flex items-center gap-2">
                                                 <input type="checkbox" name="selected_pages[]" value="{{ $page->id_halaman }}" id="page-{{ $page->id_halaman }}" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                                                 <label for="page-{{ $page->id_halaman }}" class="font-semibold text-gray-900 text-sm page-number-label cursor-pointer select-none">
-                                                    Halaman {{ $page->nomor_halaman }}
+                                                    Halaman {{ $page->nomor_halaman - 1 }}
                                                 </label>
                                             </div>
                                         @endif
