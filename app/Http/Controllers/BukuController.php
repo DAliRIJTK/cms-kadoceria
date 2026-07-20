@@ -100,6 +100,11 @@ class BukuController extends Controller
         }
 
         $pdfFile = $request->file('pdf_file');
+        $uploadedFileName = $pdfFile->getClientOriginalName();
+        if (Buku::where('original_pdf_name', $uploadedFileName)->exists()) {
+            return back()->withInput()
+                ->withErrors(['duplicate_pdf' => "File PDF \"{$uploadedFileName}\" sudah pernah diunggah. Gunakan nama file yang berbeda."]);
+        }
 
         $pdfHash = hash_file('sha256', $pdfFile->getRealPath());
         $duplicateHashBook = Buku::where('pdf_hash', $pdfHash)->first();
