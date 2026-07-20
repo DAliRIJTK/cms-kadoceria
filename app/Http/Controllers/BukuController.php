@@ -115,7 +115,7 @@ class BukuController extends Controller
 
         DB::beginTransaction();
         try {
-            $pdfPath = $request->file('pdf_file')->store('buku/pdf', 'local');
+            $pdfPath = $request->file('pdf_file')->store('buku/pdf', 's3');
 
             $buku = Buku::create([
                 'id_pengelola'      => Auth::id(),

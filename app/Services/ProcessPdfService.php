@@ -24,7 +24,7 @@ class ProcessPdfService
             throw new \Exception('Tidak dapat membuat file temporer untuk PDF');
         }
 
-        $pdfContents = Storage::disk('local')->get($pdfPath);
+        $pdfContents = Storage::disk('s3')->get($pdfPath);
         if ($pdfContents === null || $pdfContents === false) {
             throw new \Exception("File PDF tidak ditemukan: {$pdfPath}");
         }
@@ -91,7 +91,7 @@ class ProcessPdfService
             if (file_exists($tempPdfPath)) {
                 @unlink($tempPdfPath);
             }
-            Storage::disk('local')->delete($pdfPath);
+            Storage::disk('s3')->delete($pdfPath);
         }
     }
 }
