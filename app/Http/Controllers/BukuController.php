@@ -241,6 +241,10 @@ class BukuController extends Controller
 
     public function edit(Buku $buku)
     {
+        if ($buku->halaman()->count() === 0) {
+            return redirect()->route('buku.show', $buku)
+                ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
+        }
         return view('buku.edit', compact('buku'));
     }
 
@@ -348,6 +352,12 @@ class BukuController extends Controller
     public function updateStatus(Buku $buku, Request $request, BukuBundleService $bundleService)
     {
         $request->validate(['status_publikasi' => 'required|in:Draft,Terbit']);
+
+        if ($buku->halaman()->count() === 0) {
+            return redirect()->route('buku.show', $buku)
+                ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
+        }
+
         $newStatus = $request->status_publikasi;
 
         if ($newStatus === 'Terbit') {
@@ -418,6 +428,11 @@ class BukuController extends Controller
 
     public function destroy(Buku $buku)
     {
+        if ($buku->halaman()->count() === 0) {
+            return redirect()->route('buku.show', $buku)
+                ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
+        }
+    
         if ($buku->status_publikasi === 'Terbit') {
             return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk menghapus buku.']);
         }

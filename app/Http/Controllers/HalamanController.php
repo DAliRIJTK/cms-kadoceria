@@ -28,6 +28,11 @@ class HalamanController extends Controller
             $query->where('id_buku', $request->id_buku);
         }
 
+        if ($buku->halaman()->count() === 0) {
+            return redirect()->route('buku.show', $buku)
+                ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
+        }
+
         if ($request->filled('status') && $request->status !== '') {
             $query->whereHas('buku', function ($q) {
                 $q->where('status_publikasi', request('status'));
