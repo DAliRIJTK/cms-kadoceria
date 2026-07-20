@@ -24,7 +24,7 @@ class ProcessPdfService
             throw new \Exception('Tidak dapat membuat file temporer untuk PDF');
         }
 
-        $pdfContents = Storage::disk('s3')->get($pdfPath);
+        $pdfContents = Storage::disk('local')->get($pdfPath);
         if ($pdfContents === null || $pdfContents === false) {
             throw new \Exception("File PDF tidak ditemukan: {$pdfPath}");
         }
@@ -52,7 +52,7 @@ class ProcessPdfService
                 // Get page image dimensions
                 list($width, $height) = getimagesizefromstring($imageContents);
 
-                Halaman::create([
+                $halaman = Halaman::create([
                     'id_buku'       => $buku->id_buku,
                     'nomor_halaman' => $index + 1,
                     'path_gambar'   => '',
@@ -91,7 +91,7 @@ class ProcessPdfService
             if (file_exists($tempPdfPath)) {
                 @unlink($tempPdfPath);
             }
-            Storage::disk('s3')->delete($pdfPath);
+            Storage::disk('local')->delete($pdfPath);
         }
     }
 }

@@ -91,7 +91,7 @@
 
             {{-- Action Buttons --}}
             <div class="flex flex-wrap gap-3 pt-2">
-                @if($buku->halaman()->count() === 0)
+                @if($buku->is_processing)
                     {{-- Kondisi jika SQS masih memproses PDF --}}
                     <button disabled class="px-5 py-2 bg-gray-400 text-white rounded-lg font-semibold text-sm cursor-not-allowed">
                         <svg class="animate-spin inline-block w-4 h-4 mr-2 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1083,7 +1083,7 @@
 </script>
 
 {{-- Komponen dan Script untuk mendeteksi SQS Loading --}}
-    @if($buku->halaman()->count() === 0)
+    @if($buku->is_processing)
         <x-modal-loading id="sqsProcessModal" message="Sistem sedang mengonversi PDF Anda. Mohon tunggu..." />
         <script>
             document.addEventListener('DOMContentLoaded', () => {

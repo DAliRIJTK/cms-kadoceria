@@ -89,7 +89,7 @@ class AudioController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => "Audio {$lang} area berhasil diunggah",
-                    'url' => Storage::disk('s3')->url($path)
+                    'url' => Storage::disk('s3')->url($finalPath)
                 ]);
             }
             return back()->with('success', "Audio {$lang} area berhasil diunggah");
@@ -186,7 +186,7 @@ class AudioController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => $message,
-                    'url' => Storage::disk('s3')->url($path)
+                    'url' => Storage::disk('s3')->url($finalPath)
                 ]);
             }
             return back()->with('success', $message);
