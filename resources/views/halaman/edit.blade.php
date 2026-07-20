@@ -82,24 +82,33 @@
             {{-- Navigasi halaman sebelumnya / berikutnya --}}
             <div class="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-gray-100">
                 @if(isset($prevHalaman) && $prevHalaman)
-                    <a href="{{ route('halaman.edit', [$prevHalaman->buku, $prevHalaman->nomor_halaman]) }}"
-                       class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
-                       title="Halaman {{ $prevHalaman->nomor_halaman }}">
-                        ‹ Hal. {{ $prevHalaman->nomor_halaman }}
-                    </a>
+                    @if($prevHalaman->nomor_halaman === 1)
+                        {{-- Tombol mati (disabled) jika halaman sebelumnya adalah Cover --}}
+                        <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed"
+                              title="Halaman Sampul tidak dapat disunting">
+                            ‹ Halaman Sampul
+                        </span>
+                    @else
+                        {{-- Tombol aktif untuk halaman biasa --}}
+                        <a href="{{ route('halaman.edit', [$prevHalaman->buku, $prevHalaman->nomor_halaman]) }}"
+                           class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
+                           title="Halaman {{ $prevHalaman->nomor_halaman - 1 }}">
+                            ‹ Hal. {{ $prevHalaman->nomor_halaman - 1 }}
+                        </a>
+                    @endif
                 @else
                     <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed">
                         ‹ Sebelumnya
                     </span>
                 @endif
 
-                <span class="text-xs font-medium text-gray-400">Halaman {{ $halaman->nomor_halaman }}</span>
+                <span class="text-xs font-medium text-gray-400">Halaman {{ $halaman->nomor_halaman - 1 }}</span>
 
                 @if(isset($nextHalaman) && $nextHalaman)
                     <a href="{{ route('halaman.edit', [$nextHalaman->buku, $nextHalaman->nomor_halaman]) }}"
                        class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
-                       title="Halaman {{ $nextHalaman->nomor_halaman }}">
-                        Hal. {{ $nextHalaman->nomor_halaman }} ›
+                       title="Halaman {{ $nextHalaman->nomor_halaman - 1 }}">
+                        Hal. {{ $nextHalaman->nomor_halaman - 1 }} ›
                     </a>
                 @else
                     <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
