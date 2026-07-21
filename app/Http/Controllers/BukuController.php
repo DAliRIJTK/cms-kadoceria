@@ -303,7 +303,7 @@ class BukuController extends Controller
         // Lempar parameter oldTitle ke Job
         ProcessBukuStorageJob::dispatch($buku, $titleChanged ? $oldTitle : null);
 
-        if ($isTitleChanged) {
+        if ($titleChanged) {
             return redirect()->route('buku.edit', $buku);
         }
 
