@@ -264,10 +264,45 @@ function onRgbChange(type) {
         </script>
     @endif
 
+@endsection
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('editBukuForm');
+        const flashData = document.getElementById('flash-data');
+        const isProcessing = {{ $buku->is_processing ? 'true' : 'false' }};
+
+        // 1. Logika untuk memunculkan popup setelah Job selesai
+        if (!isProcessing && sessionStorage.getItem('buku_sync_pending') === 'true') {
+            sessionStorage.removeItem('buku_sync_pending');
+            ModalAlert.show('successModal', {
+                title: 'Berhasil!',
+                subtitle: 'Informasi buku dan direktori multimedia berhasil disesuaikan.'
+            });
+        } 
+        // 2. Logika untuk memunculkan pesan flash normal (bila bukan edit judul)
+        else if (!isProcessing && flashData) {
+            const dupTitle = flashData.getAttribute('data-duplicate-title');
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+            
+            if (dupTitle) {
+                ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: dupTitle });
+            } else if (err) {
+                ModalAlert.show('alertModal', { title: 'Gagal Menyimpan Perubahan', subtitle: err });
+            } else if (success) {
+                ModalAlert.show('successModal', { title: 'Berhasil!', subtitle: success });
+            }
+        }
+
+        // 3. Logika untuk menahan user saat Job SQS sedang berjalan
+        if (isProcessing) {
+            ModalAlert.loading('syncProcessModal');
+            setTimeout(() => window.location.reload(), 4000);
+        }
+
+        // 4. Logika saat tombol Submit ditekan
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             
@@ -279,7 +314,7 @@ function onRgbChange(type) {
                 { id: 'deskripsi_idn', name: 'Sinopsis Indonesia' },
                 { id: 'deskripsi_sn', name: 'Sinopsis Sunda' }
             ];
-
+            
             for (const field of fields) {
                 const input = document.getElementById(field.id);
                 if (!input.value.trim()) {
@@ -294,44 +329,19 @@ function onRgbChange(type) {
                 }
             }
 
-            // Deteksi seketika via JS apakah judul berubah
             const oldTitle = {!! json_encode($buku->judul_idn) !!};
             const newTitle = document.getElementById('judul_idn').value.trim();
 
             if (oldTitle !== newTitle) {
-                // Jika judul berubah, cegah klik ganda dan tampilkan modal proses direktori
+                // Tandai di memori browser bahwa user sedang menunggu sinkronisasi judul
+                sessionStorage.setItem('buku_sync_pending', 'true');
                 ModalAlert.loading('syncProcessModal');
             } else {
-                // Jika judul tidak berubah, tampilkan loading standar
                 ModalAlert.loading('globalLoadingModal');
             }
 
             form.submit();
         });
-
-        const flashData = document.getElementById('flash-data');
-        if (flashData) {
-            const dupTitle = flashData.getAttribute('data-duplicate-title');
-            const err = flashData.getAttribute('data-error');
-            const success = flashData.getAttribute('data-success');
-
-            if (dupTitle) {
-                ModalAlert.show('alertModal', { title: 'Judul Buku Sudah Ada', subtitle: dupTitle });
-            } else if (err) {
-                ModalAlert.show('alertModal', {
-                    title: 'Gagal Menyimpan Perubahan',
-                    subtitle: err
-                });
-            }
-            if (success) {
-                ModalAlert.show('successModal', {
-                    title: 'Berhasil!',
-                    subtitle: success
-                });
-            }
-        }
     });
 </script>
 @endpush
-
-@endsection

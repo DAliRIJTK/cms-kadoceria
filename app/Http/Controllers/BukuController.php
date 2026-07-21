@@ -303,9 +303,13 @@ class BukuController extends Controller
         // Lempar parameter oldTitle ke Job
         ProcessBukuStorageJob::dispatch($buku, $titleChanged ? $oldTitle : null);
 
+        if ($isTitleChanged) {
+            return redirect()->route('buku.edit', $buku);
+        }
+
         // Jangan gunakan back() untuk menghindari 404
         return redirect()->route('buku.edit', $buku)
-            ->with('success', 'Informasi buku berhasil diperbarui dan file sedang diproses di latar belakang.');
+            ->with('success', 'Informasi buku berhasil diperbarui.');
     }
 
     public function updateStatus(Buku $buku, Request $request, BukuBundleService $bundleService)
