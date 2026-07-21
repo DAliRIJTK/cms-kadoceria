@@ -855,6 +855,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
 @push('scripts')
 <script>
+    // AJAX untuk penautan Audio Latar secara background
+    const formSetBacksound = document.getElementById('form-set-backsound');
+    if (formSetBacksound) {
+        formSetBacksound.addEventListener('submit', function (e) {
+            e.preventDefault(); // Mencegah form memuat ulang halaman
+            const form = this;
+            const btn = form.querySelector('button[type="submit"]');
+            const statusEl = document.getElementById('backsound-status');
+            const select = form.querySelector('select[name="id_audio_latar"]');
+
+            if (!select.value) return;
+
+            // Indikasi sedang memuat
+            btn.disabled = true;
+            btn.textContent = '...';
+            statusEl.className = 'mt-1.5 text-xs font-medium text-blue-600 block';
+            statusEl.textContent = '⏱ Menautkan...';
+
+            const fd = new FormData(form);
+
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: fd
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Update teks sukses persis seperti perilaku di form Narasi
+                    statusEl.textContent = '✓ ' + data.message;
+                    statusEl.className = 'mt-1.5 text-xs font-medium text-green-600 block';
+
+                    // Update UI Player yang tersembunyi
+                    const playerContainer = document.getElementById('backsound-player-container');
+                    const audioEl = document.getElementById('audio-player-backsound');
+                    
+                    if (playerContainer && audioEl && data.url) {
+                        audioEl.src = data.url;
+                        audioEl.load();
+                        playerContainer.classList.remove('hidden');
+                    }
+                } else {
+                    statusEl.textContent = '✗ ' + (data.message || 'Gagal mengatur audio');
+                    statusEl.className = 'mt-1.5 text-xs font-medium text-red-600 block';
+                }
+                
+                // Hilangkan teks notifikasi dalam 3 detik
+                setTimeout(() => { statusEl.className = 'hidden'; }, 3000);
+            })
+            .catch(err => {
+                statusEl.textContent = '✗ Terjadi kesalahan jaringan.';
+                statusEl.className = 'mt-1.5 text-xs font-medium text-red-600 block';
+                setTimeout(() => { statusEl.className = 'hidden'; }, 3000);
+            })
+            .finally(() => {
+                // Kembalikan tombol ke keadaan semula
+                btn.disabled = false;
+                btn.textContent = 'Pilih';
+            });
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const flashData = document.getElementById('flash-data');
         if (flashData) {
