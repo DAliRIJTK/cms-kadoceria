@@ -215,39 +215,36 @@
                     @endif
                 </div>
 
-                {{-- Backsound — menggunakan relasi AudioLatar --}}
+                {{-- Backsound menggunakan relasi AudioLatar --}}
                 @if($halaman->nomor_halaman !== 1)
                 <div class="border-l-4 border-yellow-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Halaman Audio Latar</p>
- 
-                    {{-- Tampilkan audio aktif jika ada --}}
-                    @if($halaman->audioLatar)
-                        <div class="mb-3 p-3 flex items-center justify-between gap-3">
-                            <div class="min-w-0 flex-1">
-                                <audio controls class="w-full h-7 mt-1"
-                                       src="{{ $halaman->audioLatar && $halaman->audioLatar->path_file ? Storage::disk(config('filesystems.default'))->url($halaman->audioLatar->path_file) : '' }}"></audio>
-                            </div>
-                            {{-- Hapus: lepas relasi saja (set id_audio_latar = null) --}}
-                            @if($halaman->buku->status_publikasi !== 'Terbit')
-                                <form action="{{ route('halaman.removeBacksound', $halaman->id_halaman) }}"
-                                      method="POST" class="flex-shrink-0">
-                                    @csrf @method('PATCH')
-                                    <button type="submit"
-                                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                        Hapus
-                                    </button>
-                                </form>
-                            @endif
+                    
+                    {{-- Container Audio Player: Selalu ada, di-hide jika kosong --}}
+                    <div id="backsound-player-container" class="mb-3 p-3 flex items-center justify-between gap-3 {{ !$halaman->audioLatar ? 'hidden' : '' }}">
+                        <div class="min-w-0 flex-1">
+                            <audio id="audio-player-backsound" controls class="w-full h-7 mt-1"
+                                   src="{{ $halaman->audioLatar && $halaman->audioLatar->path_file ? Storage::disk(config('filesystems.default'))->url($halaman->audioLatar->path_file) : '' }}"></audio>
                         </div>
-                    @else
-                        @if($halaman->buku->status_publikasi === 'Terbit')
-                            <p class="text-xs text-gray-400 italic mb-2">Belum ada Audio Latar.</p>
+                        @if($halaman->buku->status_publikasi !== 'Terbit')
+                            <form action="{{ route('halaman.removeBacksound', $halaman->id_halaman) }}"
+                                  method="POST" class="flex-shrink-0">
+                                @csrf @method('PATCH')
+                                <button type="submit"
+                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                    Hapus
+                                </button>
+                            </form>
                         @endif
+                    </div>
+                    
+                    @if($halaman->buku->status_publikasi === 'Terbit' && !$halaman->audioLatar)
+                        <p class="text-xs text-gray-400 italic mb-2">Belum ada Audio Latar.</p>
                     @endif
- 
+
                     {{-- Pilih dari daftar AudioLatar yang sudah ada --}}
                     @if($halaman->buku->status_publikasi !== 'Terbit')
-                        <form action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
+                        <form id="form-set-backsound" action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
                               method="POST">
                             @csrf @method('PATCH')
                             <div class="flex gap-2">
@@ -267,6 +264,10 @@
                                     Pilih
                                 </button>
                             </div>
+                            
+                            {{-- Tempat muncul notifikasi teks sederhana --}}
+                            <div id="backsound-status" class="mt-1.5 text-xs font-medium hidden"></div>
+                            
                             <p class="text-xs text-gray-400 mt-1">
                                 Pilih dari daftar audio latar yang tersedia.
                                 <a href="{{ route('audio-latar.index', ['ref' => url()->current()]) }}"

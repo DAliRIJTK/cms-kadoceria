@@ -330,6 +330,17 @@ class HalamanController extends Controller
 
         $halaman->update(['id_audio_latar' => $validated['id_audio_latar']]);
 
+        if ($request->wantsJson()) {
+            $halaman->load('audioLatar');
+            return response()->json([
+                'success' => true,
+                'message' => 'Berhasil ditautkan!',
+                'url' => $halaman->audioLatar && $halaman->audioLatar->path_file
+                         ? Storage::disk(config('filesystems.default'))->url($halaman->audioLatar->path_file)
+                         : ''
+            ]);
+        }
+
         return back()->with('success', 'Backsound halaman berhasil diatur');
     }
 
