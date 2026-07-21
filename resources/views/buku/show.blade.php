@@ -1098,22 +1098,4 @@
             });
         </script>
     @endif
-
-{{-- Komponen dan Script untuk mendeteksi Job Loading --}}
-    @if($buku->is_processing)
-        <x-modal-loading id="syncProcessModal" message="Proses perubahan informasi buku sedang dilakukan untuk menyesuaikan file multimedia. Mohon tunggu..." />
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                // Tampilkan popup loading (mengunci layar agar form form edit tidak bisa di-klik)
-                ModalAlert.loading('syncProcessModal');
-                
-                // Lakukan pengecekan berkala dengan me-refresh halaman setiap 4 detik
-                setTimeout(() => {
-                    window.location.reload();
-                }, 4000);
-            });
-        </script>
-    @endif
-@endsection
-
 @endsection

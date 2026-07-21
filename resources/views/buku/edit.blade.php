@@ -251,6 +251,19 @@ function onRgbChange(type) {
 }
 </script>
 
+{{-- Komponen Modal Loading Khusus Edit --}}
+    <x-modal-loading id="syncProcessModal" message="Proses perubahan informasi buku sedang dilakukan untuk menyesuaikan file multimedia. Mohon tunggu..." />
+
+    {{-- Script untuk auto-reload jika user merefresh halaman di tengah proses --}}
+    @if($buku->is_processing)
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                ModalAlert.loading('syncProcessModal');
+                setTimeout(() => window.location.reload(), 4000);
+            });
+        </script>
+    @endif
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -279,6 +292,18 @@ function onRgbChange(type) {
                     });
                     return;
                 }
+            }
+
+            // Deteksi seketika via JS apakah judul berubah
+            const oldTitle = {!! json_encode($buku->judul_idn) !!};
+            const newTitle = document.getElementById('judul_idn').value.trim();
+
+            if (oldTitle !== newTitle) {
+                // Jika judul berubah, cegah klik ganda dan tampilkan modal proses direktori
+                ModalAlert.loading('syncProcessModal');
+            } else {
+                // Jika judul tidak berubah, tampilkan loading standar
+                ModalAlert.loading('globalLoadingModal');
             }
 
             form.submit();

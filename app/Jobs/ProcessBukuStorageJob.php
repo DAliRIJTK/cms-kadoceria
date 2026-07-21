@@ -24,6 +24,7 @@ class ProcessBukuStorageJob implements ShouldQueue
 
     public function handle(BukuBundleService $bundleService): void
     {
+        try {
         // 1. Eksekusi perpindahan folder S3 dan Path DB jika judul berubah
         if ($this->oldTitle && $this->oldTitle !== $this->buku->judul_idn) {
             $oldBookDir = $this->buku->slugify($this->oldTitle);
@@ -68,9 +69,12 @@ class ProcessBukuStorageJob implements ShouldQueue
         } else {
             $bundleService->generateMetadataJson($this->buku);
         }
-
-        // 4. Buka kunci buku karena seluruh proses selesai
-        if ($this->buku->is_processing) {
+        
+        } catch (\Exception $e) {
+            // Tangani kesalahan jika diperlukan, misalnya log error
+            \Log::error('Job Storage Buku Gagal: ' . $e->getMessage());
+            throw $e;
+        } finally {
             $this->buku->update(['is_processing' => false]);
         }
     }
