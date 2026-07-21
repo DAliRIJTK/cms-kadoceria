@@ -13,6 +13,7 @@ use App\Services\BukuBundleService;
 use App\Services\ProcessPdfService;
 use App\Jobs\ProcessPdfJob;
 use App\Jobs\GenerateBundleJob;
+use App\Jobs\ProcessBukuStorageJob;
 
 class BukuController extends Controller
 {
@@ -343,16 +344,12 @@ class BukuController extends Controller
             }
         }
 
-        $buku->syncStorageStructure();
+        // Dispatch job sinkronisasi & pembuatan bundle ke background
+        ProcessBukuStorageJob::dispatch($buku);
 
-        // Regenerate metadata and zip bundle to keep local storage structure in sync
-        if ($buku->status_publikasi === 'Terbit') {
-            GenerateBundleJob::dispatch($buku);
-        } else {
-            $bundleService->generateMetadataJson($buku);
-        }
-
-        return back()->with('success', 'Informasi buku berhasil diperbarui');
+        // Perbaiki bug 404 dengan redirect eksplisit ke route edit menggunakan objek buku terbaru
+        return redirect()->route('buku.edit', $buku)
+            ->with('success', 'Informasi buku berhasil diperbarui dan file sedang disinkronisasi.');
     }
 
     public function updateStatus(Buku $buku, Request $request, BukuBundleService $bundleService)
