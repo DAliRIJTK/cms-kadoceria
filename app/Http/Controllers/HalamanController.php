@@ -321,7 +321,11 @@ class HalamanController extends Controller
     public function setBacksound(Request $request, Halaman $halaman)
     {
         if ($halaman->nomor_halaman === 1) {
-            return back()->withErrors(['error' => 'Halaman cover tidak boleh memiliki audio latar.']);
+            $errMsg = 'Halaman cover tidak boleh memiliki audio latar.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errMsg], 422);
+            }
+            return back()->withErrors(['error' => $errMsg]);
         }
 
         $validated = $request->validate([
@@ -330,7 +334,7 @@ class HalamanController extends Controller
 
         $halaman->update(['id_audio_latar' => $validated['id_audio_latar']]);
 
-        if ($request->wantsJson()) {
+        if ($request->ajax() || $request->wantsJson()) {
             $halaman->load('audioLatar');
             return response()->json([
                 'success' => true,
