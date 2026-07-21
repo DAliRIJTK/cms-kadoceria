@@ -248,10 +248,6 @@ class BukuController extends Controller
 
     public function edit(Buku $buku)
     {
-        if ($buku->is_processing) {
-            return redirect()->route('buku.show', $buku)
-                ->withErrors(['error' => 'Buku masih dalam proses konversi PDF. Fitur edit belum tersedia.']);
-        }
         return view('buku.edit', compact('buku'));
     }
 
