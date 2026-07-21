@@ -298,58 +298,18 @@ class BukuController extends Controller
         $oldTitle = $buku->judul_idn;
         $buku->update($validated);
 
-        if ($oldTitle !== $buku->judul_idn) {
-            $oldBookDir = $this->slugify($oldTitle);
-            $newBookDir = $this->slugify($buku->judul_idn);
-
-            if ($oldBookDir !== $newBookDir) {
-                $oldPath = 'buku/' . $oldBookDir;
-                $newPath = 'buku/' . $newBookDir;
-                
-                $this->moveDirectory($oldPath, $newPath);
-
-                // Update path_cover in database
-                if ($buku->path_cover) {
-                    $buku->path_cover = str_replace($oldPath . '/', $newPath . '/', $buku->path_cover);
-                }
-                if ($buku->zip_bundle_path) {
-                    $buku->zip_bundle_path = str_replace($oldPath . '/', $newPath . '/', $buku->zip_bundle_path);
-                }
-                $buku->save();
-
-                // Update path_gambar, narasi_indo, narasi_sunda for all pages
-                foreach ($buku->halaman as $halaman) {
-                    if ($halaman->path_gambar) {
-                        $halaman->path_gambar = str_replace($oldPath . '/', $newPath . '/', $halaman->path_gambar);
-                    }
-                    if ($halaman->narasi_indo) {
-                        $halaman->narasi_indo = str_replace($oldPath . '/', $newPath . '/', $halaman->narasi_indo);
-                    }
-                    if ($halaman->narasi_sunda) {
-                        $halaman->narasi_sunda = str_replace($oldPath . '/', $newPath . '/', $halaman->narasi_sunda);
-                    }
-                    $halaman->save();
-
-                    // Update audio_indo and audio_sunda for all interactive areas
-                    foreach ($halaman->areaInteraktif as $area) {
-                        if ($area->audio_indo) {
-                            $area->audio_indo = str_replace($oldPath . '/', $newPath . '/', $area->audio_indo);
-                        }
-                        if ($area->audio_sunda) {
-                            $area->audio_sunda = str_replace($oldPath . '/', $newPath . '/', $area->audio_sunda);
-                        }
-                        $area->save();
-                    }
-                }
-            }
+        // Periksa apakah judul berubah untuk mengunci buku
+        $titleChanged = ($oldTitle !== $buku->judul_idn);
+        if ($titleChanged) {
+            $buku->update(['is_processing' => true]);
         }
 
-        // Dispatch job sinkronisasi & pembuatan bundle ke background
-        ProcessBukuStorageJob::dispatch($buku);
+        // Lempar parameter oldTitle ke Job
+        ProcessBukuStorageJob::dispatch($buku, $titleChanged ? $oldTitle : null);
 
-        // Perbaiki bug 404 dengan redirect eksplisit ke route edit menggunakan objek buku terbaru
+        // Jangan gunakan back() untuk menghindari 404
         return redirect()->route('buku.edit', $buku)
-            ->with('success', 'Informasi buku berhasil diperbarui dan file sedang disinkronisasi.');
+            ->with('success', 'Informasi buku berhasil diperbarui dan file sedang diproses di latar belakang.');
     }
 
     public function updateStatus(Buku $buku, Request $request, BukuBundleService $bundleService)
@@ -522,20 +482,4 @@ class BukuController extends Controller
         $text = preg_replace('/[\s-]+/', '_', $text);
         return trim($text, '_');
     }
-
-    private function moveDirectory(string $oldPath, string $newPath): void
-    {
-        $files = Storage::disk('s3')->allFiles($oldPath);
-
-        foreach ($files as $file) {
-            $relativePath = str_replace($oldPath . '/', '', $file);
-            $newFilePath = $newPath . '/' . $relativePath;
-
-            Storage::disk('s3')->makeDirectory(dirname($newFilePath));
-            Storage::disk('s3')->copy($file, $newFilePath);
-        }
-
-        Storage::disk('s3')->deleteDirectory($oldPath);
-    }
-
 }
