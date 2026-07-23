@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\AreaInteraktif;
 
-class BoundingBoxController extends Controller
+class AreaInteraktifController extends Controller
 {
     public function store(Request $request)
     {

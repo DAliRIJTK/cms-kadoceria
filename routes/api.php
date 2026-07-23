@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\BukuApiController;
+use App\Http\Controllers\ApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,8 +13,8 @@ use App\Http\Controllers\Api\BukuApiController;
 |
 */
 
-Route::get('/buku', [BukuApiController::class, 'dataInformasiBuku']);
-Route::get('/get/dataInformasiBuku', [BukuApiController::class, 'dataInformasiBuku']);
-Route::get('/get/kontenBuku/{id?}', [BukuApiController::class, 'kontenBuku']);
-Route::get('/get/detailBuku/{id?}', [BukuApiController::class, 'detailBuku']);
-Route::post('/buku/{id}/generate', [BukuApiController::class, 'generateBundle']);
+Route::get('/buku', [ApiController::class, 'dataInformasiBuku']);
+Route::get('/get/dataInformasiBuku', [ApiController::class, 'dataInformasiBuku']);
+Route::get('/get/kontenBuku/{id?}', [ApiController::class, 'kontenBuku']);
+Route::get('/get/detailBuku/{id?}', [ApiController::class, 'detailBuku']);
+Route::post('/buku/{id}/generate', [ApiController::class, 'generateBundle']);

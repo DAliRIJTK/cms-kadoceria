@@ -318,44 +318,6 @@ class HalamanController extends Controller
         }
     }
 
-    public function setBacksound(Request $request, Halaman $halaman)
-    {
-        if ($halaman->nomor_halaman === 1) {
-            $errMsg = 'Halaman cover tidak boleh memiliki audio latar.';
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $errMsg], 422);
-            }
-            return back()->withErrors(['error' => $errMsg]);
-        }
-
-        $validated = $request->validate([
-            'id_audio_latar' => 'required|exists:audio_latar,id_audio_latar',
-        ]);
-
-        $halaman->update(['id_audio_latar' => $validated['id_audio_latar']]);
-
-        if ($request->ajax() || $request->wantsJson()) {
-            $halaman->load('audioLatar');
-            return response()->json([
-                'success' => true,
-                'message' => 'Berhasil ditautkan!',
-                'url' => $halaman->audioLatar && $halaman->audioLatar->path_file
-                         ? Storage::disk(config('filesystems.default'))->url($halaman->audioLatar->path_file)
-                         : ''
-            ]);
-        }
-
-        return back()->with('success', 'Backsound halaman berhasil diatur');
-    }
-
-    public function removeBacksound(Halaman $halaman)
-    {
-
-        $halaman->update(['id_audio_latar' => null]);
-
-        return back()->with('success', 'Backsound halaman berhasil dihapus');
-    }
-
     public function flipbook(Buku $buku)
     {
         try {

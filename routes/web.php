@@ -4,7 +4,7 @@ use App\Http\Controllers\BukuController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HalamanController;
 use App\Http\Controllers\AudioLatarController;
-use App\Http\Controllers\BoundingBoxController;
+use App\Http\Controllers\AreaInteraktifController;
 use App\Http\Controllers\AudioController;
 
 Route::get('/', function () {
@@ -41,21 +41,21 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/halaman/{halaman}/narasi', [AudioController::class, 'deleteNarasi'])->name('halaman.deleteNarasi');
 
     // Halaman Backsound (AudioLatar)
-    Route::patch('/halaman/{halaman}/backsound', [HalamanController::class, 'setBacksound'])->name('halaman.setBacksound');
-    Route::patch('/halaman/{halaman}/backsound/remove', [HalamanController::class, 'removeBacksound'])->name('halaman.removeBacksound');
+    Route::patch('/halaman/{halaman}/backsound', [AudioController::class, 'setBacksound'])->name('halaman.setBacksound');
+    Route::patch('/halaman/{halaman}/backsound/remove', [AudioController::class, 'removeBacksound'])->name('halaman.removeBacksound');
 
     // Area Interaktif (Annotations)
-    Route::post('/area-interaktif', [BoundingBoxController::class, 'store'])->name('halaman.storeAreaInteraktif');
-    Route::patch('/area-interaktif/{area}', [BoundingBoxController::class, 'update'])->name('halaman.updateAreaInteraktif');
-    Route::delete('/area-interaktif/{area}', [BoundingBoxController::class, 'destroy'])->name('halaman.deleteAreaInteraktif');
+    Route::post('/area-interaktif', [AreaInteraktifController::class, 'store'])->name('halaman.storeAreaInteraktif');
+    Route::patch('/area-interaktif/{area}', [AreaInteraktifController::class, 'update'])->name('halaman.updateAreaInteraktif');
+    Route::delete('/area-interaktif/{area}', [AreaInteraktifController::class, 'destroy'])->name('halaman.deleteAreaInteraktif');
     Route::post('/area-interaktif/{area}/audio', [AudioController::class, 'storeAreaAudio'])->name('halaman.storeAreaAudio');
     Route::delete('/area-interaktif/{area}/audio', [AudioController::class, 'deleteAreaAudio'])->name('halaman.deleteAreaAudio');
     Route::get('/flipbook/{buku}', [HalamanController::class, 'flipbook'])->name('halaman.flipbook');
 
     // Audio Latar
-    Route::get('/audio-latar', [AudioLatarController::class, 'index'])->name('audio-latar.index');
-    Route::post('/audio-latar', [AudioLatarController::class, 'store'])->name('audio-latar.store');
-    Route::delete('/audio-latar/{audioLatar}', [AudioLatarController::class, 'delete'])->name('audio-latar.delete');
+    Route::get('/audio-latar', [AudioController::class, 'index'])->name('audio-latar.index');
+    Route::post('/audio-latar', [AudioController::class, 'store'])->name('audio-latar.store');
+    Route::delete('/audio-latar/{audioLatar}', [AudioController::class, 'delete'])->name('audio-latar.delete');
 
 
 });
