@@ -879,7 +879,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusEl.className = 'mt-1.5 text-xs font-medium text-blue-600 block';
                 statusEl.textContent = '⏳ Menautkan...';
 
-                const fd = new FormData(form);
                 fetch(form.action, {
                     method: 'POST',
                     headers: {
