@@ -9,7 +9,7 @@
 <div class="mb-4">
     <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
        class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
-          Kembali ke Daftar Halaman
+          ← Kembali ke Daftar Halaman
     </a>
 </div>
 
@@ -492,6 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         anno = Annotorious.init({
             image: img
+            disableEditor: true
         });
                 
         anno.setAnnotations(existingAnnotations);
@@ -647,9 +648,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="font-bold text-gray-900 text-sm">${label}</p>
                     <p class="text-xs text-gray-400">Posisi: (${area.x ?? ' '}, ${area.y ?? ' '}) | Ukuran: ${area.lebar_area ?? ' '}x${area.panjang_area ?? ' '}px</p>
                 </div>
-                <button type="button" 
+                <button type="button"
                         class="btn-delete-area w-9 h-9 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
-                        data-id="${aId}" data-route="${deleteRoute}" data-csrf="${csrf}">Hapus</button>
+                        data-id="${aId}" data-route="${deleteRoute}" data-csrf="${csrf}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                </button>
             </div>
             
             <div class="bg-blue-50 rounded-lg p-3 mb-2 border border-blue-100">
