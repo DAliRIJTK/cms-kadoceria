@@ -259,10 +259,6 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <button type="submit"
-                                        class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-semibold transition-colors">
-                                    Pilih
-                                </button>
                             </div>
                             
                             {{-- Tempat muncul notifikasi teks sederhana --}}
@@ -859,34 +855,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // AJAX untuk penautan Audio Latar secara background
         const formSetBacksound = document.getElementById('form-set-backsound');
         if (formSetBacksound) {
-            formSetBacksound.addEventListener('submit', function (e) {
-                e.preventDefault(); // Mencegah form memuat ulang halaman secara kaku
-                
-                const form = this;
-                const btn = form.querySelector('button[type="submit"]');
-                const statusEl = document.getElementById('backsound-status');
-                const select = form.querySelector('select[name="id_audio_latar"]');
+            const select = formSetBacksound.querySelector('select[name="id_audio_latar"]');
 
+            // Memicu form secara otomatis ketika opsi diubah
+            select.addEventListener('change', function() {
+                if (this.value) {
+                    formSetBacksound.requestSubmit();
+                }
+            });
+
+            formSetBacksound.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const form = this;
+                const statusEl = document.getElementById('backsound-status');
+                
                 if (!select.value) return;
 
-                // Indikasi sedang memuat
-                btn.disabled = true;
-                btn.textContent = '...';
+                // Indikasi sedang memuat (disable dropdown sementara)
+                select.disabled = true;
                 statusEl.className = 'mt-1.5 text-xs font-medium text-blue-600 block';
-                statusEl.textContent = '⏱ Menautkan...';
+                statusEl.textContent = '⏳ Menautkan...';
 
                 const fd = new FormData(form);
-
                 fetch(form.action, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest' // Sangat penting agar Laravel tahu ini AJAX
+                        'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: fd
                 })
                 .then(r => {
-                    // Mencegah kegagalan jika karena suatu alasan Laravel tetap memaksa redirect
                     if (r.redirected) {
                         window.location.href = r.url;
                         return null;
@@ -894,14 +894,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     return r.json();
                 })
                 .then(data => {
-                    if (!data) return; // Stop jika terjadi redirect
-
+                    if (!data) return;
                     if (data.success) {
-                        // Update teks sukses persis seperti perilaku di form Narasi
-                        statusEl.textContent = '✓ ' + data.message;
+                        statusEl.textContent = '✔️ ' + data.message;
                         statusEl.className = 'mt-1.5 text-xs font-medium text-green-600 block';
-
-                        // Update UI Player yang tersembunyi
+                        
                         const playerContainer = document.getElementById('backsound-player-container');
                         const audioEl = document.getElementById('audio-player-backsound');
                         
@@ -911,22 +908,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             playerContainer.classList.remove('hidden');
                         }
                     } else {
-                        statusEl.textContent = '✗ ' + (data.message || 'Gagal mengatur audio');
+                        statusEl.textContent = '❌ ' + (data.message || 'Gagal mengatur audio');
                         statusEl.className = 'mt-1.5 text-xs font-medium text-red-600 block';
                     }
-                    
-                    // Hilangkan teks notifikasi dalam 3 detik
                     setTimeout(() => { statusEl.className = 'hidden'; }, 3000);
                 })
                 .catch(err => {
-                    statusEl.textContent = '✗ Terjadi kesalahan jaringan.';
+                    statusEl.textContent = '❌ Terjadi kesalahan jaringan.';
                     statusEl.className = 'mt-1.5 text-xs font-medium text-red-600 block';
                     setTimeout(() => { statusEl.className = 'hidden'; }, 3000);
                 })
                 .finally(() => {
-                    // Kembalikan tombol ke keadaan semula
-                    btn.disabled = false;
-                    btn.textContent = 'Pilih';
+                    // Kembalikan dropdown ke keadaan semula setelah selesai
+                    select.disabled = false;
                 });
             });
         }
