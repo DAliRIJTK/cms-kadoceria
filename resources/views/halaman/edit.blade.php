@@ -458,17 +458,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const isPublished = '{{ $halaman->buku->status_publikasi }}' === 'Terbit';
 
     function initAnnotorious() {
-        anno = Annotorious.init({
-            image: img,
-            disableEditor: true,
-            readOnly: isPublished 
-        });
-
         const naturalW = img.naturalWidth;
         const naturalH = img.naturalHeight;
 
-        // Ambil data database dengan @json
-        const dbAreas = @json($halaman->areaInteraktif);
+        // Ambil data database dengan konversi JSON murni
+        const dbAreas = {!! json_encode($halaman->areaInteraktif) !!};
         
         // Map data ke format yang diterima Annotorious
         const existingAnnotations = dbAreas.map((area, index) => {
@@ -478,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const hPct = parseFloat(area.h_pct) || 0;
 
             return {
-                "@context": "http://www.w3.org/ns/anno.jsonld",
+                "@@context": "http://www.w3.org/ns/anno.jsonld",
                 "id": area.id_area.toString(),
                 "type": "Annotation",
                 "body": [{
@@ -495,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         });
-        
+                
         anno.setAnnotations(existingAnnotations);
 
         if (!isPublished) {
