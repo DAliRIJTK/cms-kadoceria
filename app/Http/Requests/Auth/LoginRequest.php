@@ -43,8 +43,6 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         $login = $this->input('email');
-
-        // Determine if the input is an email address or username (name column)
         $fieldType = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'name';
 
         $credentials = [
@@ -56,7 +54,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Kredensial yang Anda masukkan tidak sesuai.',
             ]);
         }
 

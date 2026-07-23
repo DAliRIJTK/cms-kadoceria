@@ -12,6 +12,13 @@
     <h1 class="text-3xl font-bold text-gray-900">Kelola Halaman</h1>
     <p class="text-gray-500 mt-1">Kelola semua halaman dari buku cerita dwibahasa</p>
 </div>
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
+
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
 
 @if($halaman->isEmpty())
     <div class="flex flex-col items-center justify-center mt-16 bg-white rounded-xl shadow-sm p-12 border border-gray-200">
@@ -145,14 +152,11 @@
                                                    class="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg text-xs font-semibold transition-colors">
                                                     Sunting
                                                 </a>
-                                                <form method="POST" action="{{ route('halaman.destroy', $page->id_halaman) }}" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit"
-                                                            class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
-                                                        Hapus
-                                                    </button>
-                                                </form>
+                                                <button type="button"
+                                                        onclick="confirmSingleDelete('{{ route('halaman.destroy', $page->id_halaman) }}')"
+                                                        class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">
+                                                    Hapus
+                                                </button>
                                             @else
                                                 <span class="text-xs text-gray-400 italic">Cover Buku</span>
                                                 <button
@@ -175,6 +179,10 @@
         </div>
     </form>
 @endif
+<form id="singleDeleteForm" method="POST" action="" class="hidden">
+    @csrf
+    @method('DELETE')
+</form>
 
 {{-- Modal konfirmasi hapus cover --}}
 <div id="deleteCoverModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
@@ -230,6 +238,34 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const flashData = document.getElementById('flash-data');
+    if (flashData) {
+        const err = flashData.getAttribute('data-error');
+        const success = flashData.getAttribute('data-success');
+        if (err) {
+            ModalAlert.show('alertModal', { title: 'Terjadi Kesalahan', subtitle: err });
+        }
+        if (success) {
+            ModalAlert.show('successModal', { title: 'Berhasil!', subtitle: success });
+        }
+    }
+});
+</script>
+
+<script>
+function confirmSingleDelete(actionUrl) {
+    const form = document.getElementById('singleDeleteForm');
+    form.action = actionUrl;
+    
+    ModalAlert.confirm('globalConfirmModal', {
+        title: 'Hapus Halaman',
+        subtitle: 'Apakah Anda yakin ingin menghapus halaman ini? Tindakan ini tidak dapat dibatalkan.'
+    }, function() {
+        ModalAlert.loading('globalLoadingModal');
+        form.submit();
+    });
+}
 function showImageModal(src, title) {
     document.getElementById('imageModalImage').src = src;
     document.getElementById('imageModalTitle').textContent = title;
