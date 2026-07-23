@@ -856,30 +856,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const formSetBacksound = document.getElementById('form-set-backsound');
         if (formSetBacksound) {
             const select = formSetBacksound.querySelector('select[name="id_audio_latar"]');
+            const statusEl = document.getElementById('backsound-status');
 
-            // Memicu form secara otomatis ketika opsi diubah
+            // Eksekusi API langsung saat dropdown diubah
             select.addEventListener('change', function() {
-                if (this.value) {
-                    formSetBacksound.requestSubmit();
-                }
-            });
+                if (!this.value) return;
 
-            formSetBacksound.addEventListener('submit', function (e) {
-                e.preventDefault();
-
-                const form = this;
-                const statusEl = document.getElementById('backsound-status');
+                const fd = new FormData(formSetBacksound);
                 
-                if (!select.value) return;
-
-                const fd = new FormData(form);
+                // GARANSI: Pastikan nilai id_audio_latar terkirim meski FormData telat membaca DOM
+                fd.set('id_audio_latar', this.value);
 
                 // Indikasi sedang memuat (disable dropdown sementara)
                 select.disabled = true;
                 statusEl.className = 'mt-1.5 text-xs font-medium text-blue-600 block';
                 statusEl.textContent = '⏳ Menautkan...';
 
-                fetch(form.action, {
+                fetch(formSetBacksound.action, {
                     method: 'POST',
                     headers: {
                         'Accept': 'application/json',
@@ -909,7 +902,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             playerContainer.classList.remove('hidden');
                         }
                     } else {
-                        statusEl.textContent = '❌ ' + (data.message || 'Gagal mengatur audio');
+                        // Tangkap pesan error default Laravel jika validasi gagal
+                        let errMsg = data.message || 'Gagal mengatur audio';
+                        if (data.errors && data.errors.id_audio_latar) {
+                            errMsg = data.errors.id_audio_latar[0];
+                        }
+                        statusEl.textContent = '❌ ' + errMsg;
                         statusEl.className = 'mt-1.5 text-xs font-medium text-red-600 block';
                     }
                     setTimeout(() => { statusEl.className = 'hidden'; }, 3000);
@@ -923,6 +921,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Kembalikan dropdown ke keadaan semula setelah selesai
                     select.disabled = false;
                 });
+            });
+
+            // Cegah form melakukan reload (fallback pencegahan default)
+            formSetBacksound.addEventListener('submit', function(e) {
+                e.preventDefault();
             });
         }
     });
