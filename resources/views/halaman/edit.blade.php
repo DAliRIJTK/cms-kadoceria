@@ -872,6 +872,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (!select.value) return;
 
+                const fd = new FormData(form);
+
                 // Indikasi sedang memuat (disable dropdown sementara)
                 select.disabled = true;
                 statusEl.className = 'mt-1.5 text-xs font-medium text-blue-600 block';
