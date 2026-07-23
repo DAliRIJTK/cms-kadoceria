@@ -489,6 +489,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         });
+
+        anno = Annotorious.init({
+            image: img
+        });
                 
         anno.setAnnotations(existingAnnotations);
 
