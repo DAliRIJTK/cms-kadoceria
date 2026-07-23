@@ -1,14 +1,15 @@
-@extends('layouts.dashboard')
+@extends('layouts.dashboard') 
 
-@section('content')
+@section('content') 
 
+{{-- Pustaka Annotorious --}}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/annotorious@2.7.14/dist/annotorious.min.css">
 <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious@2.7.14/dist/annotorious.min.js"></script>
 
 <div class="mb-4">
     <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
        class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
-        ← Kembali ke Daftar Halaman
+          Kembali ke Daftar Halaman
     </a>
 </div>
 
@@ -28,12 +29,10 @@
             <p class="text-gray-500 mt-0.5 text-sm">Kelola anotasi dan audio halaman</p>
         </div>
     </div>
-
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-    {{-- ── KIRI: Gambar + Canvas ── --}}
+    {{--   KIRI: Gambar + Annotorious   --}}
     <div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             @if($halaman->nomor_halaman !== 1)
@@ -51,10 +50,10 @@
             <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 select-none" id="imageWrapper">
                 @if($halaman->path_gambar)
                     <img id="pageImage" 
-                        src="{{ Storage::disk(config('filesystems.default'))->url($halaman->path_gambar) }}" 
-                        alt="Halaman {{ $halaman->nomor_halaman }}" 
-                        class="w-full block" 
-                        draggable="false">
+                         src="{{ Storage::disk(config('filesystems.default'))->url($halaman->path_gambar) }}" 
+                         alt="Halaman {{ $halaman->nomor_halaman }}" 
+                         class="w-full block" 
+                         draggable="false">
                 @else
                     <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center rounded-lg">
                         <span class="text-3xl font-bold text-gray-400">{{ $halaman->nomor_halaman }}</span>
@@ -66,22 +65,20 @@
             <div class="flex items-center justify-between gap-2 mt-5 pt-4 border-t border-gray-100">
                 @if(isset($prevHalaman) && $prevHalaman)
                     @if($prevHalaman->nomor_halaman === 1)
-                        {{-- Tombol mati (disabled) jika halaman sebelumnya adalah Cover --}}
                         <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed"
                               title="Halaman Sampul tidak dapat disunting">
-                            ‹ Halaman Sampul
+                              Halaman Sampul
                         </span>
                     @else
-                        {{-- Tombol aktif untuk halaman biasa --}}
                         <a href="{{ route('halaman.edit', [$prevHalaman->buku, $prevHalaman->nomor_halaman]) }}"
                            class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
                            title="Halaman {{ $prevHalaman->nomor_halaman - 1 }}">
-                            ‹ Hal. {{ $prevHalaman->nomor_halaman - 1 }}
+                              Hal. {{ $prevHalaman->nomor_halaman - 1 }}
                         </a>
                     @endif
                 @else
                     <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-50 text-gray-300 rounded-lg font-semibold text-sm border border-gray-100 cursor-not-allowed">
-                        ‹ Sebelumnya
+                          Sebelumnya
                     </span>
                 @endif
 
@@ -91,8 +88,8 @@
                     <a href="{{ route('halaman.edit', [$nextHalaman->buku, $nextHalaman->nomor_halaman]) }}"
                        class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold text-sm transition-colors border border-gray-200"
                        title="Halaman {{ $nextHalaman->nomor_halaman - 1 }}">
-                        Hal. {{ $nextHalaman->nomor_halaman - 1 }} ›
-                    </a>
+                        Hal. {{ $nextHalaman->nomor_halaman - 1 }} 
+                     </a>
                 @else
                     <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
                        class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
@@ -104,14 +101,13 @@
         </div>
     </div>
 
-    {{-- ── KANAN: Daftar area + Audio Halaman ── --}}
+    {{--   KANAN: Daftar area + Audio Halaman   --}}
     <div class="space-y-5">
         {{-- Audio Halaman --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h2 class="text-base font-bold text-gray-900 mb-5">Audio Halaman</h2>
-
+            
             <div class="space-y-4">
-
                 {{-- Narasi Indonesia --}}
                 <div class="border-l-4 border-blue-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Narasi - Bahasa Indonesia</p>
@@ -122,14 +118,12 @@
                     </div>
 
                     @if($halaman->buku->status_publikasi !== 'Terbit')
-                        {{-- Hidden delete form --}}
                         <form id="delete-narasi-indo-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
                               method="POST" class="hidden">
                             @csrf @method('DELETE')
                             <input type="hidden" name="narasi_type" value="indo">
                         </form>
 
-                        {{-- Auto-upload area: Narasi Indo --}}
                         <div class="audio-upload-zone" 
                              data-url="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
                              data-extra='{"narasi_type":"indo"}'
@@ -149,7 +143,7 @@
                                 </button>
                             </label>
                             <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
-                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
+                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB   MP3, M4A</p>
                         </div>
                     @endif
                 </div>
@@ -164,14 +158,12 @@
                     </div>
 
                     @if($halaman->buku->status_publikasi !== 'Terbit')
-                        {{-- Hidden delete form --}}
                         <form id="delete-narasi-sunda-form" action="{{ route('halaman.deleteNarasi', $halaman->id_halaman) }}"
                               method="POST" class="hidden">
                             @csrf @method('DELETE')
                             <input type="hidden" name="narasi_type" value="sunda">
                         </form>
 
-                        {{-- Auto-upload area: Narasi Sunda --}}
                         <div class="audio-upload-zone"
                              data-url="{{ route('halaman.storeNarasi', $halaman->id_halaman) }}"
                              data-extra='{"narasi_type":"sunda"}'
@@ -191,19 +183,16 @@
                                 </button>
                             </label>
                             <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
-                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A</p>
+                            <p class="text-xs text-gray-400 mt-1">Maksimal 1MB   MP3, M4A</p>
                         </div>
-
-
                     @endif
                 </div>
 
-                {{-- Backsound menggunakan relasi AudioLatar --}}
+                {{-- Backsound --}}
                 @if($halaman->nomor_halaman !== 1)
                 <div class="border-l-4 border-yellow-500 pl-4">
                     <p class="text-sm font-bold text-gray-800 mb-2">Halaman Audio Latar</p>
                     
-                    {{-- Container Audio Player: Selalu ada, di-hide jika kosong --}}
                     <div id="backsound-player-container" class="mb-3 p-3 flex items-center justify-between gap-3 {{ !$halaman->audioLatar ? 'hidden' : '' }}">
                         <div class="min-w-0 flex-1">
                             <audio id="audio-player-backsound" controls class="w-full h-7 mt-1"
@@ -225,7 +214,6 @@
                         <p class="text-xs text-gray-400 italic mb-2">Belum ada Audio Latar.</p>
                     @endif
 
-                    {{-- Pilih dari daftar AudioLatar yang sudah ada --}}
                     @if($halaman->buku->status_publikasi !== 'Terbit')
                         <form id="form-set-backsound" action="{{ route('halaman.setBacksound', $halaman->id_halaman) }}"
                               method="POST">
@@ -244,7 +232,6 @@
                                 </select>
                             </div>
                             
-                            {{-- Tempat muncul notifikasi teks sederhana --}}
                             <div id="backsound-status" class="mt-1.5 text-xs font-medium hidden"></div>
                             
                             <p class="text-xs text-gray-400 mt-1">
@@ -258,90 +245,78 @@
                     @endif
                 </div>
                 @endif
+            </div>
         </div>
-    </div>
 
-    @if($halaman->nomor_halaman !== 1)
-        {{-- Area Interaktif Panel --}}
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            {{-- Label input (muncul setelah drag) --}}
-            <div id="labelInputArea" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p class="text-xs font-bold text-blue-800 mb-2">Beri label untuk area baru</p>
-                <div class="flex gap-2">
-                    <input type="text" id="newAreaLabel"
-                            placeholder="Contoh: Mata, Telinga, Pohon..."
-                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <button id="saveAreaBtn" type="button"
-                            class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
-                        Simpan
-                    </button>
-                    <button type="button" id="cancelAreaBtn"
-                            class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors">
-                        Batal
-                    </button>
+        @if($halaman->nomor_halaman !== 1)
+            {{-- Area Interaktif Panel --}}
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                {{-- Label input (muncul setelah drag) --}}
+                <div id="labelInputArea" class="hidden mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p class="text-xs font-bold text-blue-800 mb-2">Beri label untuk area baru</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="newAreaLabel" 
+                                placeholder="Contoh: Mata, Telinga, Pohon..."
+                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <button id="saveAreaBtn" type="button" 
+                                class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
+                            Simpan
+                        </button>
+                        <button type="button" id="cancelAreaBtn" 
+                                class="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors">
+                            Batal
+                        </button>
+                    </div>
                 </div>
-            </div>
-        <br>
-        <h2 class="text-base font-bold text-gray-900 mb-4">
-            Area Interaktif (<span id="areaCount">{{ $halaman->areaInteraktif()->count() }}</span>)
-        </h2>
 
-        @if($halaman->areaInteraktif()->count() > 0)
-            <div class="space-y-4" id="areaList">
-                @foreach($halaman->areaInteraktif as $area)
-                    @include('halaman.area-item', ['area' => $area, 'loop' => $loop])
-                @endforeach
+                <br>
+                <h2 class="text-base font-bold text-gray-900 mb-4">
+                    Area Interaktif (<span id="areaCount">{{ $halaman->areaInteraktif()->count() }}</span>)
+                </h2>
+
+                @if($halaman->areaInteraktif()->count() > 0)
+                    <div class="space-y-4" id="areaList">
+                        @foreach($halaman->areaInteraktif as $area)
+                            @include('halaman.area-item', ['area' => $area, 'loop' => $loop])
+                        @endforeach
+                    </div>
+                @else
+                    <div class="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200" id="emptyAreaMsg">
+                        <p class="text-gray-400 text-sm">Belum ada area interaktif.</p>
+                        <p class="text-gray-400 text-xs mt-1">Klik dan drag pada gambar halaman untuk membuat area.</p>
+                    </div>
+                    <div class="space-y-4 hidden" id="areaList"></div>
+                @endif
             </div>
-        @else
-            <div class="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200" id="emptyAreaMsg">
-                <p class="text-gray-400 text-sm">Belum ada area interaktif.</p>
-                <p class="text-gray-400 text-xs mt-1">Klik dan drag pada gambar halaman untuk membuat area.</p>
-            </div>
-            <div class="space-y-4 hidden" id="areaList"></div>
         @endif
-    @endif
+    </div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════════════════
 // AUTO-UPLOAD ENGINE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Renders an inline confirmation warning inside the upload zone.
- */
 function showOverwriteConfirm(zone, onConfirm, onCancel) {
-    // Remove any existing inline confirms in this zone
     zone.querySelector('.confirm-overwrite-inline')?.remove();
-
     const confirmDiv = document.createElement('div');
     confirmDiv.className = 'confirm-overwrite-inline mt-2.5 p-2.5 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between gap-3 text-xs';
     confirmDiv.innerHTML = `
-        <span class="text-yellow-800 font-medium flex items-center gap-1">⚠️ Audio sudah ada. Timpa?</span>
+        <span class="text-yellow-800 font-medium flex items-center gap-1"> Audio sudah ada. Timpa?</span>
         <div class="flex gap-1.5 flex-shrink-0">
             <button type="button" class="btn-confirm-yes px-2.5 py-1 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded shadow-sm transition-colors">Ya</button>
             <button type="button" class="btn-confirm-no px-2.5 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded transition-colors">Batal</button>
         </div>
     `;
-
     zone.appendChild(confirmDiv);
 
     confirmDiv.querySelector('.btn-confirm-yes').addEventListener('click', () => {
         confirmDiv.remove();
         onConfirm();
     });
-
     confirmDiv.querySelector('.btn-confirm-no').addEventListener('click', () => {
         confirmDiv.remove();
         onCancel();
     });
 }
 
-/**
- * Initializes auto-upload behavior for all `.audio-upload-zone` elements
- * within a given container.
- * @param {HTMLElement|HTMLDocument} container - The parent element to search within.
- */
 function initAutoUpload(container) {
     container.querySelectorAll('.audio-upload-zone').forEach(zone => {
         const input    = zone.querySelector('.auto-upload-input');
@@ -354,19 +329,17 @@ function initAutoUpload(container) {
 
         input.addEventListener('change', function () {
             if (!this.files || !this.files[0]) return;
-
             const file           = this.files[0];
             const url            = zone.dataset.url;
             const extra          = zone.dataset.audioType ? { audio_type: zone.dataset.audioType } : {};
-
-            // Backward compatibility: if data-extra exists, parse it too
+            
             if (!Object.keys(extra).length && zone.dataset.extra) {
                 Object.assign(extra, JSON.parse(zone.dataset.extra));
             }
+            
             const csrf           = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
             const playerTargetId = zone.dataset.playerTarget;
 
-            // — Show selected filename immediately
             if (filename) {
                 filename.textContent = file.name;
                 filename.classList.remove('text-gray-400');
@@ -374,7 +347,7 @@ function initAutoUpload(container) {
             }
 
             const startUpload = () => {
-                setStatus(status, 'loading', '🔄 Mengunggah...');
+                setStatus(status, 'loading', ' Mengunggah...');
                 if (label) label.style.pointerEvents = 'none';
 
                 const fd = new FormData();
@@ -390,36 +363,31 @@ function initAutoUpload(container) {
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        setStatus(status, 'success', '✅ Berhasil diunggah!');
-                        
-                        // Update status to has audio
+                        setStatus(status, 'success', ' Berhasil diunggah!');
                         zone.dataset.hasAudio = "1";
-
-                        // Update label to "Ganti File"
+                        
                         const labelSpan = zone.querySelector('.upload-label');
                         if (labelSpan) labelSpan.textContent = 'Ganti File';
-
-                        // Refresh/Show audio player
+                        
                         if (data.url && playerTargetId) {
                             refreshAudioPlayer(playerTargetId, data.url);
                         }
-
-                        // Dynamically show separate delete button for Narasi
+                        
                         if (playerTargetId === 'audio-player-narasi-indo') {
                             document.getElementById('delete-btn-narasi-indo')?.classList.remove('hidden');
                         } else if (playerTargetId === 'audio-player-narasi-sunda') {
                             document.getElementById('delete-btn-narasi-sunda')?.classList.remove('hidden');
                         }
-
+                        
                         setTimeout(() => setStatus(status, 'hidden'), 3000);
                     } else {
                         const msg = data.message || 'Terjadi kesalahan.';
-                        setStatus(status, 'error', '❌ Gagal: ' + msg);
+                        setStatus(status, 'error', ' Gagal: ' + msg);
                         resetDisplay();
                     }
                 })
                 .catch(() => {
-                    setStatus(status, 'error', '❌ Gagal: Kesalahan jaringan atau server.');
+                    setStatus(status, 'error', ' Gagal: Kesalahan jaringan atau server.');
                     resetDisplay();
                 })
                 .finally(() => {
@@ -437,7 +405,6 @@ function initAutoUpload(container) {
                 input.value = '';
             };
 
-            // Check if overwrite confirmation is needed
             if (zone.dataset.hasAudio === "1") {
                 showOverwriteConfirm(zone, startUpload, resetDisplay);
             } else {
@@ -447,34 +414,24 @@ function initAutoUpload(container) {
     });
 }
 
-/**
- * Sets the visual state of an upload status element.
- */
 function setStatus(el, state, text) {
     if (!el) return;
     el.className = 'upload-status mt-1.5 text-xs font-medium';
-
     if (state === 'hidden') {
         el.classList.add('hidden');
         el.textContent = '';
         return;
     }
-
     el.classList.remove('hidden');
     el.textContent = text || '';
-
     if (state === 'loading') el.classList.add('text-blue-600');
     if (state === 'success') el.classList.add('text-green-600');
     if (state === 'error')   el.classList.add('text-red-600');
 }
 
-/**
- * Refreshes the <audio> player inside a target element by updating its src.
- */
 function refreshAudioPlayer(targetId, url) {
     const target = document.getElementById(targetId);
     if (!target) return;
-
     let audio = target.querySelector('audio');
     if (!audio) {
         audio = document.createElement('audio');
@@ -482,17 +439,14 @@ function refreshAudioPlayer(targetId, url) {
         audio.className = 'flex-1 h-8';
         target.insertBefore(audio, target.firstChild);
     }
-
     audio.src = url;
     audio.load();
     target.classList.remove('hidden');
 }
 
-// Init for static zones on load
 document.addEventListener('DOMContentLoaded', () => {
     initAutoUpload(document);
 });
-
 
 // Annotorious Drag-to-Draw
 (function () {
@@ -504,20 +458,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const isPublished = '{{ $halaman->buku->status_publikasi }}' === 'Terbit';
 
     function initAnnotorious() {
-        // Inisialisasi Annotorious
         anno = Annotorious.init({
             image: img,
-            disableEditor: true, // Nonaktifkan editor bawaan, kita pakai dialog label custom
+            disableEditor: true,
             readOnly: isPublished 
         });
 
         const naturalW = img.naturalWidth;
         const naturalH = img.naturalHeight;
-        const dbAreas = @json($halaman->areaInteraktif);
 
-        // Muat area interaktif yang sudah ada dari database
+        // Ambil data database dengan @json
+        const dbAreas = @json($halaman->areaInteraktif);
+        
+        // Map data ke format yang diterima Annotorious
         const existingAnnotations = dbAreas.map((area, index) => {
-            // Pastikan nilai persentase diubah ke angka (desimal)
             const xPct = parseFloat(area.x_pct) || 0;
             const yPct = parseFloat(area.y_pct) || 0;
             const wPct = parseFloat(area.w_pct) || 0;
@@ -536,20 +490,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     "selector": {
                         "type": "FragmentSelector",
                         "conformsTo": "http://www.w3.org/TR/media-frags/",
-                        // Konversi nilai persentase kembali menjadi pixel
                         "value": `xywh=pixel:${(xPct / 100) * naturalW},${(yPct / 100) * naturalH},${(wPct / 100) * naturalW},${(hPct / 100) * naturalH}`
                     }
                 }
             };
         });
         
-        // Render kotak-kotak lama ke layar
         anno.setAnnotations(existingAnnotations);
 
-        // Event saat pengguna selesai menggambar (Click & Drag) area baru
         if (!isPublished) {
             anno.on('createSelection', function(selection) {
-                // Ekstrak nilai x, y, width, height dari struktur Annotorious
                 const [x, y, w, h] = selection.target.selector.value.replace('xywh=pixel:', '').split(',').map(Number);
 
                 currentRect = {
@@ -561,7 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: Math.round(y),
                     lebar_area: Math.round(w),
                     panjang_area: Math.round(h),
-                    selection: selection // Simpan referensi objek draft Annotorious
+                    selection: selection
                 };
 
                 showLabelInput();
@@ -569,14 +519,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Pastikan gambar termuat secara penuh sebelum mengambil naturalWidth/Height
     if (img.complete) {
         initAnnotorious();
     } else {
         img.addEventListener('load', initAnnotorious);
     }
 
-    // Manajemen UI Dialog Label (Sama seperti sebelumnya)
     function showLabelInput() {
         document.getElementById('labelInputArea').classList.remove('hidden');
         document.getElementById('newAreaLabel').focus();
@@ -587,14 +535,13 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('newAreaLabel').value = '';
     }
 
-    document.getElementById('cancelAreaBtn').addEventListener('click', function () {
-        if (anno) anno.cancelSelected(); // Hapus draft kotak dari layar
+    document.getElementById('cancelAreaBtn')?.addEventListener('click', function () {
+        if (anno) anno.cancelSelected();
         currentRect = null;
         hideLabelInput();
     });
 
-    // Simpan Area ke Database
-    document.getElementById('saveAreaBtn').addEventListener('click', function () {
+    document.getElementById('saveAreaBtn')?.addEventListener('click', function () {
         if (!currentRect) return;
 
         const label = document.getElementById('newAreaLabel').value.trim();
@@ -633,9 +580,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                // Permanenkan kotak draft di Annotorious
                 const newAnno = Object.assign({}, currentRect.selection);
-                newAnno.id = data.area.id_area.toString(); // ID harus string untuk Annotorious
+                newAnno.id = data.area.id_area.toString();
                 newAnno.body = [{ type: 'TextualBody', value: label }];
                 anno.updateSelected(newAnno);
                 anno.saveSelected();
@@ -669,25 +615,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Helpers Update List Area
     function updateCount(delta) {
         const el = document.getElementById('areaCount');
-        el.textContent = parseInt(el.textContent) + delta;
+        if (el) el.textContent = parseInt(el.textContent) + delta;
         const empty = document.getElementById('emptyAreaMsg');
         if (empty) empty.classList.add('hidden');
-        document.getElementById('areaList').classList.remove('hidden');
+        const list = document.getElementById('areaList');
+        if (list) list.classList.remove('hidden');
     }
 
     function appendAreaCard(area) {
         const list = document.getElementById('areaList');
+        if (!list) return;
         const index = list.children.length + 1;
         list.insertAdjacentHTML('beforeend', buildAreaCard(area, index));
         const newCard = list.lastElementChild;
         newCard.querySelector('.btn-delete-area').addEventListener('click', handleDeleteArea);
-        initAutoUpload(newCard); // Bind upload handler
+        initAutoUpload(newCard); 
     }
 
-    // Fungsi Render HTML Card Audio (Tidak Diubah)
     function buildAreaCard(area, index) {
         const label       = area.label || ('Area ' + index);
         const aId         = area.id_area;
@@ -773,11 +719,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    // Hapus Card Audio
                     document.getElementById('area-card-' + aId)?.remove();
-                    // Hapus Polygon/Kotak pada Annotorious
                     if (anno) anno.removeAnnotation(aId.toString());
-                    
                     updateCount(-1);
                 } else {
                     ModalAlert.show('alertModal', {
@@ -800,26 +743,20 @@ document.addEventListener('DOMContentLoaded', () => {
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // AJAX untuk penautan Audio Latar secara background
         const formSetBacksound = document.getElementById('form-set-backsound');
         if (formSetBacksound) {
             const select = formSetBacksound.querySelector('select[name="id_audio_latar"]');
             const statusEl = document.getElementById('backsound-status');
-
-            // Eksekusi API langsung saat dropdown diubah
+            
             select.addEventListener('change', function() {
                 if (!this.value) return;
-
                 const fd = new FormData(formSetBacksound);
-                
-                // GARANSI: Pastikan nilai id_audio_latar terkirim meski FormData telat membaca DOM
                 fd.set('id_audio_latar', this.value);
-
-                // Indikasi sedang memuat (disable dropdown sementara)
+                
                 select.disabled = true;
                 statusEl.className = 'mt-1.5 text-xs font-medium text-blue-600 block';
-                statusEl.textContent = '⏳ Menautkan...';
-
+                statusEl.textContent = ' Menautkan...';
+                
                 fetch(formSetBacksound.action, {
                     method: 'POST',
                     headers: {
@@ -838,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(data => {
                     if (!data) return;
                     if (data.success) {
-                        statusEl.textContent = '✔️ ' + data.message;
+                        statusEl.textContent = ' ' + data.message;
                         statusEl.className = 'mt-1.5 text-xs font-medium text-green-600 block';
                         
                         const playerContainer = document.getElementById('backsound-player-container');
@@ -850,28 +787,25 @@ document.addEventListener('DOMContentLoaded', () => {
                             playerContainer.classList.remove('hidden');
                         }
                     } else {
-                        // Tangkap pesan error default Laravel jika validasi gagal
                         let errMsg = data.message || 'Gagal mengatur audio';
                         if (data.errors && data.errors.id_audio_latar) {
                             errMsg = data.errors.id_audio_latar[0];
                         }
-                        statusEl.textContent = '❌ ' + errMsg;
+                        statusEl.textContent = ' ' + errMsg;
                         statusEl.className = 'mt-1.5 text-xs font-medium text-red-600 block';
                     }
                     setTimeout(() => { statusEl.className = 'hidden'; }, 3000);
                 })
                 .catch(err => {
-                    statusEl.textContent = '❌ Terjadi kesalahan jaringan.';
+                    statusEl.textContent = ' Terjadi kesalahan jaringan.';
                     statusEl.className = 'mt-1.5 text-xs font-medium text-red-600 block';
                     setTimeout(() => { statusEl.className = 'hidden'; }, 3000);
                 })
                 .finally(() => {
-                    // Kembalikan dropdown ke keadaan semula setelah selesai
                     select.disabled = false;
                 });
             });
 
-            // Cegah form melakukan reload (fallback pencegahan default)
             formSetBacksound.addEventListener('submit', function(e) {
                 e.preventDefault();
             });
@@ -883,7 +817,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (flashData) {
             const err = flashData.getAttribute('data-error');
             const success = flashData.getAttribute('data-success');
-
             if (err) {
                 ModalAlert.show('alertModal', {
                     title: 'Terjadi Kesalahan',
@@ -900,5 +833,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 </script>
 @endpush
-
 @endsection
