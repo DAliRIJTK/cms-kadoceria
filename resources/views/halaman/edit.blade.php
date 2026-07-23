@@ -2,6 +2,9 @@
 
 @section('content')
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/annotorious@2.7.14/dist/annotorious.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious@2.7.14/dist/annotorious.min.js"></script>
+
 <div class="mb-4">
     <a href="{{ route('halaman.management', ['id_buku' => $halaman->buku->id_buku]) }}"
        class="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1">
@@ -47,31 +50,11 @@
 
             <div class="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-50 select-none" id="imageWrapper">
                 @if($halaman->path_gambar)
-                    <img id="pageImage"
-                         src="{{ Storage::disk(config('filesystems.default'))->url($halaman->path_gambar) }}"
-                         alt="Halaman {{ $halaman->nomor_halaman }}"
-                         class="w-full block"
-                         draggable="false">
-                    @if($halaman->nomor_halaman !== 1)
-                    <canvas id="drawCanvas"
-                            class="absolute inset-0 w-full h-full {{ $halaman->buku->status_publikasi === 'Terbit' ? 'cursor-default' : 'cursor-crosshair' }}"
-                            style="touch-action: none;"></canvas>
-                    {{-- Existing area overlays --}}
-                    @foreach($halaman->areaInteraktif as $area)
-                        <div class="absolute border-2 border-red-500 bg-red-500/10 pointer-events-none area-overlay"
-                             data-id="{{ $area->id_area }}"
-                             @style([
-                                 "left: " . ($area->x_pct ?? 0) . "%",
-                                 "top: " . ($area->y_pct ?? 0) . "%",
-                                 "width: " . ($area->w_pct ?? 0) . "%",
-                                 "height: " . ($area->h_pct ?? 0) . "%",
-                             ])>
-                            <span class="absolute -top-5 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap max-w-[120px] truncate">
-                                {{ $area->label ?? 'Area ' . $loop->iteration }}
-                            </span>
-                        </div>
-                    @endforeach
-                    @endif
+                    <img id="pageImage" 
+                        src="{{ Storage::disk(config('filesystems.default'))->url($halaman->path_gambar) }}" 
+                        alt="Halaman {{ $halaman->nomor_halaman }}" 
+                        class="w-full block" 
+                        draggable="false">
                 @else
                     <div class="w-full aspect-[3/4] bg-gray-100 flex items-center justify-center rounded-lg">
                         <span class="text-3xl font-bold text-gray-400">{{ $halaman->nomor_halaman }}</span>
@@ -512,127 +495,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // ── Canvas drag-to-draw ───────────────────────────────────────────────────────
+// Annotorious Drag-to-Draw
 (function () {
-    const img    = document.getElementById('pageImage');
-    const canvas = document.getElementById('drawCanvas');
-    if (!canvas || !img) return;
+    const img = document.getElementById('pageImage');
+    if (!img) return;
 
-    const ctx = canvas.getContext('2d');
-    let drawing = false, startX, startY, currentRect = null;
-
-    function syncCanvas() {
-        canvas.width  = img.offsetWidth;
-        canvas.height = img.offsetHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    window.addEventListener('resize', syncCanvas);
-    img.addEventListener('load', syncCanvas);
-    if (img.complete) syncCanvas();
-
-    function getPos(e) {
-        const rect    = canvas.getBoundingClientRect();
-        let clientX = 0;
-        let clientY = 0;
-
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else if (e.changedTouches && e.changedTouches.length > 0) {
-            clientX = e.changedTouches[0].clientX;
-            clientY = e.changedTouches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-
-        let x = (clientX - rect.left) * (canvas.width  / rect.width);
-        let y = (clientY - rect.top)  * (canvas.height / rect.height);
-
-        // Clamp values to canvas bounds
-        x = Math.max(0, Math.min(canvas.width, x));
-        y = Math.max(0, Math.min(canvas.height, y));
-
-        return { x, y };
-    }
-
+    let anno = null;
+    let currentRect = null;
     const isPublished = '{{ $halaman->buku->status_publikasi }}' === 'Terbit';
 
-    canvas.addEventListener('mousedown',  onStart);
-    canvas.addEventListener('touchstart', onStart, { passive: false });
+    function initAnnotorious() {
+        // Inisialisasi Annotorious
+        anno = Annotorious.init({
+            image: img,
+            disableEditor: true, // Nonaktifkan editor bawaan, kita pakai dialog label custom
+            readOnly: isPublished 
+        });
 
-    function onStart(e) {
-        if (isPublished) return;
-        e.preventDefault();
-        drawing = true;
-        const pos = getPos(e);
-        startX = pos.x; startY = pos.y;
-        currentRect = null;
-        hideLabelInput();
-    }
+        const naturalW = img.naturalWidth;
+        const naturalH = img.naturalHeight;
 
-    window.addEventListener('mousemove',  onMove);
-    window.addEventListener('touchmove',  onMove, { passive: false });
+        // Muat area interaktif yang sudah ada dari database
+        const existingAnnotations = [
+            @foreach($halaman->areaInteraktif as $area)
+            {
+                "@context": "http://www.w3.org/ns/anno.jsonld",
+                "id": "{{ $area->id_area }}",
+                "type": "Annotation",
+                "body": [{
+                    "type": "TextualBody",
+                    "value": "{{ $area->label ?? 'Area '.$loop->iteration }}"
+                }],
+                "target": {
+                    "source": "pageImage",
+                    "selector": {
+                        "type": "FragmentSelector",
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        // Konversi x_pct ke nilai pixel natural gambar
+                        "value": `xywh=pixel:${({{ $area->x_pct ?? 0 }} / 100) * naturalW},${({{ $area->y_pct ?? 0 }} / 100) * naturalH},${({{ $area->w_pct ?? 0 }} / 100) * naturalW},${({{ $area->h_pct ?? 0 }} / 100) * naturalH}`
+                    }
+                }
+            },
+            @endforeach
+        ];
+        
+        // Render kotak-kotak lama ke layar
+        anno.setAnnotations(existingAnnotations);
 
-    function onMove(e) {
-        if (!drawing) return;
-        e.preventDefault();
-        const pos = getPos(e);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth   = 2;
-        ctx.fillStyle   = 'rgba(239,68,68,0.1)';
-        ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
-        ctx.fillRect(startX, startY, pos.x - startX, pos.y - startY);
-    }
+        // Event saat pengguna selesai menggambar (Click & Drag) area baru
+        if (!isPublished) {
+            anno.on('createSelection', function(selection) {
+                // Ekstrak nilai x, y, width, height dari struktur Annotorious
+                const [x, y, w, h] = selection.target.selector.value.replace('xywh=pixel:', '').split(',').map(Number);
 
-    window.addEventListener('mouseup',  onEnd);
-    window.addEventListener('touchend', onEnd);
+                currentRect = {
+                    xPct: ((x / naturalW) * 100).toFixed(4),
+                    yPct: ((y / naturalH) * 100).toFixed(4),
+                    wPct: ((w / naturalW) * 100).toFixed(4),
+                    hPct: ((h / naturalH) * 100).toFixed(4),
+                    x: Math.round(x),
+                    y: Math.round(y),
+                    lebar_area: Math.round(w),
+                    panjang_area: Math.round(h),
+                    selection: selection // Simpan referensi objek draft Annotorious
+                };
 
-    function onEnd(e) {
-        if (!drawing) return;
-        drawing = false;
-        const pos = getPos(e);
-
-        const w = pos.x - startX, h = pos.y - startY;
-        if (Math.abs(w) < 10 || Math.abs(h) < 10) {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            return;
+                showLabelInput();
+            });
         }
-
-        currentRect = {
-            x: w < 0 ? pos.x : startX,
-            y: h < 0 ? pos.y : startY,
-            w: Math.abs(w), h: Math.abs(h),
-            xPct: ((w < 0 ? pos.x : startX) / canvas.width  * 100).toFixed(4),
-            yPct: ((h < 0 ? pos.y : startY) / canvas.height * 100).toFixed(4),
-            wPct: (Math.abs(w) / canvas.width  * 100).toFixed(4),
-            hPct: (Math.abs(h) / canvas.height * 100).toFixed(4),
-        };
-        showLabelInput();
     }
 
+    // Pastikan gambar termuat secara penuh sebelum mengambil naturalWidth/Height
+    if (img.complete) {
+        initAnnotorious();
+    } else {
+        img.addEventListener('load', initAnnotorious);
+    }
+
+    // Manajemen UI Dialog Label (Sama seperti sebelumnya)
     function showLabelInput() {
         document.getElementById('labelInputArea').classList.remove('hidden');
         document.getElementById('newAreaLabel').focus();
     }
+
     function hideLabelInput() {
         document.getElementById('labelInputArea').classList.add('hidden');
         document.getElementById('newAreaLabel').value = '';
     }
 
     document.getElementById('cancelAreaBtn').addEventListener('click', function () {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (anno) anno.cancelSelected(); // Hapus draft kotak dari layar
         currentRect = null;
         hideLabelInput();
     });
 
-    // ── Simpan area baru ──────────────────────────────────────────────────────
+    // Simpan Area ke Database
     document.getElementById('saveAreaBtn').addEventListener('click', function () {
-        if (!currentRect) {
-            alert('Silakan gambar area terlebih dahulu dengan klik dan drag pada gambar.');
-            return;
-        }
+        if (!currentRect) return;
+
         const label = document.getElementById('newAreaLabel').value.trim();
         if (!label) {
             const inp = document.getElementById('newAreaLabel');
@@ -643,7 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const btn = this;
-        btn.disabled    = true;
+        btn.disabled = true;
         btn.textContent = 'Menyimpan...';
 
         fetch("{{ route('halaman.storeAreaInteraktif') }}", {
@@ -660,18 +620,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 y_pct        : currentRect.yPct,
                 w_pct        : currentRect.wPct,
                 h_pct        : currentRect.hPct,
-                x            : Math.round(currentRect.x),
-                y            : Math.round(currentRect.y),
-                lebar_area   : Math.round(currentRect.w),
-                panjang_area : Math.round(currentRect.h),
+                x            : currentRect.x,
+                y            : currentRect.y,
+                lebar_area   : currentRect.lebar_area,
+                panjang_area : currentRect.panjang_area,
             }),
         })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                // Permanenkan kotak draft di Annotorious
+                const newAnno = Object.assign({}, currentRect.selection);
+                newAnno.id = data.area.id_area.toString(); // ID harus string untuk Annotorious
+                newAnno.body = [{ type: 'TextualBody', value: label }];
+                anno.updateSelected(newAnno);
+                anno.saveSelected();
+
                 appendAreaCard(data.area);
-                appendAreaOverlay(data.area, label);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 currentRect = null;
                 hideLabelInput();
                 updateCount(1);
@@ -680,7 +645,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: 'Gagal Menyimpan',
                     subtitle: data.message || 'Terjadi kesalahan tidak diketahui.'
                 });
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (anno) anno.cancelSelected();
                 currentRect = null;
                 hideLabelInput();
             }
@@ -690,18 +655,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Error',
                 subtitle: 'Terjadi kesalahan jaringan atau server saat menyimpan area.'
             });
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (anno) anno.cancelSelected();
             currentRect = null;
             hideLabelInput();
         })
         .finally(() => {
-            btn.disabled  = false;
-            btn.innerHTML = '💾 Simpan';
+            btn.disabled = false;
+            btn.innerHTML = 'Simpan';
         });
     });
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
+    // Helpers Update List Area
     function updateCount(delta) {
         const el = document.getElementById('areaCount');
         el.textContent = parseInt(el.textContent) + delta;
@@ -711,16 +675,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function appendAreaCard(area) {
-        const list  = document.getElementById('areaList');
+        const list = document.getElementById('areaList');
         const index = list.children.length + 1;
         list.insertAdjacentHTML('beforeend', buildAreaCard(area, index));
         const newCard = list.lastElementChild;
         newCard.querySelector('.btn-delete-area').addEventListener('click', handleDeleteArea);
-        
-        // Init auto-upload trigger on newly created cards dynamically
-        initAutoUpload(newCard);
+        initAutoUpload(newCard); // Bind upload handler
     }
 
+    // Fungsi Render HTML Card Audio (Tidak Diubah)
     function buildAreaCard(area, index) {
         const label       = area.label || ('Area ' + index);
         const aId         = area.id_area;
@@ -734,12 +697,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="flex justify-between items-start mb-3">
                 <div>
                     <p class="font-bold text-gray-900 text-sm">${label}</p>
-                    <p class="text-xs text-gray-400">Posisi: (${area.x ?? '—'}, ${area.y ?? '—'}) – Ukuran: ${area.lebar_area ?? '—'}×${area.panjang_area ?? '—'}px</p>
+                    <p class="text-xs text-gray-400">Posisi: (${area.x ?? ' '}, ${area.y ?? ' '}) | Ukuran: ${area.lebar_area ?? ' '}x${area.panjang_area ?? ' '}px</p>
                 </div>
-                <button type="button"
+                <button type="button" 
                         class="btn-delete-area w-9 h-9 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm"
-                        data-id="${aId}" data-route="${deleteRoute}" data-csrf="${csrf}">🗑️</button>
+                        data-id="${aId}" data-route="${deleteRoute}" data-csrf="${csrf}">Hapus</button>
             </div>
+            
             <div class="bg-blue-50 rounded-lg p-3 mb-2 border border-blue-100">
                 <p class="text-xs font-bold text-blue-800 mb-2">Audio Objek - Bahasa Indonesia</p>
                 <div class="flex items-center gap-2 mb-2 hidden" id="audio-player-area-${aId}-indo">
@@ -751,20 +715,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button type="submit" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">Hapus</button>
                     </form>
                 </div>
-                <div class="audio-upload-zone"
-                     data-url="${uploadRoute}"
-                     data-audio-type="indo"
-                     data-player-target="audio-player-area-${aId}-indo"
-                     data-has-audio="0">
+                <div class="audio-upload-zone" data-url="${uploadRoute}" data-audio-type="indo" data-player-target="audio-player-area-${aId}-indo" data-has-audio="0">
                     <label class="flex items-center gap-2 cursor-pointer group">
                         <span class="upload-label flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">Pilih File</span>
                         <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
                         <span class="upload-filename flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate">Belum ada file dipilih</span>
                     </label>
                     <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
-                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
                 </div>
             </div>
+
             <div class="bg-purple-50 rounded-lg p-3 border border-purple-100">
                 <p class="text-xs font-bold text-purple-800 mb-2">Audio Objek - Bahasa Sunda</p>
                 <div class="flex items-center gap-2 mb-2 hidden" id="audio-player-area-${aId}-sunda">
@@ -776,34 +736,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <button type="submit" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors">Hapus</button>
                     </form>
                 </div>
-                <div class="audio-upload-zone"
-                     data-url="${uploadRoute}"
-                     data-audio-type="sunda"
-                     data-player-target="audio-player-area-${aId}-sunda"
-                     data-has-audio="0">
+                <div class="audio-upload-zone" data-url="${uploadRoute}" data-audio-type="sunda" data-player-target="audio-player-area-${aId}-sunda" data-has-audio="0">
                     <label class="flex items-center gap-2 cursor-pointer group">
                         <span class="upload-label flex-shrink-0 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-medium group-hover:bg-gray-50 transition-colors">Pilih File</span>
                         <input type="file" name="audio_file" accept=".mp3,.m4a" class="hidden auto-upload-input">
                         <span class="upload-filename flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-400 truncate">Belum ada file dipilih</span>
                     </label>
                     <div class="upload-status mt-1.5 hidden text-xs font-medium"></div>
-                    <p class="text-xs text-gray-400 mt-1">Maksimal 1MB • MP3, M4A • Suara saat objek dipilih</p>
                 </div>
             </div>
         </div>`;
-    }
-
-    function appendAreaOverlay(area, label) {
-        const wrapper = document.getElementById('imageWrapper');
-        const div = document.createElement('div');
-        div.className = 'absolute border-2 border-red-500 bg-red-500/10 pointer-events-none area-overlay';
-        div.dataset.id = area.id_area;
-        div.style.left   = (area.x_pct ?? 0) + '%';
-        div.style.top    = (area.y_pct ?? 0) + '%';
-        div.style.width  = (area.w_pct ?? 0) + '%';
-        div.style.height = (area.h_pct ?? 0) + '%';
-        div.innerHTML = `<span class="absolute -top-5 left-0 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap max-w-[120px] truncate">${label}</span>`;
-        wrapper.appendChild(div);
     }
 
     document.querySelectorAll('.btn-delete-area').forEach(btn => {
@@ -827,8 +769,11 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
+                    // Hapus Card Audio
                     document.getElementById('area-card-' + aId)?.remove();
-                    document.querySelector('.area-overlay[data-id="' + aId + '"]')?.remove();
+                    // Hapus Polygon/Kotak pada Annotorious
+                    if (anno) anno.removeAnnotation(aId.toString());
+                    
                     updateCount(-1);
                 } else {
                     ModalAlert.show('alertModal', {
@@ -845,7 +790,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
 })();
 </script>
 
