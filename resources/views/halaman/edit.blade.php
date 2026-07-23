@@ -494,7 +494,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// ── Canvas drag-to-draw ───────────────────────────────────────────────────────
 // Annotorious Drag-to-Draw
 (function () {
     const img = document.getElementById('pageImage');
@@ -514,30 +513,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const naturalW = img.naturalWidth;
         const naturalH = img.naturalHeight;
+        const dbAreas = @json($halaman->areaInteraktif);
 
         // Muat area interaktif yang sudah ada dari database
-        const existingAnnotations = [
-            @foreach($halaman->areaInteraktif as $area)
-            {
+        const existingAnnotations = dbAreas.map((area, index) => {
+            // Pastikan nilai persentase diubah ke angka (desimal)
+            const xPct = parseFloat(area.x_pct) || 0;
+            const yPct = parseFloat(area.y_pct) || 0;
+            const wPct = parseFloat(area.w_pct) || 0;
+            const hPct = parseFloat(area.h_pct) || 0;
+
+            return {
                 "@context": "http://www.w3.org/ns/anno.jsonld",
-                "id": "{{ $area->id_area }}",
+                "id": area.id_area.toString(),
                 "type": "Annotation",
                 "body": [{
                     "type": "TextualBody",
-                    "value": "{{ $area->label ?? 'Area '.$loop->iteration }}"
+                    "value": area.label || ('Area ' + (index + 1))
                 }],
                 "target": {
                     "source": "pageImage",
                     "selector": {
                         "type": "FragmentSelector",
                         "conformsTo": "http://www.w3.org/TR/media-frags/",
-                        // Konversi x_pct ke nilai pixel natural gambar
-                        "value": `xywh=pixel:${({{ $area->x_pct ?? 0 }} / 100) * naturalW},${({{ $area->y_pct ?? 0 }} / 100) * naturalH},${({{ $area->w_pct ?? 0 }} / 100) * naturalW},${({{ $area->h_pct ?? 0 }} / 100) * naturalH}`
+                        // Konversi nilai persentase kembali menjadi pixel
+                        "value": `xywh=pixel:${(xPct / 100) * naturalW},${(yPct / 100) * naturalH},${(wPct / 100) * naturalW},${(hPct / 100) * naturalH}`
                     }
                 }
-            },
-            @endforeach
-        ];
+            };
+        });
         
         // Render kotak-kotak lama ke layar
         anno.setAnnotations(existingAnnotations);
