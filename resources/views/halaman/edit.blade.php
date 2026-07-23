@@ -492,7 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         anno = Annotorious.init({
             image: img
-            disableEditor: true
         });
                 
         anno.setAnnotations(existingAnnotations);
@@ -500,6 +499,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isPublished) {
             anno.on('createSelection', function(selection) {
                 const [x, y, w, h] = selection.target.selector.value.replace('xywh=pixel:', '').split(',').map(Number);
+
+                selection.id = 'temp-' + Date.now();
+                selection.body = [{ type: 'TextualBody', value: 'Draft' }];
 
                 currentRect = {
                     xPct: ((x / naturalW) * 100).toFixed(4),
@@ -512,6 +514,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     panjang_area: Math.round(h),
                     selection: selection
                 };
+
+                anno.addAnnotation(selection);
+
+                anno.cancelSelected();
 
                 showLabelInput();
             });
@@ -535,6 +541,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('cancelAreaBtn')?.addEventListener('click', function () {
+        if (currentRect && currentRect.selection) {
+            anno.removeAnnotation(currentRect.selection.id);
+        }
         if (anno) anno.cancelSelected();
         currentRect = null;
         hideLabelInput();
@@ -579,11 +588,14 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                // Hapus kotak sementara
+                anno.removeAnnotation(currentRect.selection.id);
+
+                // Buat anotasi permanen dengan ID dari database
                 const newAnno = Object.assign({}, currentRect.selection);
                 newAnno.id = data.area.id_area.toString();
                 newAnno.body = [{ type: 'TextualBody', value: label }];
-                anno.updateSelected(newAnno);
-                anno.saveSelected();
+                anno.addAnnotation(newAnno);
 
                 appendAreaCard(data.area);
                 currentRect = null;
