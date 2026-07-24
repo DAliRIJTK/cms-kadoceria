@@ -499,6 +499,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isPublished) {
             anno.on('createSelection', function(selection) {
                 const [x, y, w, h] = selection.target.selector.value.replace('xywh=pixel:', '').split(',').map(Number);
+                if (currentRect && currentRect.selection) {
+                    anno.removeAnnotation(currentRect.selection.id);
+                }
 
                 selection.id = 'temp-' + Date.now();
                 selection.body = [{ type: 'TextualBody', value: 'Draft' }];

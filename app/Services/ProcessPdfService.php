@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Buku;
 use App\Models\Halaman;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ProcessPdfService
@@ -32,12 +33,15 @@ class ProcessPdfService
         file_put_contents($tempPdfPath, $pdfContents);
 
         $imagick = new \Imagick();
+        $uploadedS3Files = [];
         try {
-            $imagick->setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 256);
+            $imagick->setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 256 * 1024 * 1024);
             $imagick->setResolution(120, 120);
             $imagick->readImage($tempPdfPath);
 
             $bookDir = $buku->slugify($buku->judul_idn);
+
+            DB::beginTransaction();
 
             foreach ($imagick as $index => $page) {
                 $page->setImageFormat('webp');
@@ -49,7 +53,6 @@ class ProcessPdfService
                     throw new \Exception('Gagal membaca gambar halaman ke-' . ($index + 1));
                 }
 
-                // Get page image dimensions
                 list($width, $height) = getimagesizefromstring($imageContents);
 
                 $halaman = Halaman::create([
@@ -66,6 +69,8 @@ class ProcessPdfService
                 // Mengunggah langsung ke S3 ke tujuan final
                 Storage::disk('s3')->put($fileName, $imageContents);
 
+                $uploadedS3Files[] = $fileName;
+
                 // Update kembali path final ke database
                 $halaman->update(['path_gambar' => $fileName]);
 
@@ -75,6 +80,8 @@ class ProcessPdfService
                 }
             }
 
+            DB::commit();
+
             // Clean up the main Imagick object resources before calling syncStorageStructure,
             // as syncing might rename/move the generated images.
             $imagick->clear();
@@ -82,6 +89,14 @@ class ProcessPdfService
             $buku->update(['is_processing' => false]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (!empty($uploadedS3Files)) {
+                Storage::disk('s3')->delete($uploadedS3Files);
+            }
+
+            $buku->update(['is_processing' => false]);
+            
             if (isset($imagick)) {
                 $imagick->clear();
                 $imagick->destroy();
