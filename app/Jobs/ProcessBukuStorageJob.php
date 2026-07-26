@@ -65,7 +65,9 @@ class ProcessBukuStorageJob implements ShouldQueue
 
         // 3. Generate ulang metadata/bundle
         if ($this->buku->status_publikasi === 'Terbit') {
-            $bundleService->generateAndPackageBundle($this->buku);
+            // Panggil kedua fungsi secara berurutan jika status Terbit
+            $bundleService->generateMetadataJson($this->buku);
+            $bundleService->generateZipBundle($this->buku);
         } else {
             $bundleService->generateMetadataJson($this->buku);
         }

@@ -21,6 +21,7 @@ class GenerateBundleJob implements ShouldQueue
 
     public function handle(BukuBundleService $bundleService): void
     {
-        $bundleService->generateAndPackageBundle($this->buku);
+        $bundleService->generateMetadataJson($this->buku);
+        $bundleService->generateZipBundle($this->buku);
     }
 }
