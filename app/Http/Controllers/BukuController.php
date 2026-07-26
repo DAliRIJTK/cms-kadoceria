@@ -347,23 +347,16 @@ class BukuController extends Controller
                 if (empty($page->narasi_indo) || empty($page->narasi_sunda)) {
                     $missingNarasi++;
                 }
-                // if ($page->nomor_halaman !== 1 && empty($page->id_audio_latar)) {
-                //     $missingBacksound++;
-                // }
-
                 foreach ($page->areaInteraktif as $area) {
-                    if (empty($area->audio_indo)) {
+                    if (empty($area->audio_indo) || empty($area->audio_sunda)) {
                         $missingAreaAudio++;
                     }
                 }
             }
 
             if ($missingNarasi > 0) {
-                $errorMsgs[] = "Audio narasi Indonesia belum lengkap ({$missingNarasi} halaman)";
+                $errorMsgs[] = "Audio narasi Indonesia/Sunda belum lengkap ({$missingNarasi} halaman)";
             }
-            // if ($missingBacksound > 0) {
-            //     $errorMsgs[] = "Audio backsound belum lengkap ({$missingBacksound} halaman)";
-            // }
             if ($missingAreaAudio > 0) {
                 $errorMsgs[] = "Audio area interaktif belum lengkap ({$missingAreaAudio} area)";
             }
