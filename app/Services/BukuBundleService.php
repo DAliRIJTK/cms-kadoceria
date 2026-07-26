@@ -16,64 +16,54 @@ class BukuBundleService
      * @return void
      * @throws \Exception
      */
-    public function generateAndPackageBundle(Buku $buku): void
-    {
-        try {
-            $buku->load(['halaman' => function ($q) {
-                $q->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman');
-            }]);
-
-            $this->generateMetadataJson($buku);
-            $this->generateZipBundle($buku);
-
-        } catch (\Exception $e) {
-            throw $e;
-        }
-    }
-
     /**
-     * Generate the metadata.json file.
-     *
-     * @param Buku $buku
-     * @return void
+     * Sentralisasi array JSON agar format API, S3, dan ZIP Bundle persis sama
      */
-    public function generateMetadataJson(Buku $buku): void
+    public function getMetadataArray(Buku $buku): array
     {
         $halaman = $buku->relationLoaded('halaman')
             ? $buku->halaman
             : $buku->halaman()->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman')->get();
 
         $folderName = $buku->slugify($buku->judul_idn);
+        $baseS3Path = 'buku/' . $folderName . '/';
 
-        $metadata = [
+        return [
             'id'             => (string) $buku->id_buku,
             'title_id'       => $buku->judul_idn,
             'title_su'       => $buku->judul_sn,
+            'folderName'     => $folderName,
             'description_id' => $buku->deskripsi_idn,
             'description_su' => $buku->deskripsi_sn,
             'author'         => $buku->penulis,
             'illustrator'    => $buku->ilustrator,
-            'coverImage'     => $this->storageUrl($buku->path_cover),
-            'folderName'     => $folderName,
+            'coverImage'     => $this->getRelativeS3Path($buku->path_cover, $baseS3Path),
             'theme'          => [
                 'primary'   => $this->rgbToHex($buku->warna_primer,   '#FFFFFF'),
                 'secondary' => $this->rgbToHex($buku->warna_sekunder, '#FFFFFF'),
             ],
-            'pages'          => $halaman->map(function ($page) {
+            'pages'          => $halaman->map(function ($page) use ($baseS3Path, $buku, $folderName) {
                 $isCover = $page->nomor_halaman === 1;
-                
+
+                // Tangani AudioLatar (karena merupakan relasi yang di-copy oleh sistem pada S3)
+                $backsoundRelPath = null;
+                if (!$isCover && $page->audioLatar && $page->audioLatar->path_file) {
+                    $ext = pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
+                    $destName = $buku->slugify($page->audioLatar->nama_audio) . '.' . $ext;
+                    $backsoundRelPath = 'audio backsound/' . $destName;
+                }
+
                 return [
-                    'image'              => $this->storageUrl($page->path_gambar),
-                    'backsound'          => $isCover ? null : ($page->audioLatar ? $this->storageUrl($page->audioLatar->path_file) : null),
-                    'narationId'         => $this->storageUrl($page->narasi_indo),
-                    'narationSd'         => $this->storageUrl($page->narasi_sunda),
+                    'image'              => $this->getRelativeS3Path($page->path_gambar, $baseS3Path),
+                    'backsound'          => $backsoundRelPath,
+                    'narationId'         => $this->getRelativeS3Path($page->narasi_indo, $baseS3Path),
+                    'narationSd'         => $this->getRelativeS3Path($page->narasi_sunda, $baseS3Path),
                     'widthImage'         => (float) ($page->lebar_halaman ?? 0),
                     'heightImage'        => (float) ($page->panjang_halaman ?? 0),
-                    'interactiveObjects' => $isCover ? [] : $page->areaInteraktif->map(function ($area) use ($page) {
+                    'interactiveObjects' => $isCover ? [] : $page->areaInteraktif->map(function ($area) use ($page, $baseS3Path) {
                         return [
-                            'audioObjectId' => $this->storageUrl($area->audio_indo),
-                            'audioObjectSd' => $this->storageUrl($area->audio_sunda),
-                            // Hitung persentase dikali dimensi halaman asli
+                            'audioObjectId' => $this->getRelativeS3Path($area->audio_indo, $baseS3Path),
+                            'audioObjectSd' => $this->getRelativeS3Path($area->audio_sunda, $baseS3Path),
                             'x'             => (float) (($area->x_pct / 100) * $page->lebar_halaman),
                             'y'             => (float) (($area->y_pct / 100) * $page->panjang_halaman),
                             'width'         => (float) (($area->w_pct / 100) * $page->lebar_halaman),
@@ -83,6 +73,15 @@ class BukuBundleService
                 ];
             })->toArray(),
         ];
+    }
+
+    /**
+     * Generate the metadata.json file using relative paths identical to Bundle
+     */
+    public function generateMetadataJson(Buku $buku): void
+    {
+        $folderName = $buku->slugify($buku->judul_idn);
+        $metadata = $this->getMetadataArray($buku);
 
         Storage::disk('s3')->put(
             'buku/' . $folderName . '/metadata.json',
@@ -91,139 +90,63 @@ class BukuBundleService
     }
 
     /**
-     * Generate the ZIP bundle containing all assets and a data.json mapping.
-     *
-     * @param Buku $buku
-     * @return void
-     * @throws \Exception
+     * Generate the ZIP bundle mirroring exact S3 directory structure
      */
     public function generateZipBundle(Buku $buku): void
     {
+        $folderName = $buku->slugify($buku->judul_idn);
+        $baseS3Path = 'buku/' . $folderName . '/';
+
+        $tmpDir = storage_path('app/tmp/bundle_' . $buku->id_buku . '_' . time());
+        
+        $metadataJson = $this->getMetadataArray($buku);
+        $filesToCopy = [];
+        
+        $registerFile = function($s3Path) use (&$filesToCopy, $baseS3Path) {
+            if ($s3Path) {
+                $filesToCopy[$s3Path] = $this->getRelativeS3Path($s3Path, $baseS3Path);
+            }
+        };
+
+        $registerFile($buku->path_cover);
+
         $halaman = $buku->relationLoaded('halaman')
             ? $buku->halaman
             : $buku->halaman()->with(['areaInteraktif', 'audioLatar'])->orderBy('nomor_halaman')->get();
 
-        $folderName = $buku->slugify($buku->judul_idn);
-
-        $tmpDir = storage_path('app/tmp/bundle_' . $buku->id_buku . '_' . time());
-        @mkdir($tmpDir . '/images', 0777, true);
-        @mkdir($tmpDir . '/audio',  0777, true);
-
-        $coverRelPath = null;
-        if ($buku->path_cover) {
-            $coverFilename = 'cover' . '.' . pathinfo($buku->path_cover, PATHINFO_EXTENSION);
-            if ($this->copyFromStorageToLocal($buku->path_cover, $tmpDir . '/images/' . $coverFilename)) {
-                $coverRelPath = 'images/' . $coverFilename;
-            }
-        }
-
-        $pagesData = [];
-        $pageIndex  = 1; // nomor urut halaman di ZIP (halaman 2 DB → page_1, dst.)
         foreach ($halaman as $page) {
-            // Halaman 1 adalah cover, sudah disalin sebagai cover.* — lewati
-            if ($page->nomor_halaman === 1) {
-                continue;
-            }
-
-            $pageRelPath = null;
-            if ($page->path_gambar) {
-                $pageFilename = 'page_' . $pageIndex . '.' . pathinfo($page->path_gambar, PATHINFO_EXTENSION);
-                if ($this->copyFromStorageToLocal($page->path_gambar, $tmpDir . '/images/' . $pageFilename)) {
-                    $pageRelPath = 'images/' . $pageFilename;
-                }
-            }
-
-            $backsoundRelPath = null;
+            $registerFile($page->path_gambar);
             if ($page->audioLatar && $page->audioLatar->path_file) {
-                $bgmFilename = 'bgm_' . $page->audioLatar->id_audio_latar . '.' . pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
-                
-                // Pastikan path untuk JSON diatur terlepas apakah filenya sudah ada atau belum
-                $backsoundRelPath = 'audio/' . $bgmFilename;
-
-                // Hanya salin file fisik jika belum ada di folder temporer
-                if (!file_exists($tmpDir . '/audio/' . $bgmFilename)) {
-                    $this->copyFromStorageToLocal($page->audioLatar->path_file, $tmpDir . '/audio/' . $bgmFilename);
-                }
+                $ext = pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
+                $destName = $buku->slugify($page->audioLatar->nama_audio) . '.' . $ext;
+                $backsoundS3Path = 'buku/' . $folderName . '/audio backsound/' . $destName;
+                $registerFile($backsoundS3Path);
             }
+            $registerFile($page->narasi_indo);
+            $registerFile($page->narasi_sunda);
 
-            $narasiIdRelPath = null;
-            if ($page->narasi_indo) {
-                $narasiIdFilename = 'narasi_id_' . $page->id_halaman . '.' . pathinfo($page->narasi_indo, PATHINFO_EXTENSION);
-                if ($this->copyFromStorageToLocal($page->narasi_indo, $tmpDir . '/audio/' . $narasiIdFilename)) {
-                    $narasiIdRelPath = 'audio/' . $narasiIdFilename;
-                }
-            }
-
-            $narasiSuRelPath = null;
-            if ($page->narasi_sunda) {
-                $narasiSuFilename = 'narasi_su_' . $page->id_halaman . '.' . pathinfo($page->narasi_sunda, PATHINFO_EXTENSION);
-                if ($this->copyFromStorageToLocal($page->narasi_sunda, $tmpDir . '/audio/' . $narasiSuFilename)) {
-                    $narasiSuRelPath = 'audio/' . $narasiSuFilename;
-                }
-            }
-
-            $interactiveObjects = [];
             foreach ($page->areaInteraktif as $area) {
-
-                $audioObjIdRelPath = null;
-                if ($area->audio_indo) {
-                    $objIdFilename = 'objek_id_' . $area->id_area . '.' . pathinfo($area->audio_indo, PATHINFO_EXTENSION);
-                    if ($this->copyFromStorageToLocal($area->audio_indo, $tmpDir . '/audio/' . $objIdFilename)) {
-                        $audioObjIdRelPath = 'audio/' . $objIdFilename;
-                    }
-                }
-
-                $audioObjSuRelPath = null;
-                if ($area->audio_sunda) {
-                    $objSuFilename = 'objek_su_' . $area->id_area . '.' . pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
-                    if ($this->copyFromStorageToLocal($area->audio_sunda, $tmpDir . '/audio/' . $objSuFilename)) {
-                        $audioObjSuRelPath = 'audio/' . $objSuFilename;
-                    }
-                }
-
-                $interactiveObjects[] = [
-                    'x'             => (float) (($area->x_pct / 100) * $page->lebar_halaman),
-                    'y'             => (float) (($area->y_pct / 100) * $page->panjang_halaman),
-                    'width'         => (float) (($area->w_pct / 100) * $page->lebar_halaman),
-                    'height'        => (float) (($area->h_pct / 100) * $page->panjang_halaman), 
-                    'audioObjectId' => $audioObjIdRelPath,
-                    'audioObjectSd' => $audioObjSuRelPath,
-                ];
+                $registerFile($area->audio_indo);
+                $registerFile($area->audio_sunda);
             }
-
-            $pagesData[] = [
-                'image'              => $pageRelPath,
-                'backsound'          => $backsoundRelPath,
-                'widthImage'         => (int) ($page->lebar_halaman  ?? 0),
-                'heightImage'        => (int) ($page->panjang_halaman ?? 0),
-                'narationId'         => $narasiIdRelPath,
-                'narationSd'         => $narasiSuRelPath,
-                'interactiveObjects' => $interactiveObjects,
-            ];
-
-            $pageIndex++;
         }
 
-        $dataJson = [
-            'id'           => (string) $buku->id_buku,
-            'title_id'     => $buku->judul_idn,
-            'title_su'     => $buku->judul_sn,
-            'folderName'   => $folderName,
-            'description_id' => $buku->deskripsi_idn,
-            'description_su' => $buku->deskripsi_sn,
-            'author'       => $buku->penulis,
-            'illustrator'  => $buku->ilustrator,
-            'coverImage'   => $coverRelPath,
-            'theme'        => [
-                'primary'   => $this->rgbToHex($buku->warna_primer,   '#FFFFFF'),
-                'secondary' => $this->rgbToHex($buku->warna_sekunder, '#FFFFFF'),
-            ],
-            'pages' => $pagesData,
-        ];
+        // Copy retaining exactly the S3 subdirectories
+        foreach ($filesToCopy as $s3Path => $relPath) {
+            $localDest = $tmpDir . '/' . $relPath;
+            $dir = dirname($localDest);
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0777, true);
+            }
+            if (!file_exists($localDest)) {
+                $this->copyFromStorageToLocal($s3Path, $localDest);
+            }
+        }
 
+        // Output file as metadata.json inside zip (no longer data.json)
         file_put_contents(
-            $tmpDir . '/data.json',
-            json_encode($dataJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+            $tmpDir . '/metadata.json',
+            json_encode($metadataJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
 
         $zipFilename = $buku->id_buku . '_v' . ($buku->updated_at->timestamp) . '.zip';
@@ -240,24 +163,36 @@ class BukuBundleService
         );
 
         foreach ($files as $file) {
-            $filePath    = $file->getRealPath();
+            $filePath     = $file->getRealPath();
             $relativePath = substr($filePath, strlen($tmpDir) + 1);
             $relativePath = str_replace('\\', '/', $relativePath);
-            $zip->addFile($filePath, $relativePath);
+            
+            if ($relativePath !== $zipFilename) {
+                $zip->addFile($filePath, $relativePath);
+            }
         }
 
         $zip->close();
+
         $zipContent = file_get_contents($zipTempPath);
         if ($zipContent === false) {
             throw new \Exception('Tidak dapat membaca file ZIP yang dihasilkan');
         }
 
         Storage::disk('s3')->put('buku/bundle/' . $zipFilename, $zipContent);
+
         @unlink($zipTempPath);
-
         $buku->update(['zip_bundle_path' => 'buku/bundle/' . $zipFilename]);
-
         $this->deleteTmpDir($tmpDir);
+    }
+
+    /**
+     * Helper to get relative path removing the 'buku/judul/' base string
+     */
+    private function getRelativeS3Path(?string $path, string $baseS3Path): ?string
+    {
+        if (!$path) return null;
+        return ltrim(str_replace($baseS3Path, '', $path), '/');
     }
 
     /**
