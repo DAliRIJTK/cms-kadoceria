@@ -337,7 +337,7 @@ class BukuController extends Controller
             }
 
             $missingNarasi = 0;
-            $missingBacksound = 0;
+            // $missingBacksound = 0;
             $missingAreaAudio = 0;
 
             foreach ($halamanList as $page) {
@@ -347,9 +347,9 @@ class BukuController extends Controller
                 if (empty($page->narasi_indo) || empty($page->narasi_sunda)) {
                     $missingNarasi++;
                 }
-                if ($page->nomor_halaman !== 1 && empty($page->id_audio_latar)) {
-                    $missingBacksound++;
-                }
+                // if ($page->nomor_halaman !== 1 && empty($page->id_audio_latar)) {
+                //     $missingBacksound++;
+                // }
 
                 foreach ($page->areaInteraktif as $area) {
                     if (empty($area->audio_indo)) {
@@ -361,9 +361,9 @@ class BukuController extends Controller
             if ($missingNarasi > 0) {
                 $errorMsgs[] = "Audio narasi Indonesia belum lengkap ({$missingNarasi} halaman)";
             }
-            if ($missingBacksound > 0) {
-                $errorMsgs[] = "Audio backsound belum lengkap ({$missingBacksound} halaman)";
-            }
+            // if ($missingBacksound > 0) {
+            //     $errorMsgs[] = "Audio backsound belum lengkap ({$missingBacksound} halaman)";
+            // }
             if ($missingAreaAudio > 0) {
                 $errorMsgs[] = "Audio area interaktif belum lengkap ({$missingAreaAudio} area)";
             }
