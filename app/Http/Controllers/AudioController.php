@@ -287,7 +287,14 @@ class AudioController extends Controller
             $disk = 's3';
             config(['filesystems.disks.s3.throw' => true]);
 
-            $path = Storage::disk($disk)->putFile('buku/audio-latar', $file, [
+            // Ambil ekstensi file asli, default ke mp3
+            $ext = $file->getClientOriginalExtension() ?: 'mp3';
+
+            // Format nama audio menjadi format yang aman untuk URL/S3 (slug)
+            $fileName = \Illuminate\Support\Str::slug($validated['nama_audio']) . '.' . $ext;
+
+            // Gunakan putFileAs untuk menamai file secara spesifik
+            $path = Storage::disk($disk)->putFileAs('buku/audio-latar', $file, $fileName, [
                 'visibility' => 'public',
                 'ContentType' => $file->getMimeType()
             ]);

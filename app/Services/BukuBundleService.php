@@ -129,8 +129,9 @@ class BukuBundleService
             if ($page->audioLatar && $page->audioLatar->path_file) {
                 $ext = pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
                 $destName = $buku->slugify($page->audioLatar->nama_audio) . '.' . $ext;
-                $backsoundS3Path = 'buku/' . $folderName . '/audio backsound/' . $destName;
-                $registerFile($backsoundS3Path);
+                $originalS3Path = $page->audioLatar->path_file;
+                $relPath = 'audio backsound/' . $destName;
+                $filesToCopy[$originalS3Path] = $relPath;
             }
             $registerFile($page->narasi_indo);
             $registerFile($page->narasi_sunda);
