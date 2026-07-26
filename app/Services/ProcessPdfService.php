@@ -63,8 +63,11 @@ class ProcessPdfService
                     'lebar_halaman'   => $width,
                 ]);
 
+                // Tentukan nama berdasarkan index (0 adalah cover, 1 adalah halaman1, dst)
+                $baseName = ($index === 0) ? 'cover' : 'halaman' . $index;
+
                 // Menyiapkan path final S3 tanpa harus memanggil syncStorageStructure()
-                $fileName = 'buku/' . $bookDir . '/halaman/page-' . $halaman->id_halaman . '.webp';
+                $fileName = 'buku/' . $bookDir . '/halaman/' . $baseName . '.webp';
 
                 // Mengunggah langsung ke S3 ke tujuan final
                 Storage::disk('s3')->put($fileName, $imageContents);

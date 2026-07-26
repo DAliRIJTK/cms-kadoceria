@@ -68,7 +68,13 @@ class Buku extends Model
     public function buildPageAssetPath(Halaman $page, string $directory, string $extension, ?string $suffix = null): string
     {
         $bookDir = $this->slugify($this->judul_idn);
-        $baseName = 'page-' . $page->id_halaman;
+        
+        // Terapkan logika cover dan halaman
+        if ($page->nomor_halaman === 1) {
+            $baseName = 'cover';
+        } else {
+            $baseName = 'halaman' . ($page->nomor_halaman - 1);
+        }
 
         if ($suffix) {
             $baseName .= '_' . $suffix;

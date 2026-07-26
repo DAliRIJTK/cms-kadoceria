@@ -111,7 +111,7 @@ class HalamanController extends Controller
         if ($newPageNumber === 1) {
             $filename = 'cover.' . $ext;
         } else {
-            $filename = 'halaman ' . ($newPageNumber - 1) . '.' . $ext;
+            $filename = 'halaman' . ($newPageNumber - 1) . '.' . $ext;
         }
 
         $bookDir = $buku->slugify($buku->judul_idn);
