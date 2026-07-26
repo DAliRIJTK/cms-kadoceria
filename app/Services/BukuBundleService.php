@@ -42,12 +42,13 @@ class BukuBundleService
                 'primary'   => $this->rgbToHex($buku->warna_primer,   '#FFFFFF'),
                 'secondary' => $this->rgbToHex($buku->warna_sekunder, '#FFFFFF'),
             ],
-            'pages'          => $halaman->map(function ($page) use ($baseS3Path, $buku, $folderName) {
-                $isCover = $page->nomor_halaman === 1;
-
-                // Tangani AudioLatar (karena merupakan relasi yang di-copy oleh sistem pada S3)
+            // [FIX BUG] Filter nomor_halaman == 1 agar cover tidak masuk ke dalam list array pages
+            'pages'          => $halaman->filter(function ($page) {
+                return $page->nomor_halaman !== 1;
+            })->values()->map(function ($page) use ($baseS3Path, $buku) {
+                
                 $backsoundRelPath = null;
-                if (!$isCover && $page->audioLatar && $page->audioLatar->path_file) {
+                if ($page->audioLatar && $page->audioLatar->path_file) {
                     $ext = pathinfo($page->audioLatar->path_file, PATHINFO_EXTENSION);
                     $destName = $buku->slugify($page->audioLatar->nama_audio) . '.' . $ext;
                     $backsoundRelPath = 'audio backsound/' . $destName;
@@ -60,7 +61,7 @@ class BukuBundleService
                     'narationSd'         => $this->getRelativeS3Path($page->narasi_sunda, $baseS3Path),
                     'widthImage'         => (float) ($page->lebar_halaman ?? 0),
                     'heightImage'        => (float) ($page->panjang_halaman ?? 0),
-                    'interactiveObjects' => $isCover ? [] : $page->areaInteraktif->map(function ($area) use ($page, $baseS3Path) {
+                    'interactiveObjects' => $page->areaInteraktif->map(function ($area) use ($page, $baseS3Path) {
                         return [
                             'audioObjectId' => $this->getRelativeS3Path($area->audio_indo, $baseS3Path),
                             'audioObjectSd' => $this->getRelativeS3Path($area->audio_sunda, $baseS3Path),
@@ -97,7 +98,16 @@ class BukuBundleService
         $folderName = $buku->slugify($buku->judul_idn);
         $baseS3Path = 'buku/' . $folderName . '/';
 
-        $tmpDir = storage_path('app/tmp/bundle_' . $buku->id_buku . '_' . time());
+        // [FIX BUG] Pastikan root directory `tmp` benar-benar eksis sebelum memproses
+        $tmpBaseDir = storage_path('app/tmp');
+        if (!is_dir($tmpBaseDir)) {
+            @mkdir($tmpBaseDir, 0777, true);
+        }
+
+        $tmpDir = $tmpBaseDir . '/bundle_' . $buku->id_buku . '_' . time();
+        if (!is_dir($tmpDir)) {
+            @mkdir($tmpDir, 0777, true);
+        }
         
         $metadataJson = $this->getMetadataArray($buku);
         $filesToCopy = [];
@@ -131,7 +141,6 @@ class BukuBundleService
             }
         }
 
-        // Copy retaining exactly the S3 subdirectories
         foreach ($filesToCopy as $s3Path => $relPath) {
             $localDest = $tmpDir . '/' . $relPath;
             $dir = dirname($localDest);
@@ -143,14 +152,15 @@ class BukuBundleService
             }
         }
 
-        // Output file as metadata.json inside zip (no longer data.json)
         file_put_contents(
             $tmpDir . '/metadata.json',
             json_encode($metadataJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
 
         $zipFilename = $buku->id_buku . '_v' . ($buku->updated_at->timestamp) . '.zip';
-        $zipTempPath = $tmpDir . '/' . $zipFilename;
+        
+        // [FIX BUG] Tempatkan ZIP di LUAR folder $tmpDir agar tidak ikut ter-loop dan error
+        $zipTempPath = $tmpBaseDir . '/' . $zipFilename;
 
         $zip = new ZipArchive();
         if ($zip->open($zipTempPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -167,9 +177,7 @@ class BukuBundleService
             $relativePath = substr($filePath, strlen($tmpDir) + 1);
             $relativePath = str_replace('\\', '/', $relativePath);
             
-            if ($relativePath !== $zipFilename) {
-                $zip->addFile($filePath, $relativePath);
-            }
+            $zip->addFile($filePath, $relativePath);
         }
 
         $zip->close();
