@@ -36,7 +36,7 @@ class ProcessPdfService
         file_put_contents($tempPdfPath, $pdfContents);
 
         $imagick = new \Imagick();
-        // $uploadedS3Files = [];
+
         try {
             $imagick->pingImage($tempPdfPath);
             $totalPages = $imagick->getNumberImages();
@@ -44,7 +44,7 @@ class ProcessPdfService
 
             $bookDir = $buku->slugify($buku->judul_idn);
 
-            DB::beginTransaction();
+            // PERBAIKAN 1: DB::beginTransaction() terluar TELAH DIHAPUS DARI SINI
 
             for ($index = $startIndex; $index < $totalPages; $index++) {
                 $imagick->setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 256 * 1024 * 1024);
@@ -66,7 +66,7 @@ class ProcessPdfService
                 $baseName = ($index === 0) ? 'cover' : 'halaman' . $index;
                 $fileName = 'buku/' . $bookDir . '/halaman/' . $baseName . '.webp';
 
-                // 4. PAGE-LEVEL ATOMICITY: Transaksi dipindah ke dalam iterasi per halaman
+                // PAGE-LEVEL ATOMICITY: Transaksi dipindah HANYA ke dalam iterasi per halaman
                 DB::beginTransaction();
                 $uploadedToS3 = false;
 
@@ -109,6 +109,7 @@ class ProcessPdfService
                 $imagick->clear();
             }
 
+            // JIKA SEMUA HALAMAN BERHASIL DIPROSES
             $buku->update([
                 'is_processing' => false,
                 'status_konversi' => true,
@@ -118,15 +119,12 @@ class ProcessPdfService
             Storage::disk('local')->delete($pdfPath);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-
-            if (!empty($uploadedS3Files)) {
-                Storage::disk('s3')->delete($uploadedS3Files);
-            }
-
-            $buku->update(['is_processing' => false]);
-            
+            // PERBAIKAN 2: Blok Catch terluar DIBERSIHKAN
+            // Kita biarkan exception terlempar ke Job (ProcessPdfJob) agar di-retry (3x coba).
+            // Kunci `is_processing` dibiarkan tetap TRUE agar di UI user melihat buku masih memproses.
+            // Pembatalan `is_processing = false` baru dilakukan di fungsi failed() pada ProcessPdfJob.php
             throw $e;
+            
         } finally {
             if (isset($imagick)) {
                 $imagick->clear();
