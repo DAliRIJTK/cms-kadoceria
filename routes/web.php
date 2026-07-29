@@ -27,6 +27,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/buku/{buku}', [BukuController::class, 'destroy'])->name('buku.destroy');
     Route::get('/buku-search', [BukuController::class, 'search'])->name('buku.search');
     Route::patch('/buku/{buku}/status', [BukuController::class, 'updateStatus'])->name('buku.updateStatus');
+    Route::post('/buku/{buku}/reprocess', [BukuController::class, 'reprocess'])->name('buku.reprocess');
 
     // Halaman Management
     Route::get('/kelola-halaman', [HalamanController::class, 'management'])->name('halaman.management');

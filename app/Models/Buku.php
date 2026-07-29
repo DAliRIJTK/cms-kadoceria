@@ -28,7 +28,9 @@ class Buku extends Model
         'warna_sekunder',
         'zip_bundle_path',
         'pdf_hash',
+        'local_pdf_path',
         'is_processing',
+        'status_konversi',
     ];
 
     public function pengelola()

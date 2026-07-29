@@ -132,7 +132,9 @@ class BukuController extends Controller
                 'status_publikasi'  => 'Draft',
                 'original_pdf_name' => $uploadedFileName,
                 'pdf_hash'          => $pdfHash,
+                'local_pdf_path'    => $pdfPath,
                 'is_processing'     => true,
+                'status_konversi'   => false,
             ]);
 
             ProcessPdfJob::dispatch($buku, $pdfPath);
@@ -441,6 +443,27 @@ class BukuController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['delete' => 'Gagal menghapus buku: ' . $e->getMessage()]);
         }
+    }
+
+    public function reprocess(Buku $buku)
+    {
+        // Pastikan buku sedang tidak diproses dan konversi memang gagal/belum selesai
+        if ($buku->is_processing || $buku->status_konversi) {
+            return back()->withErrors(['error' => 'Buku ini sudah selesai dikonversi atau sedang dalam proses.']);
+        }
+
+        // Pastikan file master PDF masih ada di storage local
+        if (empty($buku->local_pdf_path) || !Storage::disk('local')->exists($buku->local_pdf_path)) {
+            return back()->withErrors(['error' => 'File master PDF tidak ditemukan. Silakan hapus buku ini dan buat ulang.']);
+        }
+
+        // Kunci kembali buku dan masukkan ke antrean Job
+        $buku->update(['is_processing' => true]);
+        
+        \App\Jobs\ProcessPdfJob::dispatch($buku, $buku->local_pdf_path);
+
+        return redirect()->route('buku.show', $buku)
+            ->with('success', 'Melanjutkan proses konversi PDF pada halaman yang gagal...');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

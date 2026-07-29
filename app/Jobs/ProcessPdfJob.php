@@ -17,6 +17,8 @@ class ProcessPdfJob implements ShouldQueue
     // Set batas waktu eksekusi (contoh: 15 menit)
     public $timeout = 900; 
 
+    public $tries = 3;
+
     public function __construct(
         public Buku $buku, 
         public string $pdfPath
@@ -25,5 +27,13 @@ class ProcessPdfJob implements ShouldQueue
     public function handle(ProcessPdfService $pdfService): void
     {
         $pdfService->process($this->buku, $this->pdfPath);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        // Ubah is_processing jadi false agar buku tidak terkunci (walaupun gagal sebagian)
+        $this->buku->update(['is_processing' => false]);
+
+        \Illuminate\Support\Facades\Log::error("Konversi PDF Gagal Total pada Buku ID {$this->buku->id_buku}: " . $exception->getMessage());
     }
 }

@@ -100,6 +100,28 @@
                         </svg>
                         Buku Sedang Diproses...
                     </button>
+                @elseif(!$buku->status_konversi) 
+                    {{-- Kondisi BARU: Jika Proses PDF Gagal Ditengah Jalan --}}
+                    <div class="w-full mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                        <strong>Proses Terhenti!</strong> Buku berhasil dikonversi sebagian, namun gagal pada halaman ke-{{ $buku->halaman()->count() + 1 }}. Silakan coba proses ulang.
+                    </div>
+                    
+                    {{-- Tombol Reprocess --}}
+                    <form action="{{ route('buku.reprocess', $buku) }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Proses Ulang File PDF
+                        </button>
+                    </form>
+
+                    {{-- Tombol Hapus (Jika user menyerah) --}}
+                    <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="px-5 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold text-sm transition-colors">
+                            Batalkan & Hapus Buku
+                        </button>
+                    </form>    
                 @else
                     {{-- Kondisi normal setelah proses SQS selesai --}}
                     @if($buku->status_publikasi !== 'Terbit')

@@ -20,6 +20,9 @@ class ProcessPdfService
      */
     public function process(Buku $buku, string $pdfPath): void
     {
+        $lastProcessedPage = Halaman::where('id_buku', $buku->id_buku)->max('nomor_halaman') ?? 0;
+        $startIndex = $lastProcessedPage;
+
         $tempPdfPath = tempnam(sys_get_temp_dir(), 'pdf_');
         if ($tempPdfPath === false) {
             throw new \Exception('Tidak dapat membuat file temporer untuk PDF');
@@ -33,63 +36,86 @@ class ProcessPdfService
         file_put_contents($tempPdfPath, $pdfContents);
 
         $imagick = new \Imagick();
-        $uploadedS3Files = [];
+        // $uploadedS3Files = [];
         try {
-            $imagick->setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 256 * 1024 * 1024);
-            $imagick->setResolution(120, 120);
-            $imagick->readImage($tempPdfPath);
+            $imagick->pingImage($tempPdfPath);
+            $totalPages = $imagick->getNumberImages();
+            $imagick->clear();
 
             $bookDir = $buku->slugify($buku->judul_idn);
 
             DB::beginTransaction();
 
-            foreach ($imagick as $index => $page) {
-                $page->setImageFormat('webp');
-                $page->setImageCompressionQuality(80);
+            for ($index = $startIndex; $index < $totalPages; $index++) {
+                $imagick->setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, 256 * 1024 * 1024);
+                $imagick->setResolution(120, 120);
 
-                $imageContents = $page->getImageBlob();
+                // TARGETED READING: Hanya menarik 1 halaman spesifik ke dalam RAM
+                $imagick->readImage($tempPdfPath . '[' . $index . ']');
+                
+                $imagick->setImageFormat('webp');
+                $imagick->setImageCompressionQuality(80);
 
+                $imageContents = $imagick->getImageBlob();
                 if ($imageContents === false) {
                     throw new \Exception('Gagal membaca gambar halaman ke-' . ($index + 1));
                 }
 
                 list($width, $height) = getimagesizefromstring($imageContents);
 
-                $halaman = Halaman::create([
-                    'id_buku'       => $buku->id_buku,
-                    'nomor_halaman' => $index + 1,
-                    'path_gambar'   => '',
-                    'panjang_halaman' => $height,
-                    'lebar_halaman'   => $width,
-                ]);
-
-                // Tentukan nama berdasarkan index (0 adalah cover, 1 adalah halaman1, dst)
                 $baseName = ($index === 0) ? 'cover' : 'halaman' . $index;
-
-                // Menyiapkan path final S3 tanpa harus memanggil syncStorageStructure()
                 $fileName = 'buku/' . $bookDir . '/halaman/' . $baseName . '.webp';
 
-                // Mengunggah langsung ke S3 ke tujuan final
-                Storage::disk('s3')->put($fileName, $imageContents);
+                // 4. PAGE-LEVEL ATOMICITY: Transaksi dipindah ke dalam iterasi per halaman
+                DB::beginTransaction();
+                $uploadedToS3 = false;
 
-                $uploadedS3Files[] = $fileName;
+                try {
+                    // Proses S3
+                    Storage::disk('s3')->put($fileName, $imageContents);
+                    $uploadedToS3 = true;
 
-                // Update kembali path final ke database
-                $halaman->update(['path_gambar' => $fileName]);
+                    // Proses Database
+                    $halaman = Halaman::create([
+                        'id_buku'       => $buku->id_buku,
+                        'nomor_halaman' => $index + 1,
+                        'path_gambar'   => $fileName,
+                        'panjang_halaman' => $height,
+                        'lebar_halaman'   => $width,
+                    ]);
 
-                if ($index === 0) {
-                    $buku->path_cover = $fileName;
-                    $buku->save();
+                    if ($index === 0) {
+                        $buku->path_cover = $fileName;
+                        $buku->save();
+                    }
+
+                    // Hanya Commit untuk halaman ini!
+                    DB::commit();
+
+                } catch (\Exception $pageException) {
+                    // Rollback HANYA untuk halaman yang gagal ini
+                    DB::rollBack();
+                    
+                    // Cleanup HANYA file fisik halaman yang gagal ini (jika telanjur naik ke S3)
+                    if ($uploadedToS3) {
+                        Storage::disk('s3')->delete($fileName);
+                    }
+
+                    // Lempar exception ke atas agar tertangkap Job untuk mekanisme Retry!
+                    throw $pageException; 
                 }
+
+                // Bersihkan RAM object halaman ini sebelum lanjut ke iterasi berikutnya
+                $imagick->clear();
             }
 
-            DB::commit();
+            $buku->update([
+                'is_processing' => false,
+                'status_konversi' => true,
+                'local_pdf_path' => null
+            ]);
 
-            // Clean up the main Imagick object resources before calling syncStorageStructure,
-            // as syncing might rename/move the generated images.
-            $imagick->clear();
-            $imagick->destroy();
-            $buku->update(['is_processing' => false]);
+            Storage::disk('local')->delete($pdfPath);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -100,16 +126,16 @@ class ProcessPdfService
 
             $buku->update(['is_processing' => false]);
             
+            throw $e;
+        } finally {
             if (isset($imagick)) {
                 $imagick->clear();
                 $imagick->destroy();
             }
-            throw $e;
-        } finally {
+
             if (file_exists($tempPdfPath)) {
                 @unlink($tempPdfPath);
             }
-            Storage::disk('local')->delete($pdfPath);
         }
     }
 }
