@@ -169,69 +169,50 @@ class HalamanController extends Controller
     {
         $buku = $halaman->buku;
         $isCover = $halaman->nomor_halaman === 1;
-
         $currentPageCount = $buku->halaman()->count();
+
         if ($currentPageCount - 1 < 10) {
             return back()->withErrors(['delete' => 'Penghapusan halaman tidak diperbolehkan jika sisa halaman kurang dari 10.']);
         }
 
+        $s3PathsToDelete = [];
+        foreach ($halaman->areaInteraktif as $area) {
+            if ($area->audio_indo) $s3PathsToDelete[] = $area->audio_indo;
+            if ($area->audio_sunda) $s3PathsToDelete[] = $area->audio_sunda;
+        }
+        foreach (['narasi_indo', 'narasi_sunda', 'path_gambar'] as $field) {
+            if ($halaman->$field) $s3PathsToDelete[] = $halaman->$field;
+        }
+
+        $deletedPageNumber = $halaman->nomor_halaman;
+
+        DB::beginTransaction();
+        
         try {
-            $deletedPageNumber = $halaman->nomor_halaman;
-
-            // Hapus file audio dari area interaktif halaman ini
-            foreach ($halaman->areaInteraktif as $area) {
-                foreach (['audio_indo', 'audio_sunda'] as $field) {
-                    if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
-                        Storage::disk('s3')->delete($area->$field);
-                    }
-                }
-            }
+            // Hapus child (Area Interaktif) lalu Hapus Halaman
             $halaman->areaInteraktif()->delete();
-
-            // Hapus file narasi halaman ini
-            foreach (['narasi_indo', 'narasi_sunda'] as $field) {
-                if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
-                    Storage::disk('s3')->delete($halaman->$field);
-                }
-            }
-
-            // Hapus file gambar halaman ini
-            if ($halaman->path_gambar && Storage::disk('s3')->exists($halaman->path_gambar)) {
-                Storage::disk('s3')->delete($halaman->path_gambar);
-            }
-
             $halaman->delete();
 
-            // Geser nomor halaman yang lebih besar
+            // Geser nomor halaman yang lebih besar (merapatkan barisan)
             $buku->halaman()
                 ->where('nomor_halaman', '>', $deletedPageNumber)
                 ->decrement('nomor_halaman');
 
-            // Jika yang dihapus adalah cover (halaman 1), halaman 2 sekarang menjadi
-            // halaman 1 (cover baru). Cover tidak boleh memiliki audio dan anotasi,
-            // maka bersihkan semua data tersebut dari cover baru.
+            // Logika Khusus Cover: Bersihkan audio pada Halaman 2 yang naik jadi Halaman 1
             if ($isCover) {
                 $newCover = $buku->halaman()->where('nomor_halaman', 1)->first();
                 if ($newCover) {
-                    // Hapus file audio area interaktif cover baru
                     $newCover->load('areaInteraktif');
+                    // Masukkan file audio cover baru ke daftar hapus S3
                     foreach ($newCover->areaInteraktif as $area) {
-                        foreach (['audio_indo', 'audio_sunda'] as $field) {
-                            if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
-                                Storage::disk('s3')->delete($area->$field);
-                            }
-                        }
+                        if ($area->audio_indo) $s3PathsToDelete[] = $area->audio_indo;
+                        if ($area->audio_sunda) $s3PathsToDelete[] = $area->audio_sunda;
                     }
-                    $newCover->areaInteraktif()->delete();
-
-                    // Hapus file narasi cover baru
                     foreach (['narasi_indo', 'narasi_sunda'] as $field) {
-                        if ($newCover->$field && Storage::disk('s3')->exists($newCover->$field)) {
-                            Storage::disk('s3')->delete($newCover->$field);
-                        }
+                        if ($newCover->$field) $s3PathsToDelete[] = $newCover->$field;
                     }
 
-                    // Reset kolom audio & relasi audio latar pada cover baru
+                    $newCover->areaInteraktif()->delete();
                     $newCover->update([
                         'narasi_indo'    => null,
                         'narasi_sunda'   => null,
@@ -240,12 +221,28 @@ class HalamanController extends Controller
                 }
             }
 
-            $buku->syncStorageStructure();
-
-            return back()->with('success', 'Halaman berhasil dihapus');
+            DB::commit();
         } catch (\Exception $e) {
-            return back()->withErrors(['delete' => 'Gagal menghapus halaman: ' . $e->getMessage()]);
+            DB::rollBack();
+            return back()->withErrors(['delete' => 'Gagal memproses perubahan di database: ' . $e->getMessage()]);
         }
+
+        foreach ($s3PathsToDelete as $path) {
+            try {
+                if (Storage::disk('s3')->exists($path)) {
+                    Storage::disk('s3')->delete($path);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Orphaned S3 File (Hapus Halaman): " . $path);
+            }
+        }
+
+        try {
+            $buku->syncStorageStructure();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal sync storage setelah hapus halaman: " . $e->getMessage());
+        }
+        return back()->with('success', 'Halaman berhasil dihapus');
     }
 
     public function bulkDestroy(\Illuminate\Http\Request $request)
@@ -275,47 +272,64 @@ class HalamanController extends Controller
             return back()->withErrors(['delete' => 'Penghapusan dibatalkan. Sisa halaman tidak boleh kurang dari 10.']);
         }
 
-        try {
-            // Hapus file aset fisik dari S3 secara iteratif
-            foreach ($pagesToDelete as $halaman) {
-                foreach ($halaman->areaInteraktif as $area) {
-                    foreach (['audio_indo', 'audio_sunda'] as $field) {
-                        if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
-                            Storage::disk('s3')->delete($area->$field);
-                        }
-                    }
-                }
-                foreach (['narasi_indo', 'narasi_sunda'] as $field) {
-                    if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
-                        Storage::disk('s3')->delete($halaman->$field);
-                    }
-                }
-                if ($halaman->path_gambar && Storage::disk('s3')->exists($halaman->path_gambar)) {
-                    Storage::disk('s3')->delete($halaman->path_gambar);
-                }
+        $s3PathsToDelete = [];
+        foreach ($pagesToDelete as $halaman) {
+            foreach ($halaman->areaInteraktif as $area) {
+                if ($area->audio_indo) $s3PathsToDelete[] = $area->audio_indo;
+                if ($area->audio_sunda) $s3PathsToDelete[] = $area->audio_sunda;
             }
+            foreach (['narasi_indo', 'narasi_sunda', 'path_gambar'] as $field) {
+                if ($halaman->$field) $s3PathsToDelete[] = $halaman->$field;
+            }
+        }
 
-            // Hapus record database sekaligus
-            Halaman::whereIn('id_halaman', $ids)->delete();
+        // 2. ATOMISITAS DATABASE
+        DB::beginTransaction();
+        try {
+            // Eloquent bulk delete (whereIn->delete) tidak mentrigger cascade secara otomatis
+            // Jadi kita hapus manual record anaknya (Area Interaktif) terlebih dahulu
+            \App\Models\AreaInteraktif::whereIn('id_halaman', $ids)->delete();
 
-            // Re-order nomor halaman yang tersisa (mulai dari halaman 2, karena halaman 1 adalah cover)
+            // Hapus record Database sekaligus
+            \App\Models\Halaman::whereIn('id_halaman', $ids)->delete();
+
+            // Re-order nomor halaman yang tersisa
             $remainingPages = $buku->halaman()->where('nomor_halaman', '>', 1)->orderBy('nomor_halaman', 'asc')->get();
-            $newNomor = 2;
+            $newNomor = 2; // Mulai dari 2 karena cover = 1
             foreach ($remainingPages as $page) {
                 if ($page->nomor_halaman !== $newNomor) {
+                    // Jangan gunakan update(), bisa lambat untuk bulk. Gunakan update pada query.
+                    // Tapi karena logic berurutan per halaman, ini bisa diterima.
                     $page->update(['nomor_halaman' => $newNomor]);
                 }
                 $newNomor++;
             }
 
-            // Panggil syncStorageStructure HANYA SATU KALI untuk memperbarui struktur folder di S3
-            $buku->syncStorageStructure();
-
-            return back()->with('success', 'Halaman yang dipilih berhasil dihapus');
-
+            DB::commit();
         } catch (\Exception $e) {
+            DB::rollBack();
             return back()->withErrors(['delete' => 'Gagal menghapus halaman secara massal: ' . $e->getMessage()]);
         }
+
+        // 3. EKSEKUSI HAPUS S3 (Toleransi Error)
+        foreach ($s3PathsToDelete as $path) {
+            try {
+                if (Storage::disk('s3')->exists($path)) {
+                    Storage::disk('s3')->delete($path);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Orphaned S3 File (Hapus Massal): " . $path);
+            }
+        }
+
+        // 4. Update folder (sync S3)
+        try {
+            $buku->syncStorageStructure();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Gagal sync storage setelah hapus massal: " . $e->getMessage());
+        }
+
+        return back()->with('success', 'Halaman yang dipilih berhasil dihapus');
     }
 
     public function flipbook(Buku $buku)

@@ -395,54 +395,34 @@ class BukuController extends Controller
             return back()->withErrors(['error' => 'Buku telah dipublikasikan. Silakan ubah status buku menjadi Draft terlebih dahulu untuk menghapus buku.']);
         }
 
+        $bookDir = $this->slugify($buku->judul_idn);
+        $bookFolder = 'buku/' . $bookDir;
+        $idBuku = $buku->id_buku;
+
+        DB::beginTransaction();
         try {
-            $bookDir = $this->slugify($buku->judul_idn);
-            $bookFolder = 'buku/' . $bookDir;
+            $buku->delete();
 
-            foreach ($buku->halaman as $halaman) {
-                foreach ($halaman->areaInteraktif as $area) {
-                    foreach (['audio_indo', 'audio_sunda'] as $field) {
-                        if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
-                            Storage::disk('s3')->delete($area->$field);
-                        }
-                    }
-                }
-                // Delete narration audio files if they exist
-                foreach (['narasi_indo', 'narasi_sunda'] as $field) {
-                    if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
-                        Storage::disk('s3')->delete($halaman->$field);
-                    }
-                }
-                if ($halaman->path_gambar && Storage::disk('s3')->exists($halaman->path_gambar)) {
-                    Storage::disk('s3')->delete($halaman->path_gambar);
-                }
-            }
+            DB::commit();
+        } catch (\Exception $e) {
+            return back()->withErrors(['delete' => 'Gagal menghapus buku dari database: ' . $e->getMessage()]);
+        }
 
-            if ($buku->path_cover && Storage::disk('s3')->exists($buku->path_cover)) {
-                Storage::disk('s3')->delete($buku->path_cover);
-            }
-
+        try {
             if (Storage::disk('s3')->exists($bookFolder)) {
                 Storage::disk('s3')->deleteDirectory($bookFolder);
             }
 
-            $metaPath = $bookFolder . '/metadata.json';
-            if (Storage::disk('s3')->exists($metaPath)) {
-                Storage::disk('s3')->delete($metaPath);
-            }
-
             $bundleFiles = Storage::disk('s3')->files('buku/bundle');
             foreach ($bundleFiles as $file) {
-                if (preg_match('/^buku\/bundle\/' . preg_quote($buku->id_buku, '/') . '_v.*\.zip$/', $file) === 1) {
+                if (preg_match('/^buku\/bundle\/' . preg_quote($idBuku, '/') . '_v.*\.zip$/', $file) === 1) {
                     Storage::disk('s3')->delete($file);
                 }
             }
-
-            $buku->delete();
-            return redirect()->route('dashboard')->with('success', 'Buku berhasil dihapus');
         } catch (\Exception $e) {
-            return back()->withErrors(['delete' => 'Gagal menghapus buku: ' . $e->getMessage()]);
+            \Illuminate\Support\Facades\Log::error("Gagal menghapus folder S3 untuk Buku ID {$idBuku}: " . $e->getMessage());
         }
+        return redirect()->route('dashboard')->with('success', 'Buku berhasil dihapus');
     }
 
     public function reprocess(Buku $buku)

@@ -88,8 +88,8 @@ class Buku extends Model
     public function syncStorageStructure(): void
     {
         $bookDir = $this->slugify($this->judul_idn);
-
-        // Ensure directories exist
+        
+        // 1. Pastikan direktori utama S3 tersedia
         $dirs = [
             'buku/' . $bookDir . '/halaman',
             'buku/' . $bookDir . '/audio narasi indonesia',
@@ -97,63 +97,52 @@ class Buku extends Model
             'buku/' . $bookDir . '/audio backsound',
             'buku/' . $bookDir . '/audio objek',
         ];
-
         foreach ($dirs as $dir) {
             if (!Storage::disk('s3')->exists($dir)) {
                 Storage::disk('s3')->makeDirectory($dir);
             }
         }
 
-        // Get all pages ordered by nomor_halaman
         $halamanList = $this->halaman()->orderBy('nomor_halaman')->get();
+        
+        // 2. PERSIAPAN: Kumpulkan rencana pembaruan Database dan S3
+        $dbUpdates = ['halaman' => [], 'area' => []];
+        $s3Moves = [];
 
-        $tempFiles = [];
-
-        // Pass 1: Move to temporary names to avoid collision
         foreach ($halamanList as $page) {
             $uniq = uniqid();
-            $pageUpdates = [];
-
-            // 1. Page image
+            
+            // Pengecekan Gambar Halaman
             if ($page->path_gambar && Storage::disk('s3')->exists($page->path_gambar)) {
                 $ext = pathinfo($page->path_gambar, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/halaman/temp_' . $uniq . '.' . $ext;
-                Storage::disk('s3')->move($page->path_gambar, $tempPath);
-                $pageUpdates['path_gambar'] = $tempPath;
-                $tempFiles['image'][$page->id_halaman] = [
-                    'ext' => $ext,
-                    'temp_path' => $tempPath,
-                    'final_path' => $this->buildPageAssetPath($page, 'halaman', $ext)
-                ];
+                $finalPath = $this->buildPageAssetPath($page, 'halaman', $ext);
+                
+                $s3Moves[] = ['old' => $page->path_gambar, 'temp' => $tempPath, 'final' => $finalPath];
+                $dbUpdates['halaman'][$page->id_halaman]['path_gambar'] = $finalPath;
             }
 
-            // 2. Narasi Indonesia
+            // Pengecekan Narasi Indonesia
             if ($page->narasi_indo && Storage::disk('s3')->exists($page->narasi_indo)) {
                 $ext = pathinfo($page->narasi_indo, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/audio narasi indonesia/temp_' . $uniq . '.' . $ext;
-                Storage::disk('s3')->move($page->narasi_indo, $tempPath);
-                $pageUpdates['narasi_indo'] = $tempPath;
-                $tempFiles['narasi_indo'][$page->id_halaman] = [
-                    'ext' => $ext,
-                    'temp_path' => $tempPath,
-                    'final_path' => $this->buildPageAssetPath($page, 'audio narasi indonesia', $ext)
-                ];
+                $finalPath = $this->buildPageAssetPath($page, 'audio narasi indonesia', $ext);
+                
+                $s3Moves[] = ['old' => $page->narasi_indo, 'temp' => $tempPath, 'final' => $finalPath];
+                $dbUpdates['halaman'][$page->id_halaman]['narasi_indo'] = $finalPath;
             }
 
-            // 3. Narasi Sunda
+            // Pengecekan Narasi Sunda
             if ($page->narasi_sunda && Storage::disk('s3')->exists($page->narasi_sunda)) {
                 $ext = pathinfo($page->narasi_sunda, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/audio narasi sunda/temp_' . $uniq . '.' . $ext;
-                Storage::disk('s3')->move($page->narasi_sunda, $tempPath);
-                $pageUpdates['narasi_sunda'] = $tempPath;
-                $tempFiles['narasi_sunda'][$page->id_halaman] = [
-                    'ext' => $ext,
-                    'temp_path' => $tempPath,
-                    'final_path' => $this->buildPageAssetPath($page, 'audio narasi sunda', $ext)
-                ];
+                $finalPath = $this->buildPageAssetPath($page, 'audio narasi sunda', $ext);
+                
+                $s3Moves[] = ['old' => $page->narasi_sunda, 'temp' => $tempPath, 'final' => $finalPath];
+                $dbUpdates['halaman'][$page->id_halaman]['narasi_sunda'] = $finalPath;
             }
 
-            // 4. Backsound
+            // Salin Backsound (Hanya di-copy jika belum ada, tidak perlu via temp)
             if ($page->audioLatar && $page->audioLatar->path_file) {
                 $src = $page->audioLatar->path_file;
                 if (Storage::disk('s3')->exists($src)) {
@@ -166,122 +155,74 @@ class Buku extends Model
                 }
             }
 
-            // 5. Area Interaktif
+            // Pengecekan Area Interaktif
             foreach ($page->areaInteraktif as $area) {
                 $safeLabel = $this->slugify($area->label ?? 'objek');
                 $areaUniq = uniqid();
-                $areaUpdates = [];
 
                 if ($area->audio_indo && Storage::disk('s3')->exists($area->audio_indo)) {
                     $ext = pathinfo($area->audio_indo, PATHINFO_EXTENSION);
                     $tempPath = 'buku/' . $bookDir . '/audio objek/temp_indo_' . $areaUniq . '.' . $ext;
-                    Storage::disk('s3')->move($area->audio_indo, $tempPath);
-                    $areaUpdates['audio_indo'] = $tempPath;
-                    $tempFiles['area_indo'][$area->id_area] = [
-                        'ext' => $ext,
-                        'temp_path' => $tempPath,
-                        'final_path' => $this->buildPageAssetPath($page, 'audio objek', $ext, $safeLabel . '_indonesia')
-                    ];
+                    $finalPath = $this->buildPageAssetPath($page, 'audio objek', $ext, $safeLabel . '_indonesia');
+                    
+                    $s3Moves[] = ['old' => $area->audio_indo, 'temp' => $tempPath, 'final' => $finalPath];
+                    $dbUpdates['area'][$area->id_area]['audio_indo'] = $finalPath;
                 }
 
                 if ($area->audio_sunda && Storage::disk('s3')->exists($area->audio_sunda)) {
                     $ext = pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
                     $tempPath = 'buku/' . $bookDir . '/audio objek/temp_sunda_' . $areaUniq . '.' . $ext;
-                    Storage::disk('s3')->move($area->audio_sunda, $tempPath);
-                    $areaUpdates['audio_sunda'] = $tempPath;
-                    $tempFiles['area_sunda'][$area->id_area] = [
-                        'ext' => $ext,
-                        'temp_path' => $tempPath,
-                        'final_path' => $this->buildPageAssetPath($page, 'audio objek', $ext, $safeLabel . '_sunda')
-                    ];
+                    $finalPath = $this->buildPageAssetPath($page, 'audio objek', $ext, $safeLabel . '_sunda');
+                    
+                    $s3Moves[] = ['old' => $area->audio_sunda, 'temp' => $tempPath, 'final' => $finalPath];
+                    $dbUpdates['area'][$area->id_area]['audio_sunda'] = $finalPath;
                 }
-
-                if (!empty($areaUpdates)) {
-                    $area->update($areaUpdates);
-                }
-            }
-
-            if (!empty($pageUpdates)) {
-                $page->update($pageUpdates);
             }
         }
 
-        // Pass 2: Rename from temp names to final clean names
-        foreach ($halamanList as $page) {
-            $pageUpdates = [];
-
-            // Finalize page image
-            if (isset($tempFiles['image'][$page->id_halaman])) {
-                $info = $tempFiles['image'][$page->id_halaman];
-                $finalPath = $info['final_path'];
-                if (Storage::disk('s3')->exists($info['temp_path'])) {
-                    if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
-                    Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                    $pageUpdates['path_gambar'] = $finalPath;
+        // 3. ATOMISITAS TRANSAKSI (Mulai Kunci DB)
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Tulis semua pembaruan path ke Database sekaligus
+            foreach ($halamanList as $page) {
+                if (!empty($dbUpdates['halaman'][$page->id_halaman])) {
+                    $page->update($dbUpdates['halaman'][$page->id_halaman]);
                 }
-            }
-
-            // Finalize Narasi Indonesia
-            if (isset($tempFiles['narasi_indo'][$page->id_halaman])) {
-                $info = $tempFiles['narasi_indo'][$page->id_halaman];
-                $finalPath = $info['final_path'];
-                if (Storage::disk('s3')->exists($info['temp_path'])) {
-                    if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
-                    Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                    $pageUpdates['narasi_indo'] = $finalPath;
-                }
-            }
-
-            // Finalize Narasi Sunda
-            if (isset($tempFiles['narasi_sunda'][$page->id_halaman])) {
-                $info = $tempFiles['narasi_sunda'][$page->id_halaman];
-                $finalPath = $info['final_path'];
-                if (Storage::disk('s3')->exists($info['temp_path'])) {
-                    if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
-                    Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                    $pageUpdates['narasi_sunda'] = $finalPath;
-                }
-            }
-
-            // Finalize Area Interaktif
-            foreach ($page->areaInteraktif as $area) {
-                $areaUpdates = [];
-
-                if (isset($tempFiles['area_indo'][$area->id_area])) {
-                    $info = $tempFiles['area_indo'][$area->id_area];
-                    $finalPath = $info['final_path'];
-                    if (Storage::disk('s3')->exists($info['temp_path'])) {
-                        if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
-                        Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                        $areaUpdates['audio_indo'] = $finalPath;
+                foreach ($page->areaInteraktif as $area) {
+                    if (!empty($dbUpdates['area'][$area->id_area])) {
+                        $area->update($dbUpdates['area'][$area->id_area]);
                     }
                 }
-
-                if (isset($tempFiles['area_sunda'][$area->id_area])) {
-                    $info = $tempFiles['area_sunda'][$area->id_area];
-                    $finalPath = $info['final_path'];
-                    if (Storage::disk('s3')->exists($info['temp_path'])) {
-                        if (Storage::disk('s3')->exists($finalPath) && $info['temp_path'] !== $finalPath) { Storage::disk('s3')->delete($finalPath); }
-                        Storage::disk('s3')->move($info['temp_path'], $finalPath);
-                        $areaUpdates['audio_sunda'] = $finalPath;
-                    }
-                }
-
-                if (!empty($areaUpdates)) {
-                    $area->update($areaUpdates);
-                }
             }
 
-            if (!empty($pageUpdates)) {
-                $page->update($pageUpdates);
+            // Fix path cover pada Buku jika diperlukan
+            $firstPage = $halamanList->first();
+            if ($firstPage && !empty($dbUpdates['halaman'][$firstPage->id_halaman]['path_gambar'])) {
+                $this->update(['path_cover' => $dbUpdates['halaman'][$firstPage->id_halaman]['path_gambar']]);
             }
-        }
 
-        // Fix cover on the book if necessary
-        $firstPage = $halamanList->first();
-        if ($firstPage) {
-            $this->path_cover = $firstPage->path_gambar;
-            $this->save();
+            // 4. EKSEKUSI PEMINDAHAN FISIK DI S3
+            // Pass 1: Pindahkan semua ke nama Temp (menghindari nama tertimpa jika halaman ditukar)
+            foreach ($s3Moves as $move) {
+                Storage::disk('s3')->move($move['old'], $move['temp']);
+            }
+            // Pass 2: Pindahkan dari nama Temp ke nama Final
+            foreach ($s3Moves as $move) {
+                if (Storage::disk('s3')->exists($move['final']) && $move['temp'] !== $move['final']) { 
+                    Storage::disk('s3')->delete($move['final']); 
+                }
+                Storage::disk('s3')->move($move['temp'], $move['final']);
+            }
+
+            // 5. KOMIT: Jika Database & S3 Sukses
+            \Illuminate\Support\Facades\DB::commit();
+
+        } catch (\Exception $e) {
+            // 6. ROLLBACK: Jika ada satu saja S3 Move yang gagal, kembalikan DB ke versi lama
+            \Illuminate\Support\Facades\DB::rollBack();
+            
+            \Illuminate\Support\Facades\Log::error("Gagal melakukan syncStorageStructure pada buku {$this->id_buku}: " . $e->getMessage());
+            throw $e; // Lempar exception agar Job / Controller tahu bahwa proses gagal
         }
     }
 }
