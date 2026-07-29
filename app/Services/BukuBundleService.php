@@ -191,7 +191,13 @@ class BukuBundleService
         Storage::disk('s3')->put('buku/bundle/' . $zipFilename, $zipContent);
 
         @unlink($zipTempPath);
-        $buku->update(['zip_bundle_path' => 'buku/bundle/' . $zipFilename]);
+        $newVersion = (empty($buku->zip_bundle_path) || $buku->version == 0) 
+                      ? 1 
+                      : $buku->version + 1;
+        $buku->update([
+            'zip_bundle_path' => 'buku/bundle/' . $zipFilename,
+            'version' => $newVersion // <-- Simpan versi baru ke database
+        ]);
         $this->deleteTmpDir($tmpDir);
     }
 

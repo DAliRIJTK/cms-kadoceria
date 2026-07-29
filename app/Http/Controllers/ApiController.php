@@ -38,7 +38,7 @@ class ApiController extends Controller
                 'descriptionsSunda'    => $buku->deskripsi_sn,
                 'primaryColor'         => $this->rgbToHex($buku->warna_primer,   '#FFFFFF'),
                 'secondaryColor'       => $this->rgbToHex($buku->warna_sekunder, '#FFFFFF'),
-                'version'              => 1,
+                'version'              => (int) $buku->version,
                 'fileSize'             => $fileSize,
             ];
         })->values()->toArray();

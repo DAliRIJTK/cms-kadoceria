@@ -31,6 +31,7 @@ class Buku extends Model
         'local_pdf_path',
         'is_processing',
         'status_konversi',
+        'version',
     ];
 
     public function pengelola()
