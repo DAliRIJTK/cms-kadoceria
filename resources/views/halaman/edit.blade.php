@@ -622,7 +622,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     title: 'Gagal Menyimpan',
                     subtitle: data.message || 'Terjadi kesalahan tidak diketahui.'
                 });
-                if (anno) anno.cancelSelected();
+                if (anno) anno.removeAnnotation(currentRect.selection.id);
+                anno.cancelSelected);
                 currentRect = null;
                 hideLabelInput();
             }
