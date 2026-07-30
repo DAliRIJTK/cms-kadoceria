@@ -491,10 +491,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         anno = Annotorious.init({
-            image: img
+            image: img,
+            disableEditor: true
         });
                 
         anno.setAnnotations(existingAnnotations);
+
+        anno.on('selectAnnotation', function(annotation) {
+            anno.cancelSelected(); // Hilangkan border seleksi aktif
+            
+            // Cari card di sidebar kanan berdasarkan ID
+            const card = document.getElementById('area-card-' + annotation.id);
+            if(card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+                setTimeout(() => card.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50'), 1500);
+            }
+        });
 
         if (!isPublished) {
             anno.on('createSelection', function(selection) {
@@ -619,6 +632,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 title: 'Error',
                 subtitle: 'Terjadi kesalahan jaringan atau server saat menyimpan area.'
             });
+            
+            if (currentRect && currentRect.selection) {
+                anno.removeAnnotation(currentRect.selection.id);
+            }
+
             if (anno) anno.cancelSelected();
             currentRect = null;
             hideLabelInput();
