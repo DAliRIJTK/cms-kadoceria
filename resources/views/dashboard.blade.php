@@ -2,6 +2,14 @@
 
 @section('content')
 
+<x-modal-alert id="alertModal" type="error" />
+<x-modal-alert id="successModal" type="success" />
+
+<div id="flash-data" 
+     data-error="{{ $errors->any() ? $errors->first() : '' }}"
+     data-success="{{ session('success') }}">
+</div>
+
 <div class="mb-8">
     <div class="flex items-center justify-between mb-6">
         <div>
@@ -152,5 +160,30 @@
     @endif
 
 @endif
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const flashData = document.getElementById('flash-data');
+        if (flashData) {
+            const err = flashData.getAttribute('data-error');
+            const success = flashData.getAttribute('data-success');
+
+            if (err) {
+                ModalAlert.show('alertModal', {
+                    title: 'Terjadi Kesalahan',
+                    subtitle: err
+                });
+            }
+            if (success) {
+                ModalAlert.show('successModal', {
+                    title: 'Berhasil!',
+                    subtitle: success
+                });
+            }
+        }
+    });
+</script>
+@endpush
 
 @endsection
