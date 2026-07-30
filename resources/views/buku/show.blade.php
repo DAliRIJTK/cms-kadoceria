@@ -75,7 +75,7 @@
                 @if($buku->published_at)
                     <div>
                         <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Rilis Pertama</p>
-                        <p class="text-gray-900 font-semibold">{{ $buku->published_at->locale('id_ID')->format('d M Y') }}</p>
+                        <p class="text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($buku->published_at)->locale('id_ID')->format('d M Y') }}</p>
                     </div>
                 @endif
             </div>
