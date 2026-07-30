@@ -374,11 +374,13 @@ class BukuController extends Controller
             }
         }
 
-        $buku->update(['status_publikasi' => $newStatus]);
+        $updateData = ['status_publikasi' => $newStatus];
 
-        if ($newStatus === 'Terbit') {
-            GenerateBundleJob::dispatch($buku);
+        if ($newStatus === 'Terbit' && is_null($buku->published_at)) {
+            $updateData['published_at'] = now(); // Catat tanggal rilis pertama
         }
+        
+        $buku->update($updateData);
 
         $statusLabel = $newStatus === 'Terbit' ? 'dipublikasikan' : 'disimpan sebagai draft';
         return back()->with('success', "Buku berhasil {$statusLabel}");

@@ -32,6 +32,7 @@ class Buku extends Model
         'is_processing',
         'status_konversi',
         'version',
+        'published_at',
     ];
 
     public function pengelola()

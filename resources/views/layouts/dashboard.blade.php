@@ -102,6 +102,10 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (form.action.includes('buku') && methodInput && methodInput.value.toUpperCase() === 'DELETE') {
                 title = 'Hapus Buku';
                 subtitle = 'Apakah Anda yakin ingin menghapus buku ini beserta seluruh isinya? Tindakan ini tidak dapat dibatalkan.';
+
+                if (form.dataset.everPublished === 'true') {
+                    subtitle = 'PERINGATAN: Buku ini PERNAH TERBIT. Menghapusnya akan membebaskan storage, tapi riwayat dan data analitiknya akan hilang selamanya. Lanjutkan?';
+                }
             } else if (form.action.includes('halaman') && methodInput && methodInput.value.toUpperCase() === 'DELETE') {
                 title = 'Hapus Halaman';
                 subtitle = 'Apakah Anda yakin ingin menghapus halaman ini? Tindakan ini tidak dapat dibatalkan.';

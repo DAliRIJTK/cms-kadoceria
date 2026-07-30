@@ -55,7 +55,7 @@
             </div>
 
             {{-- Metadata row --}}
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-100">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 pb-6 border-b border-gray-100">
                 <div>
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Ilustrator</p>
                     <p class="text-gray-900 font-semibold">{{ $buku->ilustrator ?? '-' }}</p>
@@ -72,6 +72,12 @@
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Dibuat Pada</p>
                     <p class="text-gray-900 font-semibold">{{ $buku->created_at->locale('id_ID')->format('d M Y') }}</p>
                 </div>
+                @if($buku->published_at)
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Rilis Pertama</p>
+                        <p class="text-gray-900 font-semibold">{{ $buku->published_at->locale('id_ID')->format('d M Y') }}</p>
+                    </div>
+                @endif
             </div>
 
             {{-- Sinopsis --}}
@@ -133,7 +139,7 @@
                         class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
                             Kelola Halaman
                         </a>
-                        <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline">
+                        <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline" data-ever-published="{{ $buku->published_at ? 'true' : 'false' }}">>
                             @csrf
                             @method('DELETE')
                             <button type="submit"
