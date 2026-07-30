@@ -139,7 +139,7 @@
                         class="px-5 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold text-sm transition-colors">
                             Kelola Halaman
                         </a>
-                        <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline" data-ever-published="{{ $buku->published_at ? 'true' : 'false' }}">>
+                        <form action="{{ route('buku.destroy', $buku) }}" method="POST" class="inline" data-ever-published="{{ $buku->published_at ? 'true' : 'false' }}">
                             @csrf
                             @method('DELETE')
                             <button type="submit"
