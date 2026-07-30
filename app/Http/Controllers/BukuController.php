@@ -376,10 +376,10 @@ class BukuController extends Controller
 
         $updateData = ['status_publikasi' => $newStatus];
 
-        if ($newStatus === 'Terbit' && is_null($buku->published_at)) {
+        if ($newStatus === 'Terbit') {
             $updateData['published_at'] = now(); // Catat tanggal rilis pertama
         }
-        
+
         $buku->update($updateData);
 
         $statusLabel = $newStatus === 'Terbit' ? 'dipublikasikan' : 'disimpan sebagai draft';
