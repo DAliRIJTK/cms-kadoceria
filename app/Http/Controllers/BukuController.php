@@ -378,6 +378,7 @@ class BukuController extends Controller
 
         if ($newStatus === 'Terbit') {
             $updateData['published_at'] = now(); // Catat tanggal rilis pertama
+            GenerateBundleJob::dispatch($buku);
         }
 
         $buku->update($updateData);
