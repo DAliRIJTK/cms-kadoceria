@@ -766,6 +766,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('area-card-' + aId)?.remove();
                     if (anno) anno.removeAnnotation(aId.toString());
                     updateCount(-1);
+
+                    ModalAlert.show('successModal', {
+                        title: 'Berhasil!',
+                        subtitle: data.message || 'Area interaktif berhasil dihapus.'
+                    });
                 } else {
                     ModalAlert.show('alertModal', {
                         title: 'Gagal Menghapus',
