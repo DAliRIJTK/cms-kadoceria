@@ -1,5 +1,16 @@
 <?php
 
+$runtimeMode = env('APP_RUNTIME_MODE', 'local');
+$defaultDisk = env('FILESYSTEM_DISK');
+
+if ($defaultDisk === 'local') {
+    $defaultDisk = 'public';
+}
+
+if (!in_array($defaultDisk, ['public', 's3'], true)) {
+    $defaultDisk = $runtimeMode === 'aws' ? 's3' : 'public';
+}
+
 return [
 
     /*
@@ -7,13 +18,12 @@ return [
     | Default Filesystem Disk
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
+    | Local mode should use the public disk so page assets are accessible by URL.
+    | AWS mode should use the s3 disk.
     |
     */
 
-    'default' => env('FILESYSTEM_DISK', 'local'),
+    'default' => $defaultDisk,
 
     /*
     |--------------------------------------------------------------------------
@@ -41,7 +51,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
+            'url' => rtrim(env('APP_URL', 'http://127.0.0.1:8000'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

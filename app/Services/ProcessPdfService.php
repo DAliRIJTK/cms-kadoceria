@@ -9,6 +9,23 @@ use Illuminate\Support\Facades\Storage;
 
 class ProcessPdfService
 {
+    private function getStorageDiskName(): string
+    {
+        $configuredDisk = config('filesystems.default');
+
+        if ($configuredDisk === 'local') {
+            return 'public';
+        }
+
+        if (in_array($configuredDisk, ['public', 's3'], true)) {
+            return $configuredDisk;
+        }
+
+        $runtimeMode = strtolower((string) env('APP_RUNTIME_MODE', 'local'));
+
+        return $runtimeMode === 'aws' ? 's3' : 'public';
+    }
+
     /**
      * Process PDF file for a given book: convert each page to an image,
      * create page records, sync storage, and delete the temporary PDF.
@@ -68,12 +85,13 @@ class ProcessPdfService
 
                 // PAGE-LEVEL ATOMICITY: Transaksi dipindah HANYA ke dalam iterasi per halaman
                 DB::beginTransaction();
-                $uploadedToS3 = false;
+                $uploadedToTargetDisk = false;
+                $targetDisk = Storage::disk($this->getStorageDiskName());
 
                 try {
-                    // Proses S3
-                    Storage::disk('s3')->put($fileName, $imageContents);
-                    $uploadedToS3 = true;
+                    // Proses file ke disk aktif (local atau S3)
+                    $targetDisk->put($fileName, $imageContents);
+                    $uploadedToTargetDisk = true;
 
                     // Proses Database
                     $halaman = Halaman::create([
@@ -96,9 +114,9 @@ class ProcessPdfService
                     // Rollback HANYA untuk halaman yang gagal ini
                     DB::rollBack();
                     
-                    // Cleanup HANYA file fisik halaman yang gagal ini (jika telanjur naik ke S3)
-                    if ($uploadedToS3) {
-                        Storage::disk('s3')->delete($fileName);
+                    // Cleanup HANYA file fisik halaman yang gagal ini (jika telanjur naik ke disk aktif)
+                    if ($uploadedToTargetDisk) {
+                        $targetDisk->delete($fileName);
                     }
 
                     // Lempar exception ke atas agar tertangkap Job untuk mekanisme Retry!

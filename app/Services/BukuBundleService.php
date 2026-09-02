@@ -9,6 +9,16 @@ use ZipArchive;
 
 class BukuBundleService
 {
+    private function getStorageDiskName(): string
+    {
+        return config('filesystems.default', 'local');
+    }
+
+    private function storageDisk()
+    {
+        return Storage::disk($this->getStorageDiskName());
+    }
+
     /**
      * Generate metadata.json and ZIP bundle for the given book.
      *
@@ -84,7 +94,7 @@ class BukuBundleService
         $folderName = $buku->slugify($buku->judul_idn);
         $metadata = $this->getMetadataArray($buku);
 
-        Storage::disk('s3')->put(
+        $this->storageDisk()->put(
             'buku/' . $folderName . '/metadata.json',
             json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
         );
@@ -188,7 +198,7 @@ class BukuBundleService
             throw new \Exception('Tidak dapat membaca file ZIP yang dihasilkan');
         }
 
-        Storage::disk('s3')->put('buku/bundle/' . $zipFilename, $zipContent);
+        $this->storageDisk()->put('buku/bundle/' . $zipFilename, $zipContent);
 
         @unlink($zipTempPath);
         $newVersion = (empty($buku->zip_bundle_path) || $buku->version == 0) 
@@ -237,7 +247,7 @@ class BukuBundleService
 
     private function storageUrl(?string $path): ?string
     {
-        return $path ? Storage::disk('s3')->url($path) : null;
+        return $path ? $this->storageDisk()->url($path) : null;
     }
 
     private function copyFromStorageToLocal(?string $path, string $destPath): bool
@@ -247,7 +257,7 @@ class BukuBundleService
         }
 
         try {
-            $contents = Storage::disk('s3')->get($path);
+            $contents = $this->storageDisk()->get($path);
         } catch (\Exception $e) {
             return false;
         }

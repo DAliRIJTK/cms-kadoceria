@@ -9,6 +9,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Buku extends Model
 {
     use HasFactory;
+
+    private function storageDisk()
+    {
+        return Storage::disk(config('filesystems.default', 'public'));
+    }
+
     protected $table = 'buku';
     protected $primaryKey = 'id_buku';
     public $timestamps = true;
@@ -100,8 +106,8 @@ class Buku extends Model
             'buku/' . $bookDir . '/audio objek',
         ];
         foreach ($dirs as $dir) {
-            if (!Storage::disk('s3')->exists($dir)) {
-                Storage::disk('s3')->makeDirectory($dir);
+            if (!$this->storageDisk()->exists($dir)) {
+                $this->storageDisk()->makeDirectory($dir);
             }
         }
 
@@ -115,7 +121,7 @@ class Buku extends Model
             $uniq = uniqid();
             
             // Pengecekan Gambar Halaman
-            if ($page->path_gambar && Storage::disk('s3')->exists($page->path_gambar)) {
+            if ($page->path_gambar && $this->storageDisk()->exists($page->path_gambar)) {
                 $ext = pathinfo($page->path_gambar, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/halaman/temp_' . $uniq . '.' . $ext;
                 $finalPath = $this->buildPageAssetPath($page, 'halaman', $ext);
@@ -125,7 +131,7 @@ class Buku extends Model
             }
 
             // Pengecekan Narasi Indonesia
-            if ($page->narasi_indo && Storage::disk('s3')->exists($page->narasi_indo)) {
+            if ($page->narasi_indo && $this->storageDisk()->exists($page->narasi_indo)) {
                 $ext = pathinfo($page->narasi_indo, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/audio narasi indonesia/temp_' . $uniq . '.' . $ext;
                 $finalPath = $this->buildPageAssetPath($page, 'audio narasi indonesia', $ext);
@@ -135,7 +141,7 @@ class Buku extends Model
             }
 
             // Pengecekan Narasi Sunda
-            if ($page->narasi_sunda && Storage::disk('s3')->exists($page->narasi_sunda)) {
+            if ($page->narasi_sunda && $this->storageDisk()->exists($page->narasi_sunda)) {
                 $ext = pathinfo($page->narasi_sunda, PATHINFO_EXTENSION);
                 $tempPath = 'buku/' . $bookDir . '/audio narasi sunda/temp_' . $uniq . '.' . $ext;
                 $finalPath = $this->buildPageAssetPath($page, 'audio narasi sunda', $ext);
@@ -147,12 +153,12 @@ class Buku extends Model
             // Salin Backsound (Hanya di-copy jika belum ada, tidak perlu via temp)
             if ($page->audioLatar && $page->audioLatar->path_file) {
                 $src = $page->audioLatar->path_file;
-                if (Storage::disk('s3')->exists($src)) {
+                if ($this->storageDisk()->exists($src)) {
                     $ext = pathinfo($src, PATHINFO_EXTENSION);
                     $destName = $this->slugify($page->audioLatar->nama_audio) . '.' . $ext;
                     $destPath = 'buku/' . $bookDir . '/audio backsound/' . $destName;
-                    if (!Storage::disk('s3')->exists($destPath)) {
-                        Storage::disk('s3')->copy($src, $destPath);
+                    if (!$this->storageDisk()->exists($destPath)) {
+                        $this->storageDisk()->copy($src, $destPath);
                     }
                 }
             }
@@ -162,7 +168,7 @@ class Buku extends Model
                 $safeLabel = $this->slugify($area->label ?? 'objek');
                 $areaUniq = uniqid();
 
-                if ($area->audio_indo && Storage::disk('s3')->exists($area->audio_indo)) {
+                if ($area->audio_indo && $this->storageDisk()->exists($area->audio_indo)) {
                     $ext = pathinfo($area->audio_indo, PATHINFO_EXTENSION);
                     $tempPath = 'buku/' . $bookDir . '/audio objek/temp_indo_' . $areaUniq . '.' . $ext;
                     $finalPath = $this->buildPageAssetPath($page, 'audio objek', $ext, $safeLabel . '_indonesia');
@@ -171,7 +177,7 @@ class Buku extends Model
                     $dbUpdates['area'][$area->id_area]['audio_indo'] = $finalPath;
                 }
 
-                if ($area->audio_sunda && Storage::disk('s3')->exists($area->audio_sunda)) {
+                if ($area->audio_sunda && $this->storageDisk()->exists($area->audio_sunda)) {
                     $ext = pathinfo($area->audio_sunda, PATHINFO_EXTENSION);
                     $tempPath = 'buku/' . $bookDir . '/audio objek/temp_sunda_' . $areaUniq . '.' . $ext;
                     $finalPath = $this->buildPageAssetPath($page, 'audio objek', $ext, $safeLabel . '_sunda');
@@ -206,14 +212,14 @@ class Buku extends Model
             // 4. EKSEKUSI PEMINDAHAN FISIK DI S3
             // Pass 1: Pindahkan semua ke nama Temp (menghindari nama tertimpa jika halaman ditukar)
             foreach ($s3Moves as $move) {
-                Storage::disk('s3')->move($move['old'], $move['temp']);
+                $this->storageDisk()->move($move['old'], $move['temp']);
             }
             // Pass 2: Pindahkan dari nama Temp ke nama Final
             foreach ($s3Moves as $move) {
-                if (Storage::disk('s3')->exists($move['final']) && $move['temp'] !== $move['final']) { 
-                    Storage::disk('s3')->delete($move['final']); 
+                if ($this->storageDisk()->exists($move['final']) && $move['temp'] !== $move['final']) { 
+                    $this->storageDisk()->delete($move['final']); 
                 }
-                Storage::disk('s3')->move($move['temp'], $move['final']);
+                $this->storageDisk()->move($move['temp'], $move['final']);
             }
 
             // 5. KOMIT: Jika Database & S3 Sukses

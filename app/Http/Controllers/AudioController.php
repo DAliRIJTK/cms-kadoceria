@@ -12,6 +12,24 @@ use Throwable;
 
 class AudioController extends Controller
 {
+    private function storageDisk()
+    {
+        return Storage::disk(config('filesystems.default', 'public'));
+    }
+
+    private function calculateFileHash(string $path): ?string
+    {
+        $disk = $this->storageDisk();
+
+        if (!$disk->exists($path)) {
+            return null;
+        }
+
+        $content = $disk->get($path);
+
+        return is_string($content) ? md5($content) : null;
+    }
+
     public function storeAreaAudio(Request $request, AreaInteraktif $area)
     {
 
@@ -28,29 +46,21 @@ class AudioController extends Controller
         try {
             $file = $request->file('audio_file');
             $uploadedHash = md5_file($file->getRealPath());
-            
-            // Inisialisasi S3 Client untuk mengambil metadata tanpa download
-            $s3Client = Storage::disk('s3')->getClient();
-            $bucket = config('filesystems.disks.s3.bucket');
+            $disk = $this->storageDisk();
 
-            // Cek duplikasi menggunakan ETag (S3 Checksum/MD5)
             if ($validated['audio_type'] === 'indo') {
-                if ($area->audio_sunda && Storage::disk('s3')->exists($area->audio_sunda)) {
-                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $area->audio_sunda]);
-                    $otherHash = trim($meta['ETag'], '"');
-                    
-                    if ($uploadedHash === $otherHash) {
+                if ($area->audio_sunda) {
+                    $otherHash = $this->calculateFileHash($area->audio_sunda);
+                    if ($otherHash && $uploadedHash === $otherHash) {
                         $errMsg = 'File audio Indonesia tidak boleh sama dengan file audio Sunda untuk area ini.';
                         if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             } else {
-                if ($area->audio_indo && Storage::disk('s3')->exists($area->audio_indo)) {
-                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $area->audio_indo]);
-                    $otherHash = trim($meta['ETag'], '"');
-                    
-                    if ($uploadedHash === $otherHash) {
+                if ($area->audio_indo) {
+                    $otherHash = $this->calculateFileHash($area->audio_indo);
+                    if ($otherHash && $uploadedHash === $otherHash) {
                         $errMsg = 'File audio Sunda tidak boleh sama dengan file audio Indonesia untuk area ini.';
                         if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
@@ -62,8 +72,8 @@ class AudioController extends Controller
 
             $field = 'audio_' . $validated['audio_type'];
 
-            if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
-                Storage::disk('s3')->delete($area->$field);
+            if ($area->$field && $disk->exists($area->$field)) {
+                $disk->delete($area->$field);
             }
 
             $file = $request->file('audio_file');
@@ -73,7 +83,7 @@ class AudioController extends Controller
             $langSuffix = $validated['audio_type'] === 'indo' ? 'indonesia' : 'sunda';
             $finalPath = $buku->buildPageAssetPath($area->halaman, 'audio objek', $ext, $safeLabel . '_' . $langSuffix);
             
-            Storage::disk('s3')->putFileAs(
+            $disk->putFileAs(
                 dirname($finalPath), 
                 $file, 
                 basename($finalPath), 
@@ -91,7 +101,7 @@ class AudioController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => "Audio {$lang} area berhasil diunggah",
-                    'url' => Storage::disk('s3')->url($finalPath)
+                    'url' => $disk->url($finalPath)
                 ]);
             }
             return back()->with('success', "Audio {$lang} area berhasil diunggah");
@@ -126,29 +136,21 @@ class AudioController extends Controller
         try {
             $file = $request->file('audio_file');
             $uploadedHash = md5_file($file->getRealPath());
-            
-            // Inisialisasi S3 Client
-            $s3Client = Storage::disk('s3')->getClient();
-            $bucket = config('filesystems.disks.s3.bucket');
+            $disk = $this->storageDisk();
 
-            // Cek duplikasi menggunakan ETag
             if ($validated['narasi_type'] === 'indo') {
-                if ($halaman->narasi_sunda && Storage::disk('s3')->exists($halaman->narasi_sunda)) {
-                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $halaman->narasi_sunda]);
-                    $otherHash = trim($meta['ETag'], '"');
-                    
-                    if ($uploadedHash === $otherHash) {
+                if ($halaman->narasi_sunda) {
+                    $otherHash = $this->calculateFileHash($halaman->narasi_sunda);
+                    if ($otherHash && $uploadedHash === $otherHash) {
                         $errMsg = 'File audio narasi Indonesia tidak boleh sama dengan file audio narasi Sunda untuk halaman ini.';
                         if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
                     }
                 }
             } else {
-                if ($halaman->narasi_indo && Storage::disk('s3')->exists($halaman->narasi_indo)) {
-                    $meta = $s3Client->headObject(['Bucket' => $bucket, 'Key' => $halaman->narasi_indo]);
-                    $otherHash = trim($meta['ETag'], '"');
-                    
-                    if ($uploadedHash === $otherHash) {
+                if ($halaman->narasi_indo) {
+                    $otherHash = $this->calculateFileHash($halaman->narasi_indo);
+                    if ($otherHash && $uploadedHash === $otherHash) {
                         $errMsg = 'File audio narasi Sunda tidak boleh sama dengan file audio narasi Indonesia untuk halaman ini.';
                         if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $errMsg], 422);
                         return back()->withErrors(['audio' => $errMsg]);
@@ -160,15 +162,15 @@ class AudioController extends Controller
             $field = 'narasi_' . $validated['narasi_type'];
 
             // Hapus file lama jika ada
-            if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
-                Storage::disk('s3')->delete($halaman->$field);
+            if ($halaman->$field && $disk->exists($halaman->$field)) {
+                $disk->delete($halaman->$field);
             }
 
             $ext = $file->getClientOriginalExtension() ?: 'mp3';
             $dirName = $validated['narasi_type'] === 'indo' ? 'audio narasi indonesia' : 'audio narasi sunda';
             $finalPath = $buku->buildPageAssetPath($halaman, $dirName, $ext);
 
-            Storage::disk('s3')->putFileAs(
+            $disk->putFileAs(
                 dirname($finalPath), 
                 $file, 
                 basename($finalPath), 
@@ -188,7 +190,7 @@ class AudioController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => $message,
-                    'url' => Storage::disk('s3')->url($finalPath)
+                    'url' => $disk->url($finalPath)
                 ]);
             }
             return back()->with('success', $message);
@@ -221,8 +223,8 @@ class AudioController extends Controller
             $field = $fieldMap[$type]['field'];
             $label = $fieldMap[$type]['label'];
 
-            if ($halaman->$field && Storage::disk('s3')->exists($halaman->$field)) {
-                Storage::disk('s3')->delete($halaman->$field);
+            if ($halaman->$field && $this->storageDisk()->exists($halaman->$field)) {
+                $this->storageDisk()->delete($halaman->$field);
             }
             $halaman->$field = null;
             $halaman->save();
@@ -251,8 +253,8 @@ class AudioController extends Controller
             $field = $fieldMap[$type]['field'];
             $label = $fieldMap[$type]['label'];
 
-            if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
-                Storage::disk('s3')->delete($area->$field);
+            if ($area->$field && $this->storageDisk()->exists($area->$field)) {
+                $this->storageDisk()->delete($area->$field);
             }
             $area->$field = null;
             $area->save();
@@ -284,35 +286,30 @@ class AudioController extends Controller
 
         try {
             $file = $request->file('path_file');
-            $disk = 's3';
-            config(['filesystems.disks.s3.throw' => true]);
+            $diskName = config('filesystems.default', 'public');
+            $disk = Storage::disk($diskName);
 
-            // Ambil ekstensi file asli, default ke mp3
             $ext = $file->getClientOriginalExtension() ?: 'mp3';
-
-            // Format nama audio menjadi format yang aman untuk URL/S3 (slug)
             $fileName = \Illuminate\Support\Str::slug($validated['nama_audio']) . '.' . $ext;
 
-            // Gunakan putFileAs untuk menamai file secara spesifik
-            $path = Storage::disk($disk)->putFileAs('buku/audio-latar', $file, $fileName, [
+            $path = $disk->putFileAs('buku/audio-latar', $file, $fileName, [
                 'visibility' => 'public',
                 'ContentType' => $file->getMimeType()
             ]);
             
             if (!is_string($path) || trim($path) === '') {
-                throw new \RuntimeException('S3 mengembalikan path upload yang kosong. Periksa konfigurasi bucket, kredensial AWS, dan izin akses.');
+                throw new \RuntimeException('Sistem storage mengembalikan path upload yang kosong.');
             }
 
-            $storage = Storage::disk($disk);
             $url = null;
             try {
-                $url = $storage->url($path);
+                $url = $disk->url($path);
             } catch (Throwable $e) {
                 $url = null;
             }
 
             \Log::info('audio_latar_upload', [
-                'disk' => $disk,
+                'disk' => $diskName,
                 'path' => $path,
                 'original_name' => $file->getClientOriginalName(),
                 'size' => $file->getSize(),
@@ -356,7 +353,7 @@ class AudioController extends Controller
         try {
             if ($audioLatar->path_file) {
                 try {
-                    Storage::disk('s3')->delete($audioLatar->path_file);
+                    $this->storageDisk()->delete($audioLatar->path_file);
                 } catch (Throwable $e) {
                     \Log::warning('audio_latar_delete_storage_failed', [
                         'path' => $audioLatar->path_file,

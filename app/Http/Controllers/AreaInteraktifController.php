@@ -8,6 +8,11 @@ use App\Models\AreaInteraktif;
 
 class AreaInteraktifController extends Controller
 {
+    private function storageDisk()
+    {
+        return Storage::disk(config('filesystems.default', 'public'));
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -140,8 +145,8 @@ class AreaInteraktifController extends Controller
 
         try {
             foreach (['audio_indo', 'audio_sunda'] as $field) {
-                if ($area->$field && Storage::disk('s3')->exists($area->$field)) {
-                    Storage::disk('s3')->delete($area->$field);
+                if ($area->$field && $this->storageDisk()->exists($area->$field)) {
+                    $this->storageDisk()->delete($area->$field);
                 }
             }
             $area->delete();

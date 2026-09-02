@@ -12,6 +12,10 @@ use App\Models\Buku;
 
 class HalamanController extends Controller
 {
+    private function storageDisk()
+    {
+        return Storage::disk(config('filesystems.default', 'public'));
+    }
 
     public function management(Request $request)
     {
@@ -116,7 +120,7 @@ class HalamanController extends Controller
         }
 
         $bookDir = $buku->slugify($buku->judul_idn);
-        $path = $request->file('path_gambar')->storeAs('buku/' . $bookDir . '/halaman', $filename, 's3');
+        $path = $request->file('path_gambar')->storeAs('buku/' . $bookDir . '/halaman', $filename, config('filesystems.default', 'public'));
 
         Halaman::create([
             'id_buku'       => $validated['id_buku'],
@@ -230,11 +234,11 @@ class HalamanController extends Controller
 
         foreach ($s3PathsToDelete as $path) {
             try {
-                if (Storage::disk('s3')->exists($path)) {
-                    Storage::disk('s3')->delete($path);
+                if ($this->storageDisk()->exists($path)) {
+                    $this->storageDisk()->delete($path);
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("Orphaned S3 File (Hapus Halaman): " . $path);
+                \Illuminate\Support\Facades\Log::warning("Orphaned storage file (Hapus Halaman): " . $path);
             }
         }
 
@@ -312,14 +316,14 @@ class HalamanController extends Controller
             return back()->withErrors(['delete' => 'Gagal menghapus halaman secara massal: ' . $e->getMessage()]);
         }
 
-        // 3. EKSEKUSI HAPUS S3 (Toleransi Error)
+        // 3. EKSEKUSI HAPUS FILE STORAGE (Toleransi Error)
         foreach ($s3PathsToDelete as $path) {
             try {
-                if (Storage::disk('s3')->exists($path)) {
-                    Storage::disk('s3')->delete($path);
+                if ($this->storageDisk()->exists($path)) {
+                    $this->storageDisk()->delete($path);
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("Orphaned S3 File (Hapus Massal): " . $path);
+                \Illuminate\Support\Facades\Log::warning("Orphaned storage file (Hapus Massal): " . $path);
             }
         }
 
@@ -342,29 +346,29 @@ class HalamanController extends Controller
 
             // Validate that physical assets exist for each page
             foreach ($buku->halaman as $page) {
-                if (empty($page->path_gambar) || !Storage::disk('s3')->exists($page->path_gambar)) {
+                if (empty($page->path_gambar) || !$this->storageDisk()->exists($page->path_gambar)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
 
                 // If narration audio is set in DB but missing in storage
-                if (!empty($page->narasi_indo) && !Storage::disk('s3')->exists($page->narasi_indo)) {
+                if (!empty($page->narasi_indo) && !$this->storageDisk()->exists($page->narasi_indo)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
-                if (!empty($page->narasi_sunda) && !Storage::disk('s3')->exists($page->narasi_sunda)) {
+                if (!empty($page->narasi_sunda) && !$this->storageDisk()->exists($page->narasi_sunda)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
 
                 // If background audio is set in DB but missing in storage
-                if ($page->audioLatar && !Storage::disk('s3')->exists($page->audioLatar->path_file)) {
+                if ($page->audioLatar && !$this->storageDisk()->exists($page->audioLatar->path_file)) {
                     throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                 }
 
                 // If area interactive audios are set in DB but missing in storage
                 foreach ($page->areaInteraktif as $area) {
-                    if (!empty($area->audio_indo) && !Storage::disk('s3')->exists($area->audio_indo)) {
+                    if (!empty($area->audio_indo) && !$this->storageDisk()->exists($area->audio_indo)) {
                         throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                     }
-                    if (!empty($area->audio_sunda) && !Storage::disk('s3')->exists($area->audio_sunda)) {
+                    if (!empty($area->audio_sunda) && !$this->storageDisk()->exists($area->audio_sunda)) {
                         throw new \Exception("Aset multimedia tidak dapat dimuat, periksa kelengkapan file.");
                     }
                 }

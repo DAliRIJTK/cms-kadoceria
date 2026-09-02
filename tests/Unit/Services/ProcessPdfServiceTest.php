@@ -14,11 +14,11 @@ class ProcessPdfServiceTest extends TestCase
     // Menggunakan RefreshDatabase agar database selalu bersih setiap kali test dijalankan
     use RefreshDatabase;
 
-    public function test_pdf_berhasil_dikonversi_menjadi_gambar_dan_diunggah_ke_s3()
+    public function test_pdf_berhasil_dikonversi_menjadi_gambar_dan_diunggah_ke_disk_aktif()
     {
         // 1. PERSIAPAN (Arrange)
-        // Kita memalsukan (mock) storage local dan s3 agar file tidak benar-benar terunggah ke AWS
-        Storage::fake('local');
+        config(['filesystems.default' => 'public']);
+        Storage::fake('public');
         Storage::fake('s3');
 
         // Buat data buku dummy di database
@@ -56,14 +56,14 @@ class ProcessPdfServiceTest extends TestCase
         $halaman = Halaman::where('id_buku', $buku->id_buku)->orderBy('nomor_halaman')->get();
         $this->assertCount(2, $halaman, 'Harus ada 2 halaman yang terbuat di database');
 
-        // Pastikan halaman 1 menjadi cover, dan gambar fisiknya benar-benar ada di fake S3 storage
+        // Pastikan halaman 1 menjadi cover, dan gambar fisiknya benar-benar ada di fake storage aktif
         $halaman1 = $halaman->firstWhere('nomor_halaman', 1);
         $this->assertEquals($buku->path_cover, $halaman1->path_gambar, 'Path cover buku harus sama dengan path gambar halaman 1');
-        Storage::disk('s3')->assertExists($halaman1->path_gambar);
+        Storage::disk('public')->assertExists($halaman1->path_gambar);
 
-        // Pastikan halaman 2 juga gambar fisiknya ada di fake S3 storage
+        // Pastikan halaman 2 juga gambar fisiknya ada di fake storage aktif
         $halaman2 = $halaman->firstWhere('nomor_halaman', 2);
-        Storage::disk('s3')->assertExists($halaman2->path_gambar);
+        Storage::disk('public')->assertExists($halaman2->path_gambar);
     }
 
     public function test_rollback_dan_cleanup_s3_saat_terjadi_kegagalan_database()
@@ -110,10 +110,10 @@ class ProcessPdfServiceTest extends TestCase
             'id_buku' => $buku->id_buku,
         ]);
 
-        // Memastikan cleanup S3 berjalan (Gambar yang telanjur naik, dihapus kembali)
+        // Memastikan cleanup pada disk aktif berjalan (Gambar yang telanjur naik, dihapus kembali)
         $bookDir = $buku->slugify($buku->judul_idn);
-        $s3Files = Storage::disk('s3')->allFiles('buku/' . $bookDir);
-        $this->assertEmpty($s3Files, 'Direktori S3 untuk buku ini seharusnya kosong karena file di-cleanup');
+        $activeFiles = Storage::disk('local')->allFiles('buku/' . $bookDir);
+        $this->assertEmpty($activeFiles, 'Direktori storage aktif untuk buku ini seharusnya kosong karena file di-cleanup');
 
         // Memastikan status is_processing tetap true (karena Job yang bertugas mengubahnya jadi false)
         $buku->refresh();
@@ -158,13 +158,13 @@ class ProcessPdfServiceTest extends TestCase
         // 3. PEMBUKTIAN (Assert)
         $this->assertTrue($exceptionThrown, 'Exception seharusnya dilempar saat halaman 2 gagal');
 
-        // BUKTI 1: Halaman 1 TETAP AMAN di Database dan S3 (Tidak ikut ter-rollback)
+        // BUKTI 1: Halaman 1 TETAP AMAN di Database dan disk aktif (Tidak ikut ter-rollback)
         $this->assertDatabaseHas('halaman', [
             'id_buku' => $buku->id_buku,
             'nomor_halaman' => 1,
         ]);
         $halaman1 = Halaman::where('id_buku', $buku->id_buku)->where('nomor_halaman', 1)->first();
-        Storage::disk('s3')->assertExists($halaman1->path_gambar); // Gambar tetap ada di S3
+        Storage::disk('public')->assertExists($halaman1->path_gambar); // Gambar tetap ada di storage aktif
 
         // BUKTI 2: Halaman 2 GAGAL TERSIMPAN di Database (Ter-rollback)
         $this->assertDatabaseMissing('halaman', [
@@ -172,9 +172,9 @@ class ProcessPdfServiceTest extends TestCase
             'nomor_halaman' => 2,
         ]);
         
-        // BUKTI 3: Gambar Halaman 2 DIHAPUS dari S3 (Cleanup S3 HANYA untuk halaman 2)
+        // BUKTI 3: Gambar Halaman 2 DIHAPUS dari storage aktif (Cleanup disk aktif HANYA untuk halaman 2)
         $bookDir = $buku->slugify($buku->judul_idn);
-        Storage::disk('s3')->assertMissing('buku/' . $bookDir . '/halaman/halaman1.webp'); 
+        Storage::disk('public')->assertMissing('buku/' . $bookDir . '/halaman/halaman1.webp'); 
         
         // Pastikan total data di database hanya ada 1 halaman yang lolos
         $this->assertCount(1, Halaman::where('id_buku', $buku->id_buku)->get());
@@ -244,12 +244,14 @@ class ProcessPdfServiceTest extends TestCase
         $this->assertTrue($exceptionThrown, 'Service harus melempar exception saat PDF hilang');
     }
 
-    public function test_rollback_database_jika_s3_gagal_menerima_file()
+    public function test_rollback_database_jika_disk_aktif_gagal_menerima_file()
     {
         // 1. PERSIAPAN
-        // Simpan instance fake local disk ke dalam variabel sebelum Storage kita bajak
+        config(['filesystems.default' => 's3']);
+
         $localDisk = Storage::fake('local');
-        
+        $s3Disk = Storage::fake('s3');
+
         $buku = Buku::factory()->create([
             'judul_idn' => 'Buku Uji Gagal S3',
             'is_processing' => true,
@@ -258,25 +260,20 @@ class ProcessPdfServiceTest extends TestCase
 
         $fixturePath = base_path('tests/Fixtures/dummy_1_page.pdf');
         $pdfPath = 'buku/pdf/dummy_s3_fail.pdf';
-        
-        // Gunakan $localDisk langsung untuk meletakkan file dummy
+
         $localDisk->put($pdfPath, file_get_contents($fixturePath));
 
-        // SABOTASE S3 & LINDUNGI LOCAL:
-        // Kita buat mock khusus untuk menyabotase S3
         $s3Mock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
         $s3Mock->shouldReceive('put')->andThrow(new \Exception('S3 Connection Timeout'));
-        $s3Mock->shouldReceive('delete')->never(); // Pastikan S3 tidak pernah menghapus file karena file gagal terunggah
+        $s3Mock->shouldReceive('delete')->never();
 
-        // Beri tahu facade Storage: 
-        // "Jika memanggil disk('local'), gunakan fake local disk. Jika disk('s3'), gunakan mock sabotase kita."
         Storage::shouldReceive('disk')->with('local')->andReturn($localDisk);
         Storage::shouldReceive('disk')->with('s3')->andReturn($s3Mock);
-        
+
         // 2. TINDAKAN
         $service = new ProcessPdfService();
         $exceptionThrown = false;
-        
+
         try {
             $service->process($buku, $pdfPath);
         } catch (\Exception $e) {
@@ -285,14 +282,12 @@ class ProcessPdfServiceTest extends TestCase
         }
 
         // 3. PEMBUKTIAN
-        $this->assertTrue($exceptionThrown, 'Exception harus dilempar ketika S3 gagal');
+        $this->assertTrue($exceptionThrown, 'Exception harus dilempar ketika disk aktif gagal');
 
-        // Pastikan Database di-rollback (0 data Halaman untuk buku ini)
         $this->assertDatabaseMissing('halaman', [
             'id_buku' => $buku->id_buku,
         ]);
-        
-        // Pastikan is_processing tetap true agar bisa dilempar dan diproses oleh Job
+
         $buku->refresh();
         $this->assertTrue((bool) $buku->is_processing);
     }

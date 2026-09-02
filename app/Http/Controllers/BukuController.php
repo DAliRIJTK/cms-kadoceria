@@ -17,6 +17,10 @@ use App\Jobs\ProcessBukuStorageJob;
 
 class BukuController extends Controller
 {
+    private function storageDisk()
+    {
+        return Storage::disk(config('filesystems.default', 'public'));
+    }
 
     public function index(Request $request)
     {
@@ -142,8 +146,8 @@ class BukuController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            if (isset($pdfPath) && Storage::disk('s3')->exists($pdfPath)) {
-                Storage::disk('s3')->delete($pdfPath);
+            if (isset($pdfPath) && Storage::disk('local')->exists($pdfPath)) {
+                Storage::disk('local')->delete($pdfPath);
             }
             return back()->withInput()
                 ->withErrors(['error' => 'Gagal memproses PDF: ' . $e->getMessage()]);
@@ -166,7 +170,7 @@ class BukuController extends Controller
             foreach ($buku->halaman as $page) {
                 $iscover = $page->nomor_halaman === 1;
 
-                if (empty($page->path_gambar) || !Storage::disk('s3')->exists($page->path_gambar)) {
+                if (empty($page->path_gambar) || !$this->storageDisk()->exists($page->path_gambar)) {
                     if($iscover) {
                         break;
                     }
@@ -175,7 +179,7 @@ class BukuController extends Controller
                 }
                 
                 // If narration audio is set in DB but missing in storage
-                if (!empty($page->narasi_indo) && !Storage::disk('s3')->exists($page->narasi_indo)) {
+                if (!empty($page->narasi_indo) && !$this->storageDisk()->exists($page->narasi_indo)) {
                     if($iscover) {
                         break;
                     }
@@ -183,7 +187,7 @@ class BukuController extends Controller
                     break;
                 }
                 
-                if (!empty($page->narasi_sunda) && !Storage::disk('s3')->exists($page->narasi_sunda)) {
+                if (!empty($page->narasi_sunda) && !$this->storageDisk()->exists($page->narasi_sunda)) {
                     if($iscover) {
                         break;
                     }
@@ -192,7 +196,7 @@ class BukuController extends Controller
                 }
 
                 // If background audio is set in DB but missing in storage
-                if ($page->audioLatar && !Storage::disk('s3')->exists($page->audioLatar->path_file)) {
+                if ($page->audioLatar && !$this->storageDisk()->exists($page->audioLatar->path_file)) {
                     if($iscover) {
                         break;
                     }
@@ -202,7 +206,7 @@ class BukuController extends Controller
                 
                 // If area interactive audios are set in DB but missing in storage
                 foreach ($page->areaInteraktif as $area) {
-                    if (!empty($area->audio_indo) && !Storage::disk('s3')->exists($area->audio_indo)) {
+                    if (!empty($area->audio_indo) && !$this->storageDisk()->exists($area->audio_indo)) {
                         if($iscover) {
                             break;
                         }
@@ -210,7 +214,7 @@ class BukuController extends Controller
                         break 2;
                     }
                     
-                    if (!empty($area->audio_sunda) && !Storage::disk('s3')->exists($area->audio_sunda)) {
+                    if (!empty($area->audio_sunda) && !$this->storageDisk()->exists($area->audio_sunda)) {
                         if($iscover) {
                             break;
                         }
@@ -234,7 +238,7 @@ class BukuController extends Controller
     private function fixCoverIfMissing(Buku $buku): void
     {
         $needsFix = empty($buku->path_cover)
-            || !Storage::disk('s3')->exists($buku->path_cover);
+            || !$this->storageDisk()->exists($buku->path_cover);
 
         if (!$needsFix) return;
 
@@ -242,7 +246,7 @@ class BukuController extends Controller
             ->orderBy('nomor_halaman', 'asc')
             ->first();
 
-        if ($firstPage && $firstPage->path_gambar && Storage::disk('s3')->exists($firstPage->path_gambar)) {
+        if ($firstPage && $firstPage->path_gambar && $this->storageDisk()->exists($firstPage->path_gambar)) {
             $buku->path_cover = $firstPage->path_gambar;
             $buku->save();
         }
@@ -412,14 +416,14 @@ class BukuController extends Controller
         }
 
         try {
-            if (Storage::disk('s3')->exists($bookFolder)) {
-                Storage::disk('s3')->deleteDirectory($bookFolder);
+            if ($this->storageDisk()->exists($bookFolder)) {
+                $this->storageDisk()->deleteDirectory($bookFolder);
             }
 
-            $bundleFiles = Storage::disk('s3')->files('buku/bundle');
+            $bundleFiles = $this->storageDisk()->files('buku/bundle');
             foreach ($bundleFiles as $file) {
                 if (preg_match('/^buku\/bundle\/' . preg_quote($idBuku, '/') . '_v.*\.zip$/', $file) === 1) {
-                    Storage::disk('s3')->delete($file);
+                    $this->storageDisk()->delete($file);
                 }
             }
         } catch (\Exception $e) {

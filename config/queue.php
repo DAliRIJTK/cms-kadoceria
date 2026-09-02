@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => env('QUEUE_CONNECTION', 'database'),
+    'default' => env('QUEUE_CONNECTION', env('APP_RUNTIME_MODE') === 'aws' ? 'sqs' : 'sync'),
 
     /*
     |--------------------------------------------------------------------------

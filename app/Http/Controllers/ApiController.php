@@ -10,6 +10,11 @@ use App\Services\BukuBundleService;
 
 class ApiController extends Controller
 {
+    private function storageDisk()
+    {
+        return Storage::disk(config('filesystems.default', 'public'));
+    }
+
     /**
      * Daftar informasi buku yang sudah dipublikasikan.
      * GET /api/get/dataInformasiBuku
@@ -20,8 +25,8 @@ class ApiController extends Controller
 
         $result = $bukuList->map(function ($buku) {
             $fileSize = null;
-            if (!empty($buku->zip_bundle_path) && Storage::disk('s3')->exists($buku->zip_bundle_path)) {
-                $bytes = Storage::disk('s3')->size($buku->zip_bundle_path);
+            if (!empty($buku->zip_bundle_path) && $this->storageDisk()->exists($buku->zip_bundle_path)) {
+                $bytes = $this->storageDisk()->size($buku->zip_bundle_path);
                 $fileSize = round($bytes / 1048576, 1) . ' MB';
             }
 
@@ -32,7 +37,7 @@ class ApiController extends Controller
                 'penulis'              => $buku->penulis,
                 'illustrator'          => $buku->ilustrator,
                 'coverImagePath'       => $buku->path_cover
-                                            ? Storage::disk('s3')->url($buku->path_cover)
+                                            ? $this->storageDisk()->url($buku->path_cover)
                                             : null,
                 'descriptionsIndonesia' => $buku->deskripsi_idn,
                 'descriptionsSunda'    => $buku->deskripsi_sn,
@@ -68,15 +73,15 @@ class ApiController extends Controller
 
         $zipRelPath = null;
 
-        if (!empty($buku->zip_bundle_path) && Storage::disk('s3')->exists($buku->zip_bundle_path)) {
+        if (!empty($buku->zip_bundle_path) && $this->storageDisk()->exists($buku->zip_bundle_path)) {
             $zipRelPath = $buku->zip_bundle_path;
         }
 
         if (!$zipRelPath) {
-            $files = Storage::disk('s3')->files('buku/bundle');
+            $files = $this->storageDisk()->files('buku/bundle');
             $bundleFiles = array_values(array_filter($files, fn($path) => preg_match('/^buku\/bundle\/' . preg_quote($buku->id_buku, '/') . '_v.*\.zip$/', $path) === 1));
             if (!empty($bundleFiles)) {
-                usort($bundleFiles, fn($a, $b) => Storage::disk('s3')->lastModified($b) <=> Storage::disk('s3')->lastModified($a));
+                usort($bundleFiles, fn($a, $b) => $this->storageDisk()->lastModified($b) <=> $this->storageDisk()->lastModified($a));
                 $zipRelPath = $bundleFiles[0];
             }
         }
@@ -85,7 +90,7 @@ class ApiController extends Controller
             return response()->json(['error' => 'Bundle buku belum tersedia. Coba publikasikan ulang.'], 404);
         }
 
-        $downloadUrl = $zipRelPath ? Storage::disk('s3')->url($zipRelPath) : null;
+        $downloadUrl = $zipRelPath ? $this->storageDisk()->url($zipRelPath) : null;
         return response()->json(['downloadUrl' => $downloadUrl]);
     }
 
@@ -136,15 +141,15 @@ class ApiController extends Controller
             GenerateBundleJob::dispatch($buku);
 
             $fileSize = null;
-            if (!empty($buku->zip_bundle_path) && Storage::disk('s3')->exists($buku->zip_bundle_path)) {
-                $bytes = Storage::disk('s3')->size($buku->zip_bundle_path);
+            if (!empty($buku->zip_bundle_path) && $this->storageDisk()->exists($buku->zip_bundle_path)) {
+                $bytes = $this->storageDisk()->size($buku->zip_bundle_path);
                 $fileSize = round($bytes / 1048576, 1) . ' MB';
             }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Bundle dan metadata buku berhasil di-generate',
-                'downloadUrl' => $buku->zip_bundle_path ? Storage::disk('s3')->url($buku->zip_bundle_path) : null,
+                'downloadUrl' => $buku->zip_bundle_path ? $this->storageDisk()->url($buku->zip_bundle_path) : null,
                 'fileSize' => $fileSize,
             ], 202);
         } catch (\Exception $e) {

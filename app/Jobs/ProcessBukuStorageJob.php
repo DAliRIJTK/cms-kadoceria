@@ -22,10 +22,15 @@ class ProcessBukuStorageJob implements ShouldQueue
         public ?string $oldTitle = null
     ) {}
 
+    private function storageDisk()
+    {
+        return Storage::disk(config('filesystems.default', 'public'));
+    }
+
     public function handle(BukuBundleService $bundleService): void
     {
         try {
-        // 1. Eksekusi perpindahan folder S3 dan Path DB jika judul berubah
+        // 1. Eksekusi perpindahan folder aktif dan Path DB jika judul berubah
         if ($this->oldTitle && $this->oldTitle !== $this->buku->judul_idn) {
             $oldBookDir = $this->buku->slugify($this->oldTitle);
             $newBookDir = $this->buku->slugify($this->buku->judul_idn);
@@ -83,13 +88,13 @@ class ProcessBukuStorageJob implements ShouldQueue
 
     private function moveDirectory(string $oldPath, string $newPath): void
     {
-        $files = Storage::disk('s3')->allFiles($oldPath);
+        $files = $this->storageDisk()->allFiles($oldPath);
         foreach ($files as $file) {
             $relativePath = str_replace($oldPath . '/', '', $file);
             $newFilePath = $newPath . '/' . $relativePath;
-            Storage::disk('s3')->makeDirectory(dirname($newFilePath));
-            Storage::disk('s3')->copy($file, $newFilePath);
+            $this->storageDisk()->makeDirectory(dirname($newFilePath));
+            $this->storageDisk()->copy($file, $newFilePath);
         }
-        Storage::disk('s3')->deleteDirectory($oldPath);
+        $this->storageDisk()->deleteDirectory($oldPath);
     }
 }
